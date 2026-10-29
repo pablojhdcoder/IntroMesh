@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeSwitch } from "@/components/theme-switch";
 import { service } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -9,17 +10,20 @@ export default async function IntelligencePage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-6 py-16">
-      <header className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/" className="underline-offset-4 hover:underline">
-            Volver al campo
-          </Link>
-        </p>
-        <h1 className="font-heading text-5xl leading-none tracking-[-0.03em]">Inteligencia</h1>
-        <p className="max-w-[48ch] text-sm text-muted-foreground">
-          {data.event?.name ?? "Evento"}. Agregados del evento. No hay historiales individuales ni rankings de personas.
-          {data.demo ? " Los datos semilla son de demostración." : ""}
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            <Link href="/" className="underline-offset-4 hover:underline">
+              Volver al campo
+            </Link>
+          </p>
+          <h1 className="font-heading text-5xl leading-none tracking-[-0.03em]">Inteligencia</h1>
+          <p className="max-w-[48ch] text-sm text-muted-foreground">
+            {data.event?.name ?? "Evento"}. Agregados del evento. No hay historiales individuales ni rankings de personas.
+            {data.demo ? " Los datos semilla son de demostración." : ""}
+          </p>
+        </div>
+        <ThemeSwitch />
       </header>
       <dl className="grid grid-cols-2 gap-6 sm:grid-cols-3">
         <Stat label="Visibles" value={String(report.visible)} />

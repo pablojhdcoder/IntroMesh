@@ -4,6 +4,7 @@ import { useState } from "react";
 import { GOALS, INTERESTS, SKILLS } from "@/domain/catalog";
 import type { Presentation, ProfileInput } from "@/domain/profile";
 import { Button } from "@/components/ui/button";
+import { ThemeSwitch } from "@/components/theme-switch";
 
 const empty: ProfileInput = {
   displayName: "",
@@ -74,17 +75,20 @@ export function ProfileForm({
 
   return (
     <form
-      className="mx-auto flex w-full max-w-xl flex-col gap-8"
+      className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-8 sm:px-8"
       onSubmit={(event) => {
         event.preventDefault();
         void save();
       }}
     >
-      <div className="flex flex-col gap-3">
-        <h1 className="font-heading text-[clamp(2.5rem,6vw,4.5rem)] leading-none tracking-[-0.03em]">Tu identidad</h1>
-        <p className="max-w-[42ch] text-[0.9375rem] leading-normal text-muted-foreground">
-          Este perfil se reutiliza en cada evento. La presentación se puede editar antes de compartirla.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <h1 className="font-heading text-[clamp(2.5rem,6vw,4.5rem)] leading-none tracking-[-0.03em]">Tu identidad</h1>
+          <p className="max-w-[42ch] text-[0.9375rem] leading-normal text-muted-foreground">
+            Este perfil se reutiliza en cada evento. La presentación se puede editar antes de compartirla.
+          </p>
+        </div>
+        <ThemeSwitch />
       </div>
       <label className="flex flex-col gap-2 text-sm">
         Nombre

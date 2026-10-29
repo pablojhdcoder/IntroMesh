@@ -43,11 +43,11 @@ export function SignalField({
             y1="50"
             x2={person.x}
             y2={person.y}
-            stroke={person.id === selectedId ? "var(--signal)" : "rgb(214 255 74 / 0.35)"}
+            stroke={person.id === selectedId ? "var(--field-edge-active)" : "var(--field-edge)"}
             strokeWidth={person.id === selectedId ? 0.45 : 0.2}
           />
         ))}
-        <circle cx="50" cy="50" r="1.4" fill="var(--signal)" />
+        <circle cx="50" cy="50" r="1.4" fill="var(--node-hot)" />
       </svg>
       <p className="absolute top-4 left-4 font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">Tú</p>
       {people.map((person, index) => {
@@ -66,7 +66,9 @@ export function SignalField({
             aria-label={person.displayName}
             onClick={() => onSelect(person.id)}
           >
-            <span className={`size-3 rounded-full ${hot ? "bg-signal" : "bg-foreground/35"} ${selected ? "ring-2 ring-signal ring-offset-2 ring-offset-surface" : ""}`} />
+            <span
+              className={`size-3 rounded-full ${hot ? "bg-[var(--node-hot)]" : "bg-foreground/40"} ${selected ? "ring-2 ring-[var(--signal-strong)] ring-offset-2 ring-offset-surface" : ""}`}
+            />
             {hot || selected ? (
               <span
                 className={`pointer-events-none absolute top-1/2 max-w-32 truncate text-xs text-foreground ${

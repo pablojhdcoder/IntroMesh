@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { goalLabel } from "@/domain/catalog";
 import { service } from "@/lib/http";
 import { ShareTools } from "@/components/share-tools";
+import { ThemeSwitch } from "@/components/theme-switch";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-8 px-6 py-16">
-      <p className="text-sm text-muted-foreground">
-        <Link href="/" className="underline-offset-4 hover:underline">
-          IntroMesh
-        </Link>
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm text-muted-foreground">
+          <Link href="/" className="underline-offset-4 hover:underline">
+            IntroMesh
+          </Link>
+        </p>
+        <ThemeSwitch />
+      </div>
       <header className="flex flex-col gap-3">
         <h1 className="font-heading text-5xl leading-none tracking-[-0.03em]">{profile.displayName}</h1>
         <p className="text-sm text-muted-foreground">

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ProfileForm } from "@/components/profile-form";
 import { SignalField, type FieldPerson } from "@/components/signal-field";
 import { ShareTools } from "@/components/share-tools";
+import { ThemeSwitch } from "@/components/theme-switch";
 
 type Explanation = {
   source: "model" | "demo";
@@ -142,7 +143,14 @@ export function SignalApp() {
     await load();
   }
 
-  if (!session) return <p className="text-sm text-muted-foreground">Cargando la sesión.</p>;
+  if (!session) {
+    return (
+      <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-4 px-4 py-8 sm:px-8">
+        <p className="text-sm text-muted-foreground">Cargando la sesión.</p>
+        <ThemeSwitch />
+      </div>
+    );
+  }
   if (session.needsSetup || !session.profile) {
     return <ProfileForm metaConfigured={session.metaConfigured} onSaved={() => void load()} />;
   }
@@ -153,14 +161,16 @@ export function SignalApp() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-3">
+      <header className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex max-w-[36rem] flex-col gap-3 pr-16 sm:pr-0">
           <h1 className="font-heading text-5xl leading-none tracking-[-0.03em]">IntroMesh</h1>
           <p className="max-w-[36ch] text-sm text-muted-foreground">
             {session.event?.name}. Los nodos de demostración no son teléfonos en la sala.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-3 sm:items-end">
+          <ThemeSwitch className="absolute top-0 right-0 sm:static" />
+          <div className="flex flex-wrap gap-2 sm:justify-end">
           <Button type="button" variant={presence === "invisible" ? "outline" : "ghost"} onClick={() => void changePresence(false, false)}>
             Invisible
           </Button>
@@ -173,6 +183,7 @@ export function SignalApp() {
           <Button variant="outline" asChild>
             <Link href="/intelligence">Inteligencia</Link>
           </Button>
+          </div>
         </div>
       </header>
       {!session.metaConfigured ? (

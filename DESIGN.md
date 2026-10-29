@@ -7,7 +7,7 @@ Referencias de calidad: la precisión de Linear, la claridad de Vercel y el cuid
 ## Principios
 
 1. La información manda. El movimiento explica el estado; no decora.
-2. Oscuro cinematográfico, superficies planas y contraste intencionado.
+2. Dos temas diseñados aparte. El claro es papel; el oscuro sigue siendo cinematográfico. El contraste es intencionado en los dos.
 3. Un solo acento luminoso: la señal.
 4. Cada recomendación muestra una razón concreta. Nunca un porcentaje huérfano.
 5. Lo sintético se etiqueta como demostración. Lo generado por el modelo se distingue de los datos de dominio.
@@ -29,7 +29,30 @@ La visualización central es una red de asistentes: nodos, relaciones y una ruta
 
 ## Color
 
-Tema oscuro por defecto. No hay tema claro en el hackathon.
+El tema predeterminado es el claro. La primera visita abre en claro aunque el sistema esté en oscuro. La preferencia manual se guarda en la cookie `intromesh-theme` y se vuelve a aplicar en el servidor, así que no hay un parpadeo del tema contrario. No se sigue `prefers-color-scheme`.
+
+Un control en cápsula, arriba a la derecha del header, alterna los temas. La cápsula visible es de 28px; el área táctil sigue en 44px. Lleva los iconos `Sun` y `Moon`. El thumb marca el tema activo y se desplaza en 300ms con `cubic-bezier(0.32, 0.72, 0, 1)`. Con `prefers-reduced-motion: reduce` el cambio de tema y el thumb son instantáneos.
+
+Los nombres semánticos (`--background`, `--foreground`, `--surface`, `--border`, `--signal`) son la fuente de verdad. El modo claro no es el negativo del oscuro.
+
+### Claro
+
+| Token | Valor | Uso |
+| --- | --- | --- |
+| `--background` | `#f6f4ef` | Lienzo, blanco roto cálido |
+| `--surface` | `#fffcf8` | Paneles, campo y campos de formulario |
+| `--surface-raised` | `#efede6` | Hover y bloque seleccionado |
+| `--foreground` | `#16180f` | Texto principal |
+| `--muted` | `#5c584f` | Texto secundario. En CSS vive en `--muted-foreground` |
+| `--line` | `rgb(22 24 15 / 0.12)` | Bordes. En CSS vive en `--border` |
+| `--signal` | `#d6ff4a` | Acción primaria, con texto `#14160c` |
+| `--signal-strong` | `#4c6610` | Marca, foco, nodo activo y arista activa sobre el papel |
+| `--signal-dim` | `rgb(76 102 16 / 0.12)` | Pista suave de una ruta |
+| `--danger` | `#b42318` | Error. En CSS vive en `--destructive` |
+| `--success` | `#1f7a4a` | Éxito |
+| `--shadow-raise` | `0 10px 28px rgb(22 24 15 / 0.06)` | Reservada. El campo se separa por superficie y borde, no por sombra |
+
+### Oscuro
 
 | Token | Valor | Uso |
 | --- | --- | --- |
@@ -37,14 +60,18 @@ Tema oscuro por defecto. No hay tema claro en el hackathon.
 | `--surface` | `#101218` | Paneles y tarjetas |
 | `--surface-raised` | `#171a22` | Elemento seleccionado o elevado |
 | `--foreground` | `#f4f1ea` | Texto principal, cálido sobre negro |
-| `--muted` | `#9a958c` | Texto secundario |
-| `--line` | `rgb(244 241 234 / 0.12)` | Bordes |
+| `--muted` | `#9a958c` | Texto secundario. En CSS vive en `--muted-foreground` |
+| `--line` | `rgb(244 241 234 / 0.12)` | Bordes. En CSS vive en `--border` |
 | `--signal` | `#d6ff4a` | Acento de conexión. Un solo uso dominante por vista |
+| `--signal-strong` | `#d6ff4a` | Misma señal: sobre negro el lima ya tiene contraste |
 | `--signal-dim` | `rgb(214 255 74 / 0.16)` | Halo o pista de una ruta |
-| `--danger` | `#ff6b5a` | Error |
+| `--danger` | `#ff6b5a` | Error. En CSS vive en `--destructive` |
 | `--success` | `#8ee0b0` | Éxito y conexión aceptada |
+| `--shadow-raise` | `0 16px 40px rgb(0 0 0 / 0.35)` | Reservada. El campo oscuro permanece plano |
 
-El acento no tiñe fondos grandes. Marca la señal activa, el foco y la acción primaria.
+El acento no tiñe fondos grandes. Marca la señal activa, el foco y la acción primaria. En claro, el lima `#d6ff4a` se reserva al botón primario: sobre papel no alcanza contraste, y las marcas del campo usan `--signal-strong`.
+
+Al cambiar de tema, color, fondo, borde, trazo y sombra transicionan en `220ms` con `--ease-out`. La clase `theme-ready` se añade después del primer pintado para que esa transición no corra durante la carga.
 
 ## Tipografía
 
@@ -65,9 +92,9 @@ Escala de 4: `4, 8, 12, 16, 24, 32, 48, 64`.
 | `--radius-sm` | `8px` |
 | `--radius-md` | `12px` |
 | `--radius-lg` | `20px` |
-| `--shadow-raise` | `0 16px 40px rgb(0 0 0 / 0.35)` |
+`--shadow-raise` depende del tema. Ver la sección Color.
 
-Los bordes son de 1px con `--line`. La sombra solo separa una superficie del lienzo, no apila tarjetas.
+Los bordes son de 1px con `--line`. El campo no lleva sombra: `overflow` la recortaba y, al cambiar de tema, la sombra se interpolaba mal. La superficie y el borde bastan.
 
 ## Movimiento
 
@@ -90,13 +117,13 @@ shadcn/ui es la base. Se reestiliza con estos tokens. No se mezclan otras librer
 - Botón primario: fondo `--signal`, texto `#14160c`, radio `--radius-sm`.
 - Botón secundario: superficie, borde `--line`, texto `--foreground`.
 - Tarjeta de afinidad: superficie, una razón visible, máximo tres evidencias, acción clara.
-- Nodo de red: círculo de 12px; el activo lleva anillo `--signal`.
+- Nodo de red: círculo de 12px. El recomendado usa `--node-hot` (igual a `--signal-strong`). El activo lleva anillo `--signal-strong`. Las aristas usan `--field-edge` y `--field-edge-active`.
 - Estados obligatorios: carga, vacío, error, éxito, selección y deshabilitado.
 
 ## Accesibilidad
 
-- Contraste de texto principal sobre lienzo por encima de 7:1. El acento `#d6ff4a` sobre `#14160c` supera 4.5:1 para controles.
-- Foco visible con anillo de 2px `--signal` y offset de 2px.
+- Contraste de texto principal sobre lienzo por encima de 7:1. El acento `#d6ff4a` sobre `#14160c` supera 4.5:1 para controles. En claro, el foco y el texto secundario usan tintas que se leen sobre `#f6f4ef`.
+- Foco visible con anillo de 2px `--ring` (`--signal-strong`) y offset de 2px.
 - Toda acción funciona con teclado. La red tiene una alternativa en lista.
 - Iconos de Lucide acompañan texto, salvo cuando el `aria-label` nombra la acción.
 

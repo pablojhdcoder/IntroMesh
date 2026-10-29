@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-switch";
+import { readTheme } from "@/lib/theme-server";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,13 +26,23 @@ export const metadata: Metadata = {
   description: "Networking presencial. Descubre, comprende y conecta.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+const themeScript = `(function(){try{var m=document.cookie.match(/(?:^|; )intromesh-theme=(light|dark)(?:;|$)/);var dark=m&&m[1]==="dark";document.documentElement.classList.toggle("dark",Boolean(dark));}catch(e){}})();`;
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const theme = await readTheme();
+
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} dark h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}${theme === "dark" ? " dark" : ""} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <Script id="intromesh-theme" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
+        <ThemeProvider theme={theme}>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }
