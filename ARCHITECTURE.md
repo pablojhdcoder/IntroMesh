@@ -57,6 +57,20 @@ Meta Model API no documenta un endpoint de embeddings. La recuperación no depen
 - El cliente vive en servidor (`server-only`). Timeout 25s. El SDK reintenta 429 y 5xx hasta 2 veces. Un límite local adicional evita ráfagas.
 - La respuesta del modelo se valida con Zod. Si no encaja, es un error, no un resultado inventado.
 
+## Fórmula de matching
+
+Sobre el conjunto ya filtrado por evento y presencia vigente:
+
+`score = objetivos×3 + intereses×2 + habilidades×1 + complementos×2`
+
+Un complemento es una habilidad del otro que aparece en el texto de lo que tú buscas y que no está ya en las habilidades compartidas. Confianza baja con menos de dos señales, media con dos o tres, alta con cuatro o más. Los pesos viven en `MATCH_WEIGHTS`.
+
+No se construye una matriz de todas las parejas. Meta solo explica un candidato ya puntuado, y el resultado se cachea.
+
+## Persistencia en este hackathon
+
+Sin `NEXT_PUBLIC_SUPABASE_URL` ni service role, el servidor usa `.data/store.json`. Ese archivo es local, está en `.gitignore` y no es el backend de producción. La migración `supabase/migrations/0001_init.sql` deja el esquema listo para cuando exista proyecto. La presencia de sesión caduca a los 90 segundos sin heartbeat. La presencia marcada `demo` es un fixture etiquetado, no un teléfono en la sala.
+
 ## Supabase
 
 Variables públicas, protegidas por RLS: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.

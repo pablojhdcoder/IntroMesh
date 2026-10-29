@@ -37,6 +37,9 @@ yarn-error.log*
 # Impeccable engine binary, downloaded per operating system
 .cursor/skills/impeccable/scripts/bin/
 
+# Local demo store. Not a database backup and not for production data.
+/.data/
+
 # vercel
 .vercel
 
