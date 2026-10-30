@@ -1,0 +1,160 @@
+-- Semilla demo de IntroMesh. Idempotente.
+-- Los 28 perfiles con presencia son los del campo. demo = true: no disparan Meta Model API.
+-- Pegar en el SQL editor de Supabase después de 0001_init.sql.
+
+create table if not exists affinity_explanations (
+  cache_key text primary key,
+  viewer_id text not null references profiles (id) on delete cascade,
+  other_id text not null references profiles (id) on delete cascade,
+  source text not null check (source in ('model', 'demo')),
+  payload jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+alter table affinity_explanations enable row level security;
+
+insert into events (id, name, demo)
+values ('meta-hackathon-2026', 'Meta Hackathon', true)
+on conflict (id) do update set name = excluded.name, demo = excluded.demo;
+
+insert into profiles (
+  id, slug, display_name, role, bio, interests, skills, projects, offers, seeking, goal, demo, presentation, created_at
+) values
+  ('demo-001', 'ada-vega-demo-001', 'Ada Vega', 'Investiga producto', '', ARRAY['educación', 'modelos']::text[], ARRAY['análisis', 'hardware']::text[], ARRAY['tutor de oficio']::text[], 'Puede ayudar con análisis.', 'Busca conversaciones sobre educación.', 'cofounder', true, '{"source":"demo","headline":"Ada · Encontrar un cofundador","summary":"Trabaja en tutor de oficio y declara educación y modelos.","opener":"¿Qué parte de tutor de oficio estás enseñando aquí?"}'::jsonb, '2026-11-04T09:00:00.000Z'),
+  ('demo-002', 'bruno-costa-demo-002', 'Bruno Costa', 'Construye prototipos', '', ARRAY['producto', 'modelos', 'educación']::text[], ARRAY['prototipado', 'frontend']::text[], ARRAY['archivo climático']::text[], 'Puede ayudar con prototipado.', 'Busca conversaciones sobre producto.', 'collaborate', true, '{"source":"demo","headline":"Bruno · Colaborar en un proyecto","summary":"Trabaja en archivo climático y declara producto y modelos.","opener":"¿Qué parte de archivo climático estás enseñando aquí?"}'::jsonb, '2026-11-04T08:59:00.000Z'),
+  ('demo-003', 'nia-okonkwo-demo-003', 'Nia Okonkwo', 'Investiga producto', '', ARRAY['hardware', 'diseño', 'clima', 'producto']::text[], ARRAY['escritura', 'facilitación']::text[], ARRAY['mesa de matching']::text[], 'Puede ayudar con escritura.', 'Busca conversaciones sobre hardware.', 'discipline', true, '{"source":"demo","headline":"Nia · Conocer una disciplina","summary":"Trabaja en mesa de matching y declara hardware y diseño.","opener":"¿Qué parte de mesa de matching estás enseñando aquí?"}'::jsonb, '2026-11-04T08:58:00.000Z'),
+  ('demo-004', 'leo-martin-demo-004', 'Leo Martín', 'Construye prototipos', '', ARRAY['clima', 'comunidad']::text[], ARRAY['hardware', 'backend']::text[], ARRAY['bitácora clínica']::text[], 'Puede ayudar con hardware.', 'Busca conversaciones sobre clima.', 'hackathon', true, '{"source":"demo","headline":"Leo · Explorar el hackathon","summary":"Trabaja en bitácora clínica y declara clima y comunidad.","opener":"¿Qué parte de bitácora clínica estás enseñando aquí?"}'::jsonb, '2026-11-04T08:57:00.000Z'),
+  ('demo-005', 'sara-iqbal-demo-005', 'Sara Iqbal', 'Investiga producto', '', ARRAY['comunidad', 'educación', 'hardware']::text[], ARRAY['investigación', 'backend']::text[], ARRAY['sensor abierto']::text[], 'Puede ayudar con investigación.', 'Busca conversaciones sobre comunidad.', 'cofounder', true, '{"source":"demo","headline":"Sara · Encontrar un cofundador","summary":"Trabaja en sensor abierto y declara comunidad y educación.","opener":"¿Qué parte de sensor abierto estás enseñando aquí?"}'::jsonb, '2026-11-04T08:56:00.000Z'),
+  ('demo-006', 'mateo-ruiz-demo-006', 'Mateo Ruiz', 'Construye prototipos', '', ARRAY['producto', 'comunidad', 'hardware', 'diseño']::text[], ARRAY['prototipado', 'facilitación']::text[], ARRAY['sensor abierto']::text[], 'Puede ayudar con prototipado.', 'Busca conversaciones sobre producto.', 'collaborate', true, '{"source":"demo","headline":"Mateo · Colaborar en un proyecto","summary":"Trabaja en sensor abierto y declara producto y comunidad.","opener":"¿Qué parte de sensor abierto estás enseñando aquí?"}'::jsonb, '2026-11-04T08:55:00.000Z'),
+  ('demo-007', 'ines-palau-demo-007', 'Inés Palau', 'Investiga producto', '', ARRAY['hardware', 'datos']::text[], ARRAY['investigación', 'frontend']::text[], ARRAY['sensor abierto']::text[], 'Puede ayudar con investigación.', 'Busca conversaciones sobre hardware.', 'discipline', true, '{"source":"demo","headline":"Inés · Conocer una disciplina","summary":"Trabaja en sensor abierto y declara hardware y datos.","opener":"¿Qué parte de sensor abierto estás enseñando aquí?"}'::jsonb, '2026-11-04T08:54:00.000Z'),
+  ('demo-008', 'omar-haddad-demo-008', 'Omar Haddad', 'Construye prototipos', '', ARRAY['modelos', 'hardware', 'producto']::text[], ARRAY['facilitación', 'escritura']::text[], ARRAY['mapa de señales']::text[], 'Puede ayudar con facilitación.', 'Busca conversaciones sobre modelos.', 'hackathon', true, '{"source":"demo","headline":"Omar · Explorar el hackathon","summary":"Trabaja en mapa de señales y declara modelos y hardware.","opener":"¿Qué parte de mapa de señales estás enseñando aquí?"}'::jsonb, '2026-11-04T08:53:00.000Z'),
+  ('demo-009', 'lara-kim-demo-009', 'Lara Kim', 'Investiga producto', '', ARRAY['comunidad', 'hardware', 'clima', 'datos']::text[], ARRAY['hardware', 'facilitación']::text[], ARRAY['tutor de oficio']::text[], 'Puede ayudar con hardware.', 'Busca conversaciones sobre comunidad.', 'cofounder', true, '{"source":"demo","headline":"Lara · Encontrar un cofundador","summary":"Trabaja en tutor de oficio y declara comunidad y hardware.","opener":"¿Qué parte de tutor de oficio estás enseñando aquí?"}'::jsonb, '2026-11-04T08:52:00.000Z'),
+  ('demo-010', 'hugo-serra-demo-010', 'Hugo Serra', 'Construye prototipos', '', ARRAY['diseño', 'comunidad']::text[], ARRAY['análisis', 'backend']::text[], ARRAY['archivo climático']::text[], 'Puede ayudar con análisis.', 'Busca conversaciones sobre diseño.', 'collaborate', true, '{"source":"demo","headline":"Hugo · Colaborar en un proyecto","summary":"Trabaja en archivo climático y declara diseño y comunidad.","opener":"¿Qué parte de archivo climático estás enseñando aquí?"}'::jsonb, '2026-11-04T08:51:00.000Z'),
+  ('demo-011', 'noa-benitez-demo-011', 'Noa Benítez', 'Investiga producto', '', ARRAY['modelos', 'producto', 'privacidad']::text[], ARRAY['investigación', 'hardware']::text[], ARRAY['mapa de señales']::text[], 'Puede ayudar con investigación.', 'Busca conversaciones sobre modelos.', 'discipline', true, '{"source":"demo","headline":"Noa · Conocer una disciplina","summary":"Trabaja en mapa de señales y declara modelos y producto.","opener":"¿Qué parte de mapa de señales estás enseñando aquí?"}'::jsonb, '2026-11-04T08:50:00.000Z'),
+  ('demo-012', 'elias-navarro-demo-012', 'Elías Navarro', 'Construye prototipos', '', ARRAY['comunidad', 'producto', 'educación', 'hardware']::text[], ARRAY['prototipado', 'facilitación']::text[], ARRAY['mesa de matching']::text[], 'Puede ayudar con prototipado.', 'Busca conversaciones sobre comunidad.', 'hackathon', true, '{"source":"demo","headline":"Elías · Explorar el hackathon","summary":"Trabaja en mesa de matching y declara comunidad y producto.","opener":"¿Qué parte de mesa de matching estás enseñando aquí?"}'::jsonb, '2026-11-04T08:49:00.000Z'),
+  ('demo-013', 'marta-chen-demo-013', 'Marta Chen', 'Investiga producto', '', ARRAY['producto', 'educación']::text[], ARRAY['backend', 'prototipado']::text[], ARRAY['bitácora clínica']::text[], 'Puede ayudar con backend.', 'Busca conversaciones sobre producto.', 'cofounder', true, '{"source":"demo","headline":"Marta · Encontrar un cofundador","summary":"Trabaja en bitácora clínica y declara producto y educación.","opener":"¿Qué parte de bitácora clínica estás enseñando aquí?"}'::jsonb, '2026-11-04T08:48:00.000Z'),
+  ('demo-014', 'pol-andrade-demo-014', 'Pol Andrade', 'Construye prototipos', '', ARRAY['salud', 'comunidad', 'producto']::text[], ARRAY['hardware', 'facilitación']::text[], ARRAY['bitácora clínica']::text[], 'Puede ayudar con hardware.', 'Busca conversaciones sobre salud.', 'collaborate', true, '{"source":"demo","headline":"Pol · Colaborar en un proyecto","summary":"Trabaja en bitácora clínica y declara salud y comunidad.","opener":"¿Qué parte de bitácora clínica estás enseñando aquí?"}'::jsonb, '2026-11-04T08:47:00.000Z'),
+  ('demo-015', 'amina-diallo-demo-015', 'Amina Diallo', 'Investiga producto', '', ARRAY['datos', 'diseño', 'producto', 'salud']::text[], ARRAY['backend', 'escritura']::text[], ARRAY['mesa de matching']::text[], 'Puede ayudar con backend.', 'Busca conversaciones sobre datos.', 'discipline', true, '{"source":"demo","headline":"Amina · Conocer una disciplina","summary":"Trabaja en mesa de matching y declara datos y diseño.","opener":"¿Qué parte de mesa de matching estás enseñando aquí?"}'::jsonb, '2026-11-04T08:46:00.000Z'),
+  ('demo-016', 'teo-ferrer-demo-016', 'Teo Ferrer', 'Construye prototipos', '', ARRAY['salud', 'clima']::text[], ARRAY['facilitación', 'hardware']::text[], ARRAY['mapa de señales']::text[], 'Puede ayudar con facilitación.', 'Busca conversaciones sobre salud.', 'hackathon', true, '{"source":"demo","headline":"Teo · Explorar el hackathon","summary":"Trabaja en mapa de señales y declara salud y clima.","opener":"¿Qué parte de mapa de señales estás enseñando aquí?"}'::jsonb, '2026-11-04T08:45:00.000Z'),
+  ('demo-017', 'julia-sato-demo-017', 'Julia Sato', 'Investiga producto', '', ARRAY['salud', 'clima', 'privacidad']::text[], ARRAY['investigación', 'frontend']::text[], ARRAY['bitácora clínica']::text[], 'Puede ayudar con investigación.', 'Busca conversaciones sobre salud.', 'cofounder', true, '{"source":"demo","headline":"Julia · Encontrar un cofundador","summary":"Trabaja en bitácora clínica y declara salud y clima.","opener":"¿Qué parte de bitácora clínica estás enseñando aquí?"}'::jsonb, '2026-11-04T08:44:00.000Z'),
+  ('demo-018', 'rafa-molina-demo-018', 'Rafa Molina', 'Construye prototipos', '', ARRAY['salud', 'producto', 'diseño', 'educación']::text[], ARRAY['prototipado', 'escritura']::text[], ARRAY['sensor abierto']::text[], 'Puede ayudar con prototipado.', 'Busca conversaciones sobre salud.', 'collaborate', true, '{"source":"demo","headline":"Rafa · Colaborar en un proyecto","summary":"Trabaja en sensor abierto y declara salud y producto.","opener":"¿Qué parte de sensor abierto estás enseñando aquí?"}'::jsonb, '2026-11-04T08:43:00.000Z'),
+  ('demo-019', 'claudia-ortiz-demo-019', 'Claudia Ortiz', 'Investiga producto', '', ARRAY['modelos', 'clima']::text[], ARRAY['escritura', 'análisis']::text[], ARRAY['tutor de oficio']::text[], 'Puede ayudar con escritura.', 'Busca conversaciones sobre modelos.', 'discipline', true, '{"source":"demo","headline":"Claudia · Conocer una disciplina","summary":"Trabaja en tutor de oficio y declara modelos y clima.","opener":"¿Qué parte de tutor de oficio estás enseñando aquí?"}'::jsonb, '2026-11-04T08:42:00.000Z'),
+  ('demo-020', 'iker-soler-demo-020', 'Iker Soler', 'Construye prototipos', '', ARRAY['comunidad', 'datos', 'privacidad']::text[], ARRAY['análisis', 'escritura']::text[], ARRAY['tutor de oficio']::text[], 'Puede ayudar con análisis.', 'Busca conversaciones sobre comunidad.', 'hackathon', true, '{"source":"demo","headline":"Iker · Explorar el hackathon","summary":"Trabaja en tutor de oficio y declara comunidad y datos.","opener":"¿Qué parte de tutor de oficio estás enseñando aquí?"}'::jsonb, '2026-11-04T08:41:00.000Z'),
+  ('demo-021', 'ada-vega-21-demo-021', 'Ada Vega 21', 'Investiga producto', '', ARRAY['educación', 'clima', 'diseño', 'comunidad']::text[], ARRAY['escritura', 'backend']::text[], ARRAY['sensor abierto']::text[], 'Puede ayudar con escritura.', 'Busca conversaciones sobre educación.', 'cofounder', true, '{"source":"demo","headline":"Ada · Encontrar un cofundador","summary":"Trabaja en sensor abierto y declara educación y clima.","opener":"¿Qué parte de sensor abierto estás enseñando aquí?"}'::jsonb, '2026-11-04T08:40:00.000Z'),
+  ('demo-022', 'bruno-costa-22-demo-022', 'Bruno Costa 22', 'Construye prototipos', '', ARRAY['comunidad', 'hardware']::text[], ARRAY['hardware', 'facilitación']::text[], ARRAY['tutor de oficio']::text[], 'Puede ayudar con hardware.', 'Busca conversaciones sobre comunidad.', 'collaborate', true, '{"source":"demo","headline":"Bruno · Colaborar en un proyecto","summary":"Trabaja en tutor de oficio y declara comunidad y hardware.","opener":"¿Qué parte de tutor de oficio estás enseñando aquí?"}'::jsonb, '2026-11-04T08:39:00.000Z'),
+  ('demo-023', 'nia-okonkwo-23-demo-023', 'Nia Okonkwo 23', 'Investiga producto', '', ARRAY['clima', 'hardware', 'modelos']::text[], ARRAY['análisis', 'backend']::text[], ARRAY['mapa de señales']::text[], 'Puede ayudar con análisis.', 'Busca conversaciones sobre clima.', 'discipline', true, '{"source":"demo","headline":"Nia · Conocer una disciplina","summary":"Trabaja en mapa de señales y declara clima y hardware.","opener":"¿Qué parte de mapa de señales estás enseñando aquí?"}'::jsonb, '2026-11-04T08:38:00.000Z'),
+  ('demo-024', 'leo-martin-24-demo-024', 'Leo Martín 24', 'Construye prototipos', '', ARRAY['privacidad', 'clima', 'producto', 'comunidad']::text[], ARRAY['facilitación', 'frontend']::text[], ARRAY['mapa de señales']::text[], 'Puede ayudar con facilitación.', 'Busca conversaciones sobre privacidad.', 'hackathon', true, '{"source":"demo","headline":"Leo · Explorar el hackathon","summary":"Trabaja en mapa de señales y declara privacidad y clima.","opener":"¿Qué parte de mapa de señales estás enseñando aquí?"}'::jsonb, '2026-11-04T08:37:00.000Z'),
+  ('demo-025', 'sara-iqbal-25-demo-025', 'Sara Iqbal 25', 'Investiga producto', '', ARRAY['educación', 'modelos']::text[], ARRAY['backend', 'investigación']::text[], ARRAY['archivo climático']::text[], 'Puede ayudar con backend.', 'Busca conversaciones sobre educación.', 'cofounder', true, '{"source":"demo","headline":"Sara · Encontrar un cofundador","summary":"Trabaja en archivo climático y declara educación y modelos.","opener":"¿Qué parte de archivo climático estás enseñando aquí?"}'::jsonb, '2026-11-04T08:36:00.000Z'),
+  ('demo-026', 'mateo-ruiz-26-demo-026', 'Mateo Ruiz 26', 'Construye prototipos', '', ARRAY['hardware', 'educación', 'salud']::text[], ARRAY['investigación', 'escritura']::text[], ARRAY['archivo climático']::text[], 'Puede ayudar con investigación.', 'Busca conversaciones sobre hardware.', 'collaborate', true, '{"source":"demo","headline":"Mateo · Colaborar en un proyecto","summary":"Trabaja en archivo climático y declara hardware y educación.","opener":"¿Qué parte de archivo climático estás enseñando aquí?"}'::jsonb, '2026-11-04T08:35:00.000Z'),
+  ('demo-027', 'ines-palau-27-demo-027', 'Inés Palau 27', 'Investiga producto', '', ARRAY['datos', 'privacidad', 'salud', 'producto']::text[], ARRAY['backend', 'frontend']::text[], ARRAY['mapa de señales']::text[], 'Puede ayudar con backend.', 'Busca conversaciones sobre datos.', 'discipline', true, '{"source":"demo","headline":"Inés · Conocer una disciplina","summary":"Trabaja en mapa de señales y declara datos y privacidad.","opener":"¿Qué parte de mapa de señales estás enseñando aquí?"}'::jsonb, '2026-11-04T08:34:00.000Z'),
+  ('demo-028', 'omar-haddad-28-demo-028', 'Omar Haddad 28', 'Construye prototipos', '', ARRAY['datos', 'clima']::text[], ARRAY['backend', 'análisis']::text[], ARRAY['mesa de matching']::text[], 'Puede ayudar con backend.', 'Busca conversaciones sobre datos.', 'hackathon', true, '{"source":"demo","headline":"Omar · Explorar el hackathon","summary":"Trabaja en mesa de matching y declara datos y clima.","opener":"¿Qué parte de mesa de matching estás enseñando aquí?"}'::jsonb, '2026-11-04T08:33:00.000Z')
+on conflict (id) do update set
+  slug = excluded.slug,
+  display_name = excluded.display_name,
+  role = excluded.role,
+  bio = excluded.bio,
+  interests = excluded.interests,
+  skills = excluded.skills,
+  projects = excluded.projects,
+  offers = excluded.offers,
+  seeking = excluded.seeking,
+  goal = excluded.goal,
+  demo = true,
+  presentation = excluded.presentation;
+
+insert into presence (profile_id, event_id, status, source, updated_at, expires_at)
+values
+  ('demo-001', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-002', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-003', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-004', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-005', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-006', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-007', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-008', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-009', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-010', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-011', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-012', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-013', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-014', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-015', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-016', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-017', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-018', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-019', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-020', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-021', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-022', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-023', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-024', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-025', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours'),
+  ('demo-026', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-027', 'meta-hackathon-2026', 'active', 'demo', now(), now() + interval '6 hours'),
+  ('demo-028', 'meta-hackathon-2026', 'seeking', 'demo', now(), now() + interval '6 hours')
+on conflict (profile_id, event_id) do update set
+  status = excluded.status,
+  source = 'demo',
+  updated_at = excluded.updated_at,
+  expires_at = excluded.expires_at;
+
+insert into analytics_events (id, event_id, type, topic, at)
+values
+  ('seed-rec-demo-001', 'meta-hackathon-2026', 'recommendation_shown', 'educación', '2026-11-04T09:00:00.000Z'),
+  ('seed-view-demo-001', 'meta-hackathon-2026', 'profile_viewed', 'educación', '2026-11-04T09:00:00.000Z'),
+  ('seed-req-demo-001', 'meta-hackathon-2026', 'intro_requested', 'educación', '2026-11-04T09:00:00.000Z'),
+  ('seed-ok-demo-001', 'meta-hackathon-2026', 'connection_accepted', 'educación', '2026-11-04T09:00:00.000Z'),
+  ('seed-qr-demo-001', 'meta-hackathon-2026', 'share_qr', null, '2026-11-04T09:00:00.000Z'),
+  ('seed-rec-demo-002', 'meta-hackathon-2026', 'recommendation_shown', 'producto', '2026-11-04T09:01:00.000Z'),
+  ('seed-rec-demo-003', 'meta-hackathon-2026', 'recommendation_shown', 'hardware', '2026-11-04T09:02:00.000Z'),
+  ('seed-view-demo-003', 'meta-hackathon-2026', 'profile_viewed', 'hardware', '2026-11-04T09:03:00.000Z'),
+  ('seed-rec-demo-004', 'meta-hackathon-2026', 'recommendation_shown', 'clima', '2026-11-04T09:03:00.000Z'),
+  ('seed-rec-demo-005', 'meta-hackathon-2026', 'recommendation_shown', 'comunidad', '2026-11-04T09:04:00.000Z'),
+  ('seed-view-demo-005', 'meta-hackathon-2026', 'profile_viewed', 'comunidad', '2026-11-04T09:06:00.000Z'),
+  ('seed-req-demo-005', 'meta-hackathon-2026', 'intro_requested', 'comunidad', '2026-11-04T09:08:00.000Z'),
+  ('seed-rec-demo-006', 'meta-hackathon-2026', 'recommendation_shown', 'producto', '2026-11-04T09:05:00.000Z'),
+  ('seed-rec-demo-007', 'meta-hackathon-2026', 'recommendation_shown', 'hardware', '2026-11-04T09:06:00.000Z'),
+  ('seed-view-demo-007', 'meta-hackathon-2026', 'profile_viewed', 'hardware', '2026-11-04T09:09:00.000Z'),
+  ('seed-rec-demo-008', 'meta-hackathon-2026', 'recommendation_shown', 'modelos', '2026-11-04T09:07:00.000Z'),
+  ('seed-rec-demo-009', 'meta-hackathon-2026', 'recommendation_shown', 'comunidad', '2026-11-04T09:08:00.000Z'),
+  ('seed-view-demo-009', 'meta-hackathon-2026', 'profile_viewed', 'comunidad', '2026-11-04T09:12:00.000Z'),
+  ('seed-req-demo-009', 'meta-hackathon-2026', 'intro_requested', 'comunidad', '2026-11-04T09:16:00.000Z'),
+  ('seed-ok-demo-009', 'meta-hackathon-2026', 'connection_accepted', 'comunidad', '2026-11-04T09:20:00.000Z'),
+  ('seed-qr-demo-009', 'meta-hackathon-2026', 'share_qr', null, '2026-11-04T09:21:20.000Z'),
+  ('seed-rec-demo-010', 'meta-hackathon-2026', 'recommendation_shown', 'diseño', '2026-11-04T09:09:00.000Z'),
+  ('seed-rec-demo-011', 'meta-hackathon-2026', 'recommendation_shown', 'modelos', '2026-11-04T09:10:00.000Z'),
+  ('seed-view-demo-011', 'meta-hackathon-2026', 'profile_viewed', 'modelos', '2026-11-04T09:15:00.000Z'),
+  ('seed-rec-demo-012', 'meta-hackathon-2026', 'recommendation_shown', 'comunidad', '2026-11-04T09:11:00.000Z'),
+  ('seed-rec-demo-013', 'meta-hackathon-2026', 'recommendation_shown', 'producto', '2026-11-04T09:12:00.000Z'),
+  ('seed-view-demo-013', 'meta-hackathon-2026', 'profile_viewed', 'producto', '2026-11-04T09:18:00.000Z'),
+  ('seed-req-demo-013', 'meta-hackathon-2026', 'intro_requested', 'producto', '2026-11-04T09:24:00.000Z'),
+  ('seed-rec-demo-014', 'meta-hackathon-2026', 'recommendation_shown', 'salud', '2026-11-04T09:13:00.000Z'),
+  ('seed-rec-demo-015', 'meta-hackathon-2026', 'recommendation_shown', 'datos', '2026-11-04T09:14:00.000Z'),
+  ('seed-view-demo-015', 'meta-hackathon-2026', 'profile_viewed', 'datos', '2026-11-04T09:21:00.000Z'),
+  ('seed-rec-demo-016', 'meta-hackathon-2026', 'recommendation_shown', 'salud', '2026-11-04T09:15:00.000Z'),
+  ('seed-rec-demo-017', 'meta-hackathon-2026', 'recommendation_shown', 'salud', '2026-11-04T09:16:00.000Z'),
+  ('seed-view-demo-017', 'meta-hackathon-2026', 'profile_viewed', 'salud', '2026-11-04T09:24:00.000Z'),
+  ('seed-req-demo-017', 'meta-hackathon-2026', 'intro_requested', 'salud', '2026-11-04T09:32:00.000Z'),
+  ('seed-ok-demo-017', 'meta-hackathon-2026', 'connection_accepted', 'salud', '2026-11-04T09:40:00.000Z'),
+  ('seed-qr-demo-017', 'meta-hackathon-2026', 'share_qr', null, '2026-11-04T09:42:40.000Z'),
+  ('seed-rec-demo-018', 'meta-hackathon-2026', 'recommendation_shown', 'salud', '2026-11-04T09:17:00.000Z'),
+  ('seed-rec-demo-019', 'meta-hackathon-2026', 'recommendation_shown', 'modelos', '2026-11-04T09:18:00.000Z'),
+  ('seed-view-demo-019', 'meta-hackathon-2026', 'profile_viewed', 'modelos', '2026-11-04T09:27:00.000Z'),
+  ('seed-rec-demo-020', 'meta-hackathon-2026', 'recommendation_shown', 'comunidad', '2026-11-04T09:19:00.000Z'),
+  ('seed-rec-demo-021', 'meta-hackathon-2026', 'recommendation_shown', 'educación', '2026-11-04T09:20:00.000Z'),
+  ('seed-view-demo-021', 'meta-hackathon-2026', 'profile_viewed', 'educación', '2026-11-04T09:30:00.000Z'),
+  ('seed-req-demo-021', 'meta-hackathon-2026', 'intro_requested', 'educación', '2026-11-04T09:40:00.000Z'),
+  ('seed-rec-demo-022', 'meta-hackathon-2026', 'recommendation_shown', 'comunidad', '2026-11-04T09:21:00.000Z'),
+  ('seed-rec-demo-023', 'meta-hackathon-2026', 'recommendation_shown', 'clima', '2026-11-04T09:22:00.000Z'),
+  ('seed-view-demo-023', 'meta-hackathon-2026', 'profile_viewed', 'clima', '2026-11-04T09:33:00.000Z'),
+  ('seed-rec-demo-024', 'meta-hackathon-2026', 'recommendation_shown', 'privacidad', '2026-11-04T09:23:00.000Z'),
+  ('seed-rec-demo-025', 'meta-hackathon-2026', 'recommendation_shown', 'educación', '2026-11-04T09:24:00.000Z'),
+  ('seed-view-demo-025', 'meta-hackathon-2026', 'profile_viewed', 'educación', '2026-11-04T09:36:00.000Z'),
+  ('seed-req-demo-025', 'meta-hackathon-2026', 'intro_requested', 'educación', '2026-11-04T09:48:00.000Z'),
+  ('seed-ok-demo-025', 'meta-hackathon-2026', 'connection_accepted', 'educación', '2026-11-04T10:00:00.000Z'),
+  ('seed-qr-demo-025', 'meta-hackathon-2026', 'share_qr', null, '2026-11-04T10:04:00.000Z'),
+  ('seed-rec-demo-026', 'meta-hackathon-2026', 'recommendation_shown', 'hardware', '2026-11-04T09:25:00.000Z'),
+  ('seed-rec-demo-027', 'meta-hackathon-2026', 'recommendation_shown', 'datos', '2026-11-04T09:26:00.000Z'),
+  ('seed-view-demo-027', 'meta-hackathon-2026', 'profile_viewed', 'datos', '2026-11-04T09:39:00.000Z'),
+  ('seed-rec-demo-028', 'meta-hackathon-2026', 'recommendation_shown', 'datos', '2026-11-04T09:27:00.000Z')
+on conflict (id) do nothing;
