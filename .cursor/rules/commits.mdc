@@ -1,0 +1,25 @@
+---
+description: Commits cortos, pocos y con prefijo feat, fix, docs o chore
+alwaysApply: true
+---
+
+# Commits
+
+No hagas commit salvo que la persona lo pida. Cuando lo pida, el menor número de commits que deje cada idea sola. No un commit por archivo ni por retoque.
+
+El asunto va en inglés, imperativo, una línea, y dice el porqué. Sin `update`, `fix`, `wip` ni cuerpos vacíos.
+
+| Prefijo | Cuándo |
+| --- | --- |
+| `feat:` | Comportamiento nuevo del recorrido |
+| `fix:` | Un fallo |
+| `docs:` | Solo documentación |
+| `chore:` | Tooling o dependencias, invisible para quien usa el evento |
+
+```
+feat: keep the camera on the selected person so a second look stays put
+```
+
+Una rama, un tema: `feat/`, `fix/`, `docs/` o `chore/` y kebab-case. No mezcles formato, refactor y producto si se pueden separar. No entran `.env`, `.env.local`, claves, `.data/`, `node_modules/` ni `.next/`.
+
+El detalle humano está en `CONTRIBUTING.md`.
