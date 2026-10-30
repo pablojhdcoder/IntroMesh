@@ -9,23 +9,24 @@ export default async function IntelligencePage() {
   const report = data.report;
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-6 py-16">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-12 px-4 py-6 sm:px-8 min-[720px]:py-12">
       <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">
-            <Link href="/" className="underline-offset-4 hover:underline">
-              Volver al campo
+            <Link href="/" className="underline-offset-4 hover:text-foreground hover:underline">
+              IntroMesh
             </Link>
           </p>
-          <h1 className="font-heading text-5xl leading-none tracking-[-0.03em]">Inteligencia</h1>
-          <p className="max-w-[48ch] text-sm text-muted-foreground">
-            {data.event?.name ?? "Evento"}. Agregados del evento. No hay historiales individuales ni rankings de personas.
-            {data.demo ? " Los datos semilla son de demostración." : ""}
+          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] min-[720px]:text-[2.5rem]">Inteligencia</h1>
+          <p className="max-w-[44ch] text-sm text-muted-foreground">
+            {data.event?.name ?? "Evento"}. Agregados, sin historiales ni rankings de personas.
+            {data.demo ? " Datos semilla de demostración." : ""}
           </p>
         </div>
         <ThemeSwitch />
       </header>
-      <dl className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
         <Stat label="Visibles" value={String(report.visible)} />
         <Stat label="Recomendaciones" value={String(report.recommendations)} />
         <Stat label="Perfiles vistos" value={String(report.profileViews)} />
@@ -33,24 +34,32 @@ export default async function IntelligencePage() {
         <Stat label="Aceptadas" value={String(report.accepted)} />
         <Stat label="Conversión" value={report.conversion === null ? "—" : `${Math.round(report.conversion * 100)}%`} />
       </dl>
-      <section className="flex flex-col gap-2 text-sm">
-        <h2 className="text-lg">Intercambio</h2>
-        <p>Enlaces {report.shares.link}</p>
-        <p>QR {report.shares.qr}</p>
-        <p>NFC {report.shares.nfc}</p>
-      </section>
-      <section className="flex flex-col gap-2 text-sm">
-        <h2 className="text-lg">Temas</h2>
-        {report.topics.length === 0 ? <p className="text-muted-foreground">Todavía no hay un tema con suficientes casos.</p> : null}
-        {report.topics.map((topic) => (
-          <p key={topic.topic}>
-            {topic.topic} · {topic.count}
-          </p>
-        ))}
-        {report.suppressedTopics > 0 ? (
-          <p className="text-muted-foreground">{report.suppressedTopics} temas ocultos por ser grupos de menos de 5.</p>
-        ) : null}
-      </section>
+
+      <div className="grid gap-12 sm:grid-cols-2">
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium">Intercambio</h2>
+          <dl className="grid grid-cols-[1fr_max-content] gap-x-6 gap-y-1 text-sm">
+            <Row label="Enlaces" value={String(report.shares.link)} />
+            <Row label="QR" value={String(report.shares.qr)} />
+            <Row label="NFC" value={String(report.shares.nfc)} />
+          </dl>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium">Temas</h2>
+          {report.topics.length === 0 ? <p className="text-sm text-muted-foreground">Todavía no hay un tema con suficientes casos.</p> : null}
+          {report.topics.length > 0 ? (
+            <dl className="grid grid-cols-[1fr_max-content] gap-x-6 gap-y-1 text-sm">
+              {report.topics.map((topic) => (
+                <Row key={topic.topic} label={topic.topic} value={String(topic.count)} />
+              ))}
+            </dl>
+          ) : null}
+          {report.suppressedTopics > 0 ? (
+            <p className="text-sm text-muted-foreground">{report.suppressedTopics} temas ocultos por ser grupos de menos de 5.</p>
+          ) : null}
+        </section>
+      </div>
     </main>
   );
 }
@@ -59,7 +68,16 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="font-heading text-4xl leading-none">{value}</dd>
+      <dd className="font-heading text-3xl leading-none tracking-[-0.02em] tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="contents">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="tabular-nums">{value}</dd>
     </div>
   );
 }

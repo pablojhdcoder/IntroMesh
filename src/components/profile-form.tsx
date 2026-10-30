@@ -19,6 +19,12 @@ const empty: ProfileInput = {
   goal: "hackathon",
 };
 
+const field = "flex flex-col gap-2 text-sm text-muted-foreground";
+const input = "h-11 rounded-lg border border-border bg-transparent px-3";
+const textarea = "min-h-20 rounded-lg border border-border bg-transparent px-3 py-2";
+const chip = "h-11 px-3 min-[720px]:h-9";
+const meta = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
+
 export function ProfileForm({
   metaConfigured,
   onSaved,
@@ -75,83 +81,106 @@ export function ProfileForm({
 
   return (
     <form
-      className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-8 sm:px-8"
+      className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-6 sm:px-8 min-[720px]:py-12"
       onSubmit={(event) => {
         event.preventDefault();
         void save();
       }}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-3">
-          <h1 className="font-heading text-[clamp(2.5rem,6vw,4.5rem)] leading-none tracking-[-0.03em]">Tu identidad</h1>
-          <p className="max-w-[42ch] text-[0.9375rem] leading-normal text-muted-foreground">
-            Este perfil se reutiliza en cada evento. La presentación se puede editar antes de compartirla.
-          </p>
+        <div className="flex flex-col gap-2">
+          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] min-[720px]:text-[2.5rem]">Tu identidad</h1>
+          <p className="max-w-[40ch] text-sm text-muted-foreground">Un perfil para todos los eventos. La presentación se edita antes de compartirla.</p>
         </div>
         <ThemeSwitch />
       </div>
-      <label className="flex flex-col gap-2 text-sm">
-        Nombre
-        <input className="h-11 rounded-lg border border-border bg-surface px-3" value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} required />
-      </label>
-      <label className="flex flex-col gap-2 text-sm">
-        Rol
-        <input className="h-11 rounded-lg border border-border bg-surface px-3" value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value })} required />
-      </label>
+
+      <div className="flex flex-col gap-4">
+        <label className={field}>
+          Nombre
+          <input className={input} value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} required />
+        </label>
+        <label className={field}>
+          Rol
+          <input className={input} value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value })} required />
+        </label>
+      </div>
+
       <fieldset className="flex flex-col gap-3">
-        <legend className="text-sm">Objetivo en este evento</legend>
+        <legend className="mb-3 text-sm text-muted-foreground">Objetivo en este evento</legend>
         <div className="flex flex-wrap gap-2">
-          {GOALS.map((goal) => (
-            <Button key={goal.id} type="button" variant={draft.goal === goal.id ? "default" : "ghost"} onClick={() => setDraft({ ...draft, goal: goal.id })}>
-              {goal.label}
-            </Button>
-          ))}
+          {GOALS.map((goal) => {
+            const selected = draft.goal === goal.id;
+            return (
+              <Button
+                key={goal.id}
+                type="button"
+                variant={selected ? "secondary" : "outline"}
+                className={selected ? `${chip} border-foreground` : chip}
+                aria-pressed={selected}
+                onClick={() => setDraft({ ...draft, goal: goal.id })}
+              >
+                {goal.label}
+              </Button>
+            );
+          })}
         </div>
       </fieldset>
+
       <ChipSet legend="Intereses" options={INTERESTS} selected={draft.interests} onToggle={(value) => toggle("interests", value)} />
       <ChipSet legend="Habilidades" options={SKILLS} selected={draft.skills} onToggle={(value) => toggle("skills", value)} />
-      <label className="flex flex-col gap-2 text-sm">
-        Proyecto
-        <input className="h-11 rounded-lg border border-border bg-surface px-3" value={project} onChange={(event) => setProject(event.target.value)} />
-      </label>
-      <label className="flex flex-col gap-2 text-sm">
-        Qué puedes aportar
-        <textarea className="min-h-20 rounded-lg border border-border bg-surface px-3 py-2" value={draft.offers} onChange={(event) => setDraft({ ...draft, offers: event.target.value })} />
-      </label>
-      <label className="flex flex-col gap-2 text-sm">
-        Qué estás buscando
-        <textarea className="min-h-20 rounded-lg border border-border bg-surface px-3 py-2" value={draft.seeking} onChange={(event) => setDraft({ ...draft, seeking: event.target.value })} required />
-      </label>
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" variant="outline" disabled={pending !== null} onClick={() => void draftPresentation()}>
-          {pending === "draft" ? "Redactando" : "Redactar presentación"}
-        </Button>
-        <Button type="submit" disabled={pending !== null}>
-          {pending === "save" ? "Guardando" : "Entrar al evento"}
-        </Button>
+
+      <div className="flex flex-col gap-4">
+        <label className={field}>
+          Proyecto
+          <input className={input} value={project} onChange={(event) => setProject(event.target.value)} />
+        </label>
+        <label className={field}>
+          Qué puedes aportar
+          <textarea className={textarea} value={draft.offers} onChange={(event) => setDraft({ ...draft, offers: event.target.value })} />
+        </label>
+        <label className={field}>
+          Qué estás buscando
+          <textarea className={textarea} value={draft.seeking} onChange={(event) => setDraft({ ...draft, seeking: event.target.value })} required />
+        </label>
       </div>
-      <p className="text-sm text-muted-foreground">
-        {metaConfigured
-          ? "La redacción usa Meta AI. Puedes corregirla antes de guardarla."
-          : "Demostración. No hay MODEL_API_KEY: la redacción se arma solo con tus campos y no es una respuesta del modelo."}
-      </p>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col-reverse gap-2 min-[720px]:flex-row min-[720px]:items-center">
+          <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending !== null} onClick={() => void draftPresentation()}>
+            {pending === "draft" ? "Redactando" : "Redactar presentación"}
+          </Button>
+          <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending !== null}>
+            {pending === "save" ? "Guardando" : "Entrar al evento"}
+          </Button>
+        </div>
+        <p className="max-w-[52ch] text-sm text-muted-foreground">
+          {metaConfigured
+            ? "La redacción usa Meta AI. Puedes corregirla antes de guardarla."
+            : "Demostración. No hay MODEL_API_KEY: la redacción se arma solo con tus campos y no es una respuesta del modelo."}
+        </p>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      </div>
+
       {presentation ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-          <label className="flex flex-col gap-2 text-sm">
+        <div className="flex flex-col gap-4 border-t border-border pt-8">
+          <p className={meta}>
+            {presentation.source === "model" ? "Presentación · Meta AI" : presentation.source === "demo" ? "Presentación · Demostración, no es Meta AI" : "Presentación · editada"}
+          </p>
+          <label className={field}>
             Titular
-            <input className="h-11 rounded-lg border border-border bg-background px-3" value={presentation.headline} onChange={(event) => setPresentation({ ...presentation, headline: event.target.value, source: "user" })} />
+            <input className={input} value={presentation.headline} onChange={(event) => setPresentation({ ...presentation, headline: event.target.value, source: "user" })} />
           </label>
-          <label className="flex flex-col gap-2 text-sm">
+          <label className={field}>
             Resumen
-            <textarea className="min-h-24 rounded-lg border border-border bg-background px-3 py-2" value={presentation.summary} onChange={(event) => setPresentation({ ...presentation, summary: event.target.value, source: "user" })} />
+            <textarea className={`${textarea} min-h-24`} value={presentation.summary} onChange={(event) => setPresentation({ ...presentation, summary: event.target.value, source: "user" })} />
           </label>
-          <label className="flex flex-col gap-2 text-sm">
+          <label className={field}>
             Cómo empezar
-            <textarea className="min-h-20 rounded-lg border border-border bg-background px-3 py-2" value={presentation.opener} onChange={(event) => setPresentation({ ...presentation, opener: event.target.value, source: "user" })} />
+            <textarea className={textarea} value={presentation.opener} onChange={(event) => setPresentation({ ...presentation, opener: event.target.value, source: "user" })} />
           </label>
         </div>
       ) : null}
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </form>
   );
 }
@@ -169,13 +198,23 @@ function ChipSet({
 }) {
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="text-sm">{legend}</legend>
+      <legend className="mb-3 text-sm text-muted-foreground">{legend}</legend>
       <div className="flex flex-wrap gap-2">
-        {options.map((option) => (
-          <Button key={option} type="button" variant={selected.includes(option) ? "default" : "ghost"} aria-pressed={selected.includes(option)} onClick={() => onToggle(option)}>
-            {option}
-          </Button>
-        ))}
+        {options.map((option) => {
+          const active = selected.includes(option);
+          return (
+            <Button
+              key={option}
+              type="button"
+              variant={active ? "secondary" : "outline"}
+              className={active ? `${chip} border-foreground` : chip}
+              aria-pressed={active}
+              onClick={() => onToggle(option)}
+            >
+              {option}
+            </Button>
+          );
+        })}
       </div>
     </fieldset>
   );

@@ -14,6 +14,9 @@ function profileLink(value: string): string | null {
   }
 }
 
+const action = "h-11 w-full min-[720px]:h-9 min-[720px]:w-auto";
+const ghostAction = "h-11 min-[720px]:h-9";
+
 export function nfcSupported(): boolean {
   return typeof window !== "undefined" && window.isSecureContext && "NDEFReader" in window;
 }
@@ -84,28 +87,34 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
         width={144}
         height={144}
         unoptimized
-        className="h-36 w-36 bg-surface"
+        className="h-36 w-36 invert dark:invert-0"
       />
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={() => void copyLink()}>
+      <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:flex-wrap min-[720px]:items-center">
+        <Button type="button" className={action} onClick={() => void copyLink()}>
           Copiar enlace
         </Button>
-        <Button type="button" variant="outline" onClick={() => void track("qr")}>
-          QR listo
-        </Button>
-        <Button type="button" variant="ghost" disabled={!supported} onClick={() => void writeTag()}>
-          Escribir NFC
-        </Button>
-        <Button type="button" variant="ghost" disabled={!supported} onClick={() => void readTag()}>
-          Leer NFC
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="ghost" className={ghostAction} onClick={() => void track("qr")}>
+            QR listo
+          </Button>
+          <Button type="button" variant="ghost" className={ghostAction} disabled={!supported} onClick={() => void writeTag()}>
+            Escribir NFC
+          </Button>
+          <Button type="button" variant="ghost" className={ghostAction} disabled={!supported} onClick={() => void readTag()}>
+            Leer NFC
+          </Button>
+        </div>
       </div>
       <p className="max-w-[48ch] text-sm text-muted-foreground">
         {supported
           ? "Web NFC solo actúa sobre una etiqueta, con un gesto tuyo. No empareja dos teléfonos."
           : "NFC no está disponible aquí. Chrome en Android y un contexto seguro son el caso compatible. El enlace y el QR no dependen de eso."}
       </p>
-      {message ? <p className="text-sm">{message}</p> : null}
+      {message ? (
+        <p className="text-sm" role="status" aria-live="polite">
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
 import { Button } from "@/components/ui/button";
 import { ProfileForm } from "@/components/profile-form";
@@ -36,9 +37,33 @@ type Session = {
   event: { id: string; name: string; demo: boolean } | null;
 };
 
+type Presence = "invisible" | "active" | "seeking";
+
+const PRESENCE_OPTIONS: { id: Presence; label: string; enabled: boolean; seeking: boolean }[] = [
+  { id: "invisible", label: "Invisible", enabled: false, seeking: false },
+  { id: "active", label: "Activo", enabled: true, seeking: false },
+  { id: "seeking", label: "Buscando", enabled: true, seeking: true },
+];
+
+const meta = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
+const actionSize = "h-11 w-full min-[720px]:h-9 min-[720px]:w-auto";
+const focusRing = "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none";
+
+function evidenceOf(recommendation: NonNullable<FieldPerson["recommendation"]>) {
+  return [
+    ...recommendation.shared.interests.map((value) => ({ kind: "Interés común", value })),
+    ...recommendation.shared.skills.map((value) => ({ kind: "Habilidad común", value })),
+    ...recommendation.complement.map((value) => ({ kind: "Complementa", value })),
+  ].slice(0, 3);
+}
+
+function reasonOf(person: FieldPerson) {
+  return person.recommendation?.shared.interests[0] ?? person.recommendation?.shared.skills[0] ?? person.recommendation?.complement[0] ?? "objetivo común";
+}
+
 export function SignalApp() {
   const [session, setSession] = useState<Session | null>(null);
-  const [presence, setPresence] = useState<"invisible" | "active" | "seeking">("invisible");
+  const [presence, setPresence] = useState<Presence>("invisible");
   const [people, setPeople] = useState<FieldPerson[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
@@ -145,7 +170,7 @@ export function SignalApp() {
 
   if (!session) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-4 px-4 py-8 sm:px-8">
+      <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-4 px-4 py-6 sm:px-8">
         <p className="text-sm text-muted-foreground">Cargando la sesión.</p>
         <ThemeSwitch />
       </div>
@@ -155,119 +180,167 @@ export function SignalApp() {
     return <ProfileForm metaConfigured={session.metaConfigured} onSaved={() => void load()} />;
   }
 
+  const visible = presence !== "invisible";
   const selected = people.find((person) => person.id === selectedId) ?? null;
+  const detail = visible && selected && selected.recommendation ? { person: selected, recommendation: selected.recommendation } : null;
   const relation = connections.find((item) => item.other.id === selectedId && item.status !== "declined");
   const recommendations = people.filter((person) => person.recommendation);
+  const others = detail ? recommendations.filter((person) => person.id !== detail.person.id) : recommendations;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
-      <header className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex max-w-[36rem] flex-col gap-3 pr-16 sm:pr-0">
-          <h1 className="font-heading text-5xl leading-none tracking-[-0.03em]">IntroMesh</h1>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-8 min-[720px]:gap-12">
+      <header className="relative flex flex-col gap-4 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between">
+        <div className="flex flex-col gap-2 pr-16 min-[720px]:pr-0">
+          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em]">IntroMesh</h1>
           <p className="max-w-[36ch] text-sm text-muted-foreground">
-            {session.event?.name}. Los nodos de demostración no son teléfonos en la sala.
+            {session.event?.name}
+            {session.event?.demo ? ". Los nodos demo no están en la sala." : "."}
           </p>
         </div>
-        <div className="flex flex-col gap-3 sm:items-end">
-          <ThemeSwitch className="absolute top-0 right-0 sm:static" />
-          <div className="flex flex-wrap gap-2 sm:justify-end">
-          <Button type="button" variant={presence === "invisible" ? "outline" : "ghost"} onClick={() => void changePresence(false, false)}>
-            Invisible
-          </Button>
-          <Button type="button" variant={presence === "active" ? "default" : "ghost"} onClick={() => void changePresence(true, false)}>
-            Activo
-          </Button>
-          <Button type="button" variant={presence === "seeking" ? "default" : "ghost"} onClick={() => void changePresence(true, true)}>
-            Buscando
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/intelligence">Inteligencia</Link>
-          </Button>
+        <div className="flex flex-col gap-2 min-[720px]:items-end">
+          <ThemeSwitch className="absolute top-0 right-0 min-[720px]:static" />
+          <div className="-mx-3 flex items-center justify-between gap-4 min-[720px]:justify-end">
+            <div role="group" aria-label="Presencia" className="flex items-center">
+              {PRESENCE_OPTIONS.map((option) => {
+                const active = presence === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => void changePresence(option.enabled, option.seeking)}
+                    className={cn(
+                      "relative inline-flex h-11 items-center rounded-sm px-3 text-sm transition-colors select-none",
+                      "after:absolute after:inset-x-3 after:bottom-2.5 after:h-px after:bg-foreground after:opacity-0 after:transition-opacity after:content-['']",
+                      focusRing,
+                      active ? "text-foreground after:opacity-100" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <Link
+              href="/intelligence"
+              className={cn("inline-flex h-11 items-center rounded-sm px-3 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline", focusRing)}
+            >
+              Inteligencia
+            </Link>
           </div>
         </div>
       </header>
+
       {!session.metaConfigured ? (
         <p className="max-w-[62ch] text-sm text-muted-foreground">
           Demostración. Falta MODEL_API_KEY: las explicaciones salen de los datos declarados y no son respuestas de Meta AI.
         </p>
       ) : null}
       {loadError ? <p className="text-sm text-destructive">{loadError}</p> : null}
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
-        <SignalField people={presence === "invisible" ? [] : people} selectedId={selectedId} onSelect={(id) => void openPerson(id)} />
-        <section className="flex flex-col gap-4">
-          {presence === "invisible" ? (
-            <p className="text-sm text-muted-foreground">Estás invisible. Activa la presencia para ver a quien también está en el evento.</p>
+
+      <div className="grid items-start gap-8 min-[1100px]:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)] min-[1100px]:gap-12">
+        <SignalField people={visible ? people : []} selectedId={selectedId} onSelect={(id) => void openPerson(id)} />
+
+        <section className="flex flex-col gap-10">
+          {!visible ? (
+            <p className="max-w-[40ch] text-sm text-muted-foreground">Estás invisible. Activa la presencia para ver a quien también está en el evento.</p>
           ) : null}
-          {presence !== "invisible" && selected && selected.recommendation ? (
-            <article className="flex flex-col gap-4">
-              <h2 className="font-heading text-4xl leading-none tracking-[-0.03em]">{selected.displayName}</h2>
-              <p className="text-sm text-muted-foreground">
-                {selected.role}
-                {selected.demo ? " · Demostración" : ""}
-                {selected.recommendation.shared.goals[0] ? ` · ${selected.recommendation.shared.goals[0]}` : ""}
-              </p>
-              <p className="text-sm">
-                Confianza {selected.recommendation.confidence === "low" ? "baja: no lo trates como un hecho" : selected.recommendation.confidence === "medium" ? "media" : "alta"}.
-              </p>
-              <ul className="flex flex-col gap-1 text-sm">
-                {selected.recommendation.shared.interests.map((item) => (
-                  <li key={item}>Interés declarado: {item}</li>
-                ))}
-                {selected.recommendation.shared.skills.map((item) => (
-                  <li key={item}>Habilidad compartida: {item}</li>
-                ))}
-                {selected.recommendation.complement.map((item) => (
-                  <li key={item}>Complementa lo que buscas: {item}</li>
-                ))}
-              </ul>
+
+          {detail ? (
+            <article className="flex flex-col gap-6">
+              <div className="flex flex-col gap-2">
+                <h2 className="font-heading text-[2.5rem] leading-[0.95] tracking-[-0.03em] text-balance min-[720px]:text-[3rem]">{detail.person.displayName}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {detail.person.role}
+                  {detail.person.demo ? " · Demostración" : ""}
+                  {detail.recommendation.shared.goals[0] ? ` · ${detail.recommendation.shared.goals[0]}` : ""}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+                  {evidenceOf(detail.recommendation).map((item) => (
+                    <div key={`${item.kind}-${item.value}`} className="contents">
+                      <dt className="text-muted-foreground">{item.kind}</dt>
+                      <dd>{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className={meta}>
+                  {detail.recommendation.confidence === "low"
+                    ? "Confianza baja · no es un hecho"
+                    : detail.recommendation.confidence === "medium"
+                      ? "Confianza media"
+                      : "Confianza alta"}
+                </p>
+              </div>
+
               {explainPending ? <p className="text-sm text-muted-foreground">Preparando la explicación.</p> : null}
               {explainError ? <p className="text-sm text-destructive">{explainError}</p> : null}
               {explanation ? (
                 <div className="flex flex-col gap-3">
-                  <p className="text-sm">{explanation.summary}</p>
-                  <p className="text-sm text-muted-foreground">{explanation.opener}</p>
-                  <p className="font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">
-                    {explanation.source === "model" ? "Meta AI" : "Demostración, no es Meta AI"}
-                  </p>
+                  <p className="max-w-[52ch] text-[0.9375rem] leading-normal">{explanation.summary}</p>
+                  <p className="max-w-[52ch] text-sm text-muted-foreground">{explanation.opener}</p>
+                  <p className={meta}>{explanation.source === "model" ? "Meta AI" : "Demostración, no es Meta AI"}</p>
                 </div>
               ) : null}
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => void openPerson(selected.id, true)}>
-                  Regenerar
-                </Button>
-                {!relation ? (
-                  <Button type="button" disabled={!explanation} onClick={() => void requestIntro()}>
-                    Solicitar conexión
-                  </Button>
+
+              <div className="flex flex-col gap-3">
+                {relation?.status === "pending" ? <p className={meta}>Solicitud pendiente</p> : null}
+                {relation?.status === "accepted" ? (
+                  <p className="max-w-[52ch] text-sm">
+                    Conexión aceptada. La introducción queda guardada{relation.intro ? `: ${relation.intro}` : "."}
+                  </p>
                 ) : null}
-                {relation?.status === "pending" && relation.other.demo ? (
-                  <Button type="button" onClick={() => void resolve(relation, "accept")}>
-                    Simular aceptación
+                <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
+                  {!relation ? (
+                    <Button type="button" className={actionSize} disabled={!explanation} onClick={() => void requestIntro()}>
+                      Solicitar conexión
+                    </Button>
+                  ) : null}
+                  {relation?.status === "pending" && relation.other.demo ? (
+                    <Button type="button" className={actionSize} onClick={() => void resolve(relation, "accept")}>
+                      Simular aceptación
+                    </Button>
+                  ) : null}
+                  <Button type="button" variant="ghost" className={actionSize} onClick={() => void openPerson(detail.person.id, true)}>
+                    Regenerar
                   </Button>
-                ) : null}
-                {relation?.status === "accepted" ? <p className="text-sm">Conexión aceptada. La introducción queda guardada: {relation.intro}</p> : null}
+                </div>
               </div>
+
               {relation?.status === "accepted" && session.profile ? <ShareTools slug={session.profile.slug} name={session.profile.displayName} /> : null}
             </article>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {presence === "invisible" ? null : <h2 className="text-lg">Recomendaciones</h2>}
-              {presence === "invisible" ? null : recommendations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nadie visible comparte un objetivo, un interés o una habilidad contigo.</p>
+          ) : null}
+
+          {visible ? (
+            <div className={cn("flex flex-col gap-3", detail && "min-[720px]:hidden")}>
+              <h2 className={meta}>{detail ? "Más señales" : "Recomendaciones"}</h2>
+              {others.length === 0 ? (
+                <p className="max-w-[40ch] text-sm text-muted-foreground">
+                  {detail ? "No hay más señales ahora mismo." : "Nadie visible comparte un objetivo, un interés o una habilidad contigo."}
+                </p>
               ) : (
-                <ul className="flex flex-col gap-2">
-                  {recommendations.map((person) => (
+                <ul className="flex flex-col">
+                  {others.map((person) => (
                     <li key={person.id}>
-                      <button type="button" className="text-left text-sm underline-offset-4 hover:underline" onClick={() => void openPerson(person.id)}>
-                        {person.displayName}
-                        {person.demo ? " · demo" : ""} — {person.recommendation?.shared.interests[0] ?? person.recommendation?.shared.skills[0] ?? "objetivo común"}
+                      <button
+                        type="button"
+                        onClick={() => void openPerson(person.id)}
+                        className={cn("group flex min-h-11 w-full items-baseline justify-between gap-4 rounded-sm text-left text-sm min-[720px]:min-h-9", focusRing)}
+                      >
+                        <span className="shrink-0 underline-offset-4 group-hover:underline">
+                          {person.displayName}
+                          {person.demo ? <span className="text-muted-foreground"> · demo</span> : null}
+                        </span>
+                        <span className="truncate text-muted-foreground">{reasonOf(person)}</span>
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-          )}
+          ) : null}
         </section>
       </div>
     </div>

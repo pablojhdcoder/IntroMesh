@@ -16,7 +16,7 @@ Referencias de calidad: la precisión de Linear, la claridad de Vercel y el cuid
 ## Evitar
 
 - Gradientes gratuitos, blobs y mesh backgrounds.
-- Glassmorphism apilado y efectos 3D.
+- Glassmorphism apilado. El campo de señal es la única excepción a “sin 3D”: profundidad real con three, cámara quieta y material mate. El resto de la interfaz sigue plana.
 - Varias animaciones a la vez compitiendo con el texto.
 - Tarjetas genéricas de SaaS con icono, título y tres bullets idénticos.
 - Mezclar radios, sombras o familias tipográficas fuera de estos tokens.
@@ -25,7 +25,7 @@ Referencias de calidad: la precisión de Linear, la claridad de Vercel y el cuid
 
 **Discover → Understand → Connect → Learn.**
 
-La visualización central es una red de asistentes: nodos, relaciones y una ruta hacia una conexión posible. En móvil, la red se reduce a la persona activa y dos o tres señales; el resto queda en una lista. La red es funcional y se alimenta de datos reales o de datos sintéticos marcados.
+La visualización central es un campo espacial: nodos con volumen, hilos hacia recomendaciones y una ruta hacia una conexión posible. En móvil, el campo muestra a la persona activa y dos o tres señales; el resto queda en una lista. El campo es funcional y se alimenta de datos reales o de datos sintéticos marcados.
 
 ## Color
 
@@ -40,7 +40,7 @@ Los nombres semánticos (`--background`, `--foreground`, `--surface`, `--border`
 | Token | Valor | Uso |
 | --- | --- | --- |
 | `--background` | `#f6f4ef` | Lienzo, blanco roto cálido |
-| `--surface` | `#fffcf8` | Paneles, campo y campos de formulario |
+| `--surface` | `#fffcf8` | Paneles y campos de formulario |
 | `--surface-raised` | `#efede6` | Hover y bloque seleccionado |
 | `--foreground` | `#16180f` | Texto principal |
 | `--muted` | `#5c584f` | Texto secundario. En CSS vive en `--muted-foreground` |
@@ -50,7 +50,7 @@ Los nombres semánticos (`--background`, `--foreground`, `--surface`, `--border`
 | `--signal-dim` | `rgb(76 102 16 / 0.12)` | Pista suave de una ruta |
 | `--danger` | `#b42318` | Error. En CSS vive en `--destructive` |
 | `--success` | `#1f7a4a` | Éxito |
-| `--shadow-raise` | `0 10px 28px rgb(22 24 15 / 0.06)` | Reservada. El campo se separa por superficie y borde, no por sombra |
+| `--shadow-raise` | `0 10px 28px rgb(22 24 15 / 0.06)` | Reservada. El campo se posa sobre el papel, sin marco ni sombra |
 
 ### Oscuro
 
@@ -67,7 +67,7 @@ Los nombres semánticos (`--background`, `--foreground`, `--surface`, `--border`
 | `--signal-dim` | `rgb(214 255 74 / 0.16)` | Halo o pista de una ruta |
 | `--danger` | `#ff6b5a` | Error. En CSS vive en `--destructive` |
 | `--success` | `#8ee0b0` | Éxito y conexión aceptada |
-| `--shadow-raise` | `0 16px 40px rgb(0 0 0 / 0.35)` | Reservada. El campo oscuro permanece plano |
+| `--shadow-raise` | `0 16px 40px rgb(0 0 0 / 0.35)` | Reservada. El campo oscuro se posa sobre el lienzo, sin marco |
 
 El acento no tiñe fondos grandes. Marca la señal activa, el foco y la acción primaria. En claro, el lima `#d6ff4a` se reserva al botón primario: sobre papel no alcanza contraste, y las marcas del campo usan `--signal-strong`.
 
@@ -94,7 +94,7 @@ Escala de 4: `4, 8, 12, 16, 24, 32, 48, 64`.
 | `--radius-lg` | `20px` |
 `--shadow-raise` depende del tema. Ver la sección Color.
 
-Los bordes son de 1px con `--line`. El campo no lleva sombra: `overflow` la recortaba y, al cambiar de tema, la sombra se interpolaba mal. La superficie y el borde bastan.
+Los bordes son de 1px con `--line`. El campo no lleva marco, superficie ni sombra: se posa sobre `--background`.
 
 ## Movimiento
 
@@ -117,7 +117,7 @@ shadcn/ui es la base. Se reestiliza con estos tokens. No se mezclan otras librer
 - Botón primario: fondo `--signal`, texto `#14160c`, radio `--radius-sm`.
 - Botón secundario: superficie, borde `--line`, texto `--foreground`.
 - Tarjeta de afinidad: superficie, una razón visible, máximo tres evidencias, acción clara.
-- Nodo de red: círculo de 12px. El recomendado usa `--node-hot` (igual a `--signal-strong`). El activo lleva anillo `--signal-strong`. Las aristas usan `--field-edge` y `--field-edge-active`.
+- Campo de señal: única superficie 3D. Nodo pequeño con volumen, mate, sobre `--background`. La profundidad sale del dato (score, id), no del azar. “Tú” es el origen. Hilos solo hacia recomendaciones ya elegidas. El seleccionado se acerca y usa `--field-edge-active`; el resto permanece quieto. El nombre va junto al nodo activo o recomendado, alineado al punto, sin caja. En claro, el lima no marca el campo: usa `--signal-strong` / `--node-hot`.
 - Estados obligatorios: carga, vacío, error, éxito, selección y deshabilitado.
 
 ## Accesibilidad
@@ -129,8 +129,8 @@ shadcn/ui es la base. Se reestiliza con estos tokens. No se mezclan otras librer
 
 ## Responsive
 
-- `< 720px`: una columna. La red es un recorte de la persona activa. Las acciones primarias ocupan el ancho.
+- `< 720px`: una columna. El campo muestra a la persona activa y dos o tres señales; el resto queda en lista. Las acciones primarias ocupan el ancho.
 - `≥ 720px`: lista y detalle.
-- `≥ 1100px`: red a la izquierda, explicación a la derecha.
+- `≥ 1100px`: campo a la izquierda, explicación a la derecha.
 
 Áreas táctiles de al menos 44px. Inputs a 16px para evitar zoom en iOS.

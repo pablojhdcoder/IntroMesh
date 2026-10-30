@@ -12,39 +12,46 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const profile = await service().profileBySlug(slug);
   if (!profile) notFound();
 
+  const facts = [
+    ...profile.interests.map((value) => ({ kind: "Interés", value })),
+    ...profile.skills.map((value) => ({ kind: "Habilidad", value })),
+    ...profile.projects.map((value) => ({ kind: "Proyecto", value })),
+  ];
+
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-8 px-6 py-16">
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/" className="underline-offset-4 hover:underline">
-            IntroMesh
-          </Link>
-        </p>
+    <main className="mx-auto flex w-full max-w-xl flex-col gap-10 px-4 py-6 sm:px-8 min-[720px]:py-12">
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">
+            <Link href="/" className="underline-offset-4 hover:text-foreground hover:underline">
+              IntroMesh
+            </Link>
+          </p>
+          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] text-balance min-[720px]:text-[2.5rem]">{profile.displayName}</h1>
+          <p className="text-sm text-muted-foreground">
+            {profile.role}
+            {profile.demo ? " · Demostración" : ""} · {goalLabel(profile.goal)}
+          </p>
+        </div>
         <ThemeSwitch />
-      </div>
-      <header className="flex flex-col gap-3">
-        <h1 className="font-heading text-5xl leading-none tracking-[-0.03em]">{profile.displayName}</h1>
-        <p className="text-sm text-muted-foreground">
-          {profile.role}
-          {profile.demo ? " · Demostración" : ""} · {goalLabel(profile.goal)}
-        </p>
       </header>
-      {profile.presentation ? <p className="max-w-[48ch] text-[0.9375rem] leading-normal">{profile.presentation.summary}</p> : null}
-      <ul className="flex flex-col gap-1 text-sm">
-        {profile.interests.map((item) => (
-          <li key={item}>Interés: {item}</li>
-        ))}
-        {profile.skills.map((item) => (
-          <li key={item}>Habilidad: {item}</li>
-        ))}
-        {profile.projects.map((item) => (
-          <li key={item}>Proyecto: {item}</li>
-        ))}
-      </ul>
+
+      {profile.presentation ? <p className="max-w-[52ch] text-[0.9375rem] leading-normal">{profile.presentation.summary}</p> : null}
+
+      {facts.length > 0 ? (
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+          {facts.map((fact) => (
+            <div key={`${fact.kind}-${fact.value}`} className="contents">
+              <dt className="text-muted-foreground">{fact.kind}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+
       <ShareTools slug={profile.slug} name={profile.displayName} />
-      <p className="text-sm text-muted-foreground">
-        Esta página solo muestra la identidad que la persona autorizó. Una conexión privada sigue pidiendo aceptación.
-      </p>
+
+      <p className="max-w-[48ch] text-sm text-muted-foreground">Solo se muestra la identidad que la persona autorizó. Una conexión privada sigue pidiendo aceptación.</p>
     </main>
   );
 }
