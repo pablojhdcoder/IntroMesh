@@ -1,0 +1,20 @@
+import type { FileStore } from "@/lib/store/file-store";
+import { connectActions } from "@/server/connect";
+import { discoverActions } from "@/server/discover";
+import { explainActions } from "@/server/explain";
+import { learnActions } from "@/server/learn";
+import { presenceActions } from "@/server/presence";
+import { sessionActions } from "@/server/session";
+
+export function createService(store: FileStore) {
+  return {
+    ...sessionActions(store),
+    ...presenceActions(store),
+    ...discoverActions(store),
+    ...explainActions(store),
+    ...connectActions(store),
+    ...learnActions(store),
+  };
+}
+
+export type IntroMeshService = ReturnType<typeof createService>;

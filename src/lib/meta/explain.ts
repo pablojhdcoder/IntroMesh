@@ -30,6 +30,15 @@ export function modelConfigured(): boolean {
   return hasModelKey();
 }
 
+/** Meta solo explica personas reales. Lo sintético se arma con datos declarados. */
+export function shouldCallMetaForAffinity(input: {
+  viewerDemo: boolean;
+  otherDemo: boolean;
+  modelConfigured: boolean;
+}): boolean {
+  return input.modelConfigured && !input.viewerDemo && !input.otherDemo;
+}
+
 export async function explainAffinity(input: {
   viewer: StoredProfile;
   other: StoredProfile;
@@ -38,7 +47,13 @@ export async function explainAffinity(input: {
   confidence: "low" | "medium" | "high";
 }): Promise<GroundedExplanation> {
   const goalLabels = input.shared.goals.map(goalLabel);
-  if (!hasModelKey()) {
+  if (
+    !shouldCallMetaForAffinity({
+      viewerDemo: input.viewer.demo,
+      otherDemo: input.other.demo,
+      modelConfigured: hasModelKey(),
+    })
+  ) {
     return demoExplanation({
       otherName: input.other.displayName,
       shared: input.shared,

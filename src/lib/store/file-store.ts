@@ -30,7 +30,7 @@ export type AffinityCacheRecord = {
   value: GroundedExplanation;
 };
 
-type Database = {
+export type Database = {
   events: EventRecord[];
   profiles: StoredProfile[];
   presence: PresenceRecord[];

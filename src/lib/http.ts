@@ -1,4 +1,4 @@
-import { createService } from "@/lib/intromesh";
+import { createService } from "@/server";
 import { getStore } from "@/lib/store";
 import { readProfileId } from "@/lib/session";
 import { MetaApiError, MetaRateLimitError } from "@/lib/meta/errors";
