@@ -1,25 +1,37 @@
 ---
-description: Commits cortos, pocos y con prefijo feat, fix, docs o chore
+description: English commits with type, optional module, and one logical change
 alwaysApply: true
 ---
 
 # Commits
 
-No hagas commit salvo que la persona lo pida. Cuando lo pida, el menor número de commits que deje cada idea sola. No un commit por archivo ni por retoque.
+Do not commit unless the person asks. When they ask, use the fewest commits that keep each idea alone. Not one commit per file or tweak.
 
-El asunto va en inglés, imperativo, una línea, y dice el porqué. Sin `update`, `fix`, `wip` ni cuerpos vacíos.
+The message has a type, is written in English, and does not mention AI tools.
 
-| Prefijo | Cuándo |
+```
+type(module): what changed and why
+```
+
+Module (product area): `onboarding`, `discovery`, `affinity`, `connect`, `learn`, `backend`. If the change spans several areas, omit the parentheses.
+
+| Type | When |
 | --- | --- |
-| `feat:` | Comportamiento nuevo del recorrido |
-| `fix:` | Un fallo |
-| `docs:` | Solo documentación |
-| `chore:` | Tooling o dependencias, invisible para quien usa el evento |
+| `feat` | New behavior |
+| `fix` | Bug fix |
+| `refactor` | Internal change, behavior stays the same |
+| `docs` | Documentation only |
+| `test` | Tests |
+| `chore` | Maintenance that does not change the product |
+| `perf` | Performance |
+| `ci` | Continuous integration |
 
 ```
-feat: keep the camera on the selected person so a second look stays put
+feat(discovery): keep the camera on the selected person so a second look stays put
+fix(connect): open the public card when the QR is scanned
+docs: commit message rules with feat and fix types
 ```
 
-Una rama, un tema: `feat/`, `fix/`, `docs/` o `chore/` y kebab-case. No mezcles formato, refactor y producto si se pueden separar. No entran `.env`, `.env.local`, claves, `.data/`, `node_modules/` ni `.next/`.
+No `update`, bare `fix`, `wip`, or empty subjects. One logical change per commit. Do not commit `.env`, `.env.local`, keys, `.data/`, `node_modules/`, or `.next/`.
 
-El detalle humano está en `CONTRIBUTING.md`.
+Human detail lives in `CONTRIBUTING.md`.

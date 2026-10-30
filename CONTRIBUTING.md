@@ -36,15 +36,63 @@ Names are kebab-case and describe the change, not the issue number: `fix/camera-
 
 Do not push directly to `main`.
 
-## Commits
+## How to commit
 
-One commit, one idea. The message is English, imperative, and explains why. The subject fits on one line. The body, if needed, says what is resolved.
+The message has a type, is written in English, and does not mention AI tools.
+
+### Format
 
 ```
-feat: keep the camera on the selected person so a second look stays put
+type(module): what changed and why
+
+Optional body, one or two sentences.
 ```
 
-Do not use empty messages (`update`, `fix`, `wip`) or mix formatting, refactor, and product in the same commit when they can be separated.
+The module is the product area: `onboarding`, `discovery`, `affinity`, `connect`, `learn`, `backend`. If the change spans several areas, omit the parentheses.
+
+### Types
+
+| Type | When |
+| --- | --- |
+| `feat` | New behavior |
+| `fix` | Bug fix |
+| `refactor` | Internal change, behavior stays the same |
+| `docs` | Documentation only |
+| `test` | Tests |
+| `chore` | Maintenance that does not change the product |
+| `perf` | Performance |
+| `ci` | Continuous integration |
+
+```
+feat(discovery): keep the camera on the selected person so a second look stays put
+fix(connect): open the public card when the QR is scanned
+docs: commit message rules with feat and fix types
+```
+
+Bad:
+
+```
+Improvement implemented to optimize the user visual experience
+update
+wip
+```
+
+### Before you commit
+
+1. One logical change per commit. Do not mix an API fix with a style change.
+2. Review `git diff`. Do not add secrets, `.env`, or keys.
+3. Exercise the flow you touched. On a page, walk it with Tab and check the console.
+
+### Git
+
+```bash
+git status
+git add path/to/file
+git commit -m "type(module): what changed and why"
+git push
+```
+
+If `main` moved on GitHub, `git pull` before you push. Resolve conflicts in the file and commit again. Do not `push --force` to `main`.
 
 Do not commit:
 
