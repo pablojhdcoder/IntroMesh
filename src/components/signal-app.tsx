@@ -6,7 +6,7 @@ import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
 import { Button } from "@/components/ui/button";
 import { ProfileForm } from "@/components/profile-form";
-import { SignalField, type FieldPerson } from "@/components/signal-field";
+import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal-field";
 import { ShareTools } from "@/components/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 
@@ -120,7 +120,14 @@ export function SignalApp() {
     await load();
   }
 
-  async function openPerson(id: string, regenerate = false) {
+  async function openPerson(id: string | null, regenerate = false) {
+    if (!id || id === FIELD_SELF_ID) {
+      setSelectedId(id);
+      setExplanation(null);
+      setExplainError(null);
+      setExplainPending(false);
+      return;
+    }
     setSelectedId(id);
     setExplainPending(true);
     setExplainError(null);
@@ -181,6 +188,7 @@ export function SignalApp() {
   }
 
   const visible = presence !== "invisible";
+  const selfSelected = selectedId === FIELD_SELF_ID;
   const selected = people.find((person) => person.id === selectedId) ?? null;
   const detail = visible && selected && selected.recommendation ? { person: selected, recommendation: selected.recommendation } : null;
   const relation = connections.find((item) => item.other.id === selectedId && item.status !== "declined");
@@ -188,8 +196,8 @@ export function SignalApp() {
   const others = detail ? recommendations.filter((person) => person.id !== detail.person.id) : recommendations;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-8 min-[720px]:gap-12">
-      <header className="relative flex flex-col gap-4 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between">
+    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-8 min-[720px]:h-svh min-[720px]:gap-6 min-[720px]:overflow-hidden">
+      <header className="relative flex shrink-0 flex-col gap-3 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between">
         <div className="flex flex-col gap-2 pr-16 min-[720px]:pr-0">
           <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em]">IntroMesh</h1>
           <p className="max-w-[36ch] text-sm text-muted-foreground">
@@ -232,24 +240,46 @@ export function SignalApp() {
       </header>
 
       {!session.metaConfigured ? (
-        <p className="max-w-[62ch] text-sm text-muted-foreground">
+        <p className="max-w-[62ch] shrink-0 text-sm text-muted-foreground">
           Demostración. Falta MODEL_API_KEY: las explicaciones salen de los datos declarados y no son respuestas de Meta AI.
         </p>
       ) : null}
       {loadError ? <p className="text-sm text-destructive">{loadError}</p> : null}
 
-      <div className="grid items-start gap-8 min-[1100px]:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)] min-[1100px]:gap-12">
-        <SignalField people={visible ? people : []} selectedId={selectedId} onSelect={(id) => void openPerson(id)} />
+      <div className="grid min-h-0 flex-1 items-stretch gap-6 min-[720px]:grid-cols-[minmax(0,1.3fr)_minmax(16rem,0.7fr)] min-[720px]:gap-8">
+        <SignalField
+          people={visible ? people : []}
+          selectedId={selectedId}
+          onSelect={(id) => void openPerson(id === selectedId ? null : id)}
+        />
 
-        <section className="flex flex-col gap-10">
+        <section className="flex min-h-0 flex-col gap-6 min-[720px]:overflow-y-auto">
           {!visible ? (
             <p className="max-w-[40ch] text-sm text-muted-foreground">Estás invisible. Activa la presencia para ver a quien también está en el evento.</p>
+          ) : null}
+
+          {selfSelected && session.profile ? (
+            <article className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] min-[720px]:text-[2.5rem]">{session.profile.displayName}</h2>
+                <p className="text-sm text-muted-foreground">{session.profile.role} · Tú</p>
+              </div>
+              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">Intereses</dt>
+                <dd>{session.profile.interests.join(", ")}</dd>
+                <dt className="text-muted-foreground">Habilidades</dt>
+                <dd>{session.profile.skills.join(", ")}</dd>
+                <dt className="text-muted-foreground">Buscas</dt>
+                <dd>{session.profile.seeking}</dd>
+              </dl>
+              <p className="max-w-[40ch] text-sm text-muted-foreground">Vuelve a pulsar tu nodo para ver el salón entero.</p>
+            </article>
           ) : null}
 
           {detail ? (
             <article className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
-                <h2 className="font-heading text-[2.5rem] leading-[0.95] tracking-[-0.03em] text-balance min-[720px]:text-[3rem]">{detail.person.displayName}</h2>
+                <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] text-balance min-[720px]:text-[2.5rem]">{detail.person.displayName}</h2>
                 <p className="text-sm text-muted-foreground">
                   {detail.person.role}
                   {detail.person.demo ? " · Demostración" : ""}
@@ -314,7 +344,7 @@ export function SignalApp() {
           ) : null}
 
           {visible ? (
-            <div className={cn("flex flex-col gap-3", detail && "min-[720px]:hidden")}>
+            <div className={cn("flex flex-col gap-3", (detail || selfSelected) && "min-[720px]:hidden")}>
               <h2 className={meta}>{detail ? "Más señales" : "Recomendaciones"}</h2>
               {others.length === 0 ? (
                 <p className="max-w-[40ch] text-sm text-muted-foreground">
