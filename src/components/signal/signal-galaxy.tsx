@@ -17,7 +17,7 @@ import {
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import SpriteText from "three-spritetext";
-import { FIELD_SELF_ID, type FieldPerson } from "@/components/signal-field";
+import { FIELD_SELF_ID, type FieldPerson } from "@/components/signal/signal-field";
 
 const ORIGIN = FIELD_SELF_ID;
 

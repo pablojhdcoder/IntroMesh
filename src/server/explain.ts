@@ -8,7 +8,7 @@ import { isPresenceLive } from "@/domain/presence";
 import { createStructuredResponse } from "@/lib/meta/client";
 import { shouldCallMetaForAffinity } from "@/lib/meta/explain";
 import { readMetaTextConfig } from "@/lib/meta/schema";
-import type { FileStore } from "@/lib/store/file-store";
+import type { Store } from "@/lib/store";
 import { recommendationEvidence } from "@/server/recommendations";
 
 const matchExplanationSchema = z.object({
@@ -28,7 +28,7 @@ function same(value: string, allowed: readonly string[]): boolean {
   return allowed.some((item) => item.toLowerCase() === value.toLowerCase());
 }
 
-export function explainActions(store: FileStore) {
+export function explainActions(store: Store) {
   return {
     async affinity(
       profileId: string,

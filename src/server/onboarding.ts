@@ -4,11 +4,11 @@ import { toProfileInput } from "@/domain/identity/to-profile";
 import { isPresenceLive, nextExpiry } from "@/domain/presence";
 import { modelConfigured, newId } from "@/lib/meta/explain";
 import { normalizeDescription } from "@/lib/meta/normalize";
-import type { FileStore } from "@/lib/store/file-store";
+import type { Store } from "@/lib/store";
 import { slugify } from "@/server/match-profile";
 import { scheduleEmbedding } from "@/server/recommendations";
 
-function publicEvent(database: Awaited<ReturnType<FileStore["read"]>>, eventId: string) {
+function publicEvent(database: Awaited<ReturnType<Store["read"]>>, eventId: string) {
   const event = database.events.find((item) => item.id === eventId);
   if (!event) return null;
   const now = Date.now();
@@ -20,7 +20,7 @@ function publicEvent(database: Awaited<ReturnType<FileStore["read"]>>, eventId: 
   };
 }
 
-export function onboardingActions(store: FileStore) {
+export function onboardingActions(store: Store) {
   return {
     async listEvents(query = "") {
       const database = await store.read();

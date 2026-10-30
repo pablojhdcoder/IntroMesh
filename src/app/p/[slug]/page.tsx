@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { goalLabel } from "@/domain/catalog";
 import { service } from "@/lib/http";
-import { ShareTools } from "@/components/share-tools";
+import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 
 export const dynamic = "force-dynamic";

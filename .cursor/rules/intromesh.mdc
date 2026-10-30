@@ -6,7 +6,7 @@ alwaysApply: true
 # IntroMesh
 
 - Read `docs/DESIGN.md` before any UI. Reuse tokens and shadcn components; do not mix another visual library.
-- Separate UI (`src/app`, `src/components`), use cases (`src/server`), domain (`src/domain`), persistence (`src/lib/supabase`), and Meta (`src/lib/meta`).
+- Separate UI (`src/app`, `src/components` with `onboarding/`, `signal/`, `share/`), use cases (`src/server`), domain (`src/domain`), persistence (`src/lib/store`, `src/lib/supabase`), Meta (`src/lib/meta`), and session (`src/lib/session`).
 - Strict TypeScript. Validate external inputs and outputs with Zod.
 - `MODEL_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` only on the server. No `NEXT_PUBLIC_` for secrets.
 - Discovery requires consent. Do not invent rows, matches, or model text. Synthetic data carries the `demo` mark.

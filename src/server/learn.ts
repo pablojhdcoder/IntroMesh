@@ -2,9 +2,9 @@ import { aggregateActivity } from "@/domain/analytics";
 import { DEMO_EVENT_ID } from "@/domain/catalog";
 import { isPresenceLive } from "@/domain/presence";
 import { newId } from "@/lib/meta/explain";
-import type { FileStore } from "@/lib/store/file-store";
+import type { Store } from "@/lib/store";
 
-export function learnActions(store: FileStore) {
+export function learnActions(store: Store) {
   return {
     async share(profileId: string, method: "link" | "qr" | "nfc") {
       const type = method === "link" ? "share_link" : method === "qr" ? "share_qr" : "share_nfc";

@@ -2,7 +2,7 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createFileStore } from "./file-store";
+import { createMemoryStore } from "./memory-store";
 
 const dirs: string[] = [];
 
@@ -13,10 +13,10 @@ afterEach(async () => {
 async function tempStore() {
   const directory = await mkdtemp(path.join(tmpdir(), "intromesh-store-"));
   dirs.push(directory);
-  return createFileStore(directory);
+  return createMemoryStore(directory);
 }
 
-describe("createFileStore", () => {
+describe("createMemoryStore", () => {
   it("keeps concurrent updates without dropping identities", async () => {
     const store = await tempStore();
     await Promise.all([

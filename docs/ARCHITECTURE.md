@@ -8,11 +8,13 @@ This document sets the hackathon boundaries. The journey is already in the app. 
 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
-| UI | `src/app`, `src/components` | Screens and signal field. Does not call Meta or read secrets |
+| UI | `src/app`, `src/components` (`onboarding/`, `signal/`, `share/`) | Screens and signal field. Does not call Meta or read secrets |
 | Use cases | `src/server` | Registration, presence, discovery, explanation, connection, and analytics |
 | Domain | `src/domain` | Profile, presence, scoring, and vectors. No network or disk |
-| Persistence | `src/lib/store`, `src/lib/supabase` | Supabase Postgres via service role on the server. No `.data/store.json` |
+| Persistence | `src/lib/store`, `src/lib/supabase` | Supabase Postgres via service role on the server. Contract type is `Store` |
+| Session | `src/lib/session` | Signed profile cookie. Does not talk to Meta |
 | Meta | `src/lib/meta` | Client, schemas, errors, and a local request limit |
+| Embeddings I/O | `src/lib/embedding` | Local E5 runtime. Pure math stays in `src/domain/embedding` |
 
 Read the code in product order: `session` → `presence` → `discover` → `explain` → `connect` → `learn`.
 
@@ -40,7 +42,7 @@ Precise continuous location is not collected.
 
 ## Matching at scale
 
-There are two channels. The signal field still projects the neighborhood with feature hashing in `src/domain/embedding/vector.ts` so the approved layout does not move. The newer compatibility lives in `src/domain/matching/hybrid.ts` and in `EMBEDDING_ARCHITECTURE.md`, `MATCHING_ARCHITECTURE.md`, and `META_AI_CACHE.md`.
+There are two channels. The signal field still projects the neighborhood with feature hashing in `src/domain/embedding/vector.ts` so the approved layout does not move. The newer compatibility lives in `src/domain/matching/hybrid.ts` and in `docs/EMBEDDING.md`, `docs/MATCHING.md`, and `docs/META_AI_CACHE.md`.
 
 Profiles are not compared all-to-all.
 

@@ -1,9 +1,9 @@
 import { DEMO_EVENT_ID } from "@/domain/catalog";
 import { toSharedCard } from "@/domain/profile";
 import { newId } from "@/lib/meta/explain";
-import type { FileStore } from "@/lib/store/file-store";
+import type { Store } from "@/lib/store";
 
-export function connectActions(store: FileStore) {
+export function connectActions(store: Store) {
   return {
     async connections(profileId: string, eventId = DEMO_EVENT_ID) {
       const database = await store.read();

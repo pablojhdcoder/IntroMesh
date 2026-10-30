@@ -11,7 +11,7 @@ import {
   type HybridProfile,
 } from "@/domain/matching/hybrid";
 import { isPresenceLive } from "@/domain/presence";
-import type { Database, RecommendationRecord } from "@/lib/store/file-store";
+import type { Database, RecommendationRecord } from "@/lib/store";
 import type { StoredProfile } from "@/domain/profile";
 
 function globalHash(database: Database, userId: string): { hash: string; revision: number; vector: number[] | null } {

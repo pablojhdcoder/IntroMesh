@@ -1,9 +1,9 @@
 import "server-only";
 import { createSupabaseStore } from "./supabase-store";
-import type { FileStore } from "./file-store";
+import type { Store } from "./types";
 
 const globalStore = globalThis as typeof globalThis & {
-  __intromeshStore?: FileStore;
+  __intromeshStore?: Store;
   __intromeshPersistence?: "supabase";
 };
 
@@ -16,7 +16,7 @@ function requireSupabaseEnv() {
   }
 }
 
-export function getStore(): FileStore {
+export function getStore(): Store {
   requireSupabaseEnv();
   globalStore.__intromeshStore ??= createSupabaseStore();
   globalStore.__intromeshPersistence = "supabase";
@@ -28,4 +28,14 @@ export function persistenceMode(): "supabase" {
   return "supabase";
 }
 
-export type { FileStore, Database } from "./file-store";
+export type {
+  AffinityCacheRecord,
+  ConnectionRecord,
+  Database,
+  EventRecord,
+  GlobalIdentityRecord,
+  ParticipationRecord,
+  RecommendationRecord,
+  Store,
+} from "./types";
+export { hydrateDatabase } from "./types";

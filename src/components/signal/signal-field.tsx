@@ -2,9 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useMemo, useSyncExternalStore } from "react";
-import { compactSelection, MOBILE_BREAKPOINT } from "@/components/signal-field-layout";
+import { compactSelection, MOBILE_BREAKPOINT } from "@/components/signal/signal-field-layout";
 
-const SignalGalaxy = dynamic(() => import("@/components/signal-galaxy").then((mod) => mod.SignalGalaxy), {
+const SignalGalaxy = dynamic(() => import("@/components/signal/signal-galaxy").then((mod) => mod.SignalGalaxy), {
   ssr: false,
 });
 

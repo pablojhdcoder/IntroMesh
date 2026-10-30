@@ -11,7 +11,7 @@ import {
   placePeople,
   worldX,
   worldY,
-} from "@/components/signal-field-layout";
+} from "@/components/signal/signal-field-layout";
 
 const people = [
   { id: "cold-a", x: 30, y: 70, score: null },

@@ -4,11 +4,11 @@ import { cosineSimilarity, embedProfile, rankBySimilarity } from "@/domain/embed
 import { selectCandidates } from "@/domain/matching/select-candidates";
 import { toSharedCard } from "@/domain/profile";
 import { isPresenceLive, nextExpiry } from "@/domain/presence";
-import type { FileStore } from "@/lib/store/file-store";
+import type { Store } from "@/lib/store";
 import { asMatch } from "@/server/match-profile";
 import { confidenceOf, refreshViewerRecommendations } from "@/server/recommendations";
 
-export function discoverActions(store: FileStore) {
+export function discoverActions(store: Store) {
   return {
     async discover(profileId: string, eventId = DEMO_EVENT_ID) {
       const now = Date.now();

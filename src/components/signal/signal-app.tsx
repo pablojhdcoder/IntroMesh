@@ -5,9 +5,9 @@ import Link from "next/link";
 import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
 import { Button } from "@/components/ui/button";
-import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding-flow";
-import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal-field";
-import { ShareTools } from "@/components/share-tools";
+import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding/onboarding-flow";
+import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal/signal-field";
+import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 
 type Explanation = {

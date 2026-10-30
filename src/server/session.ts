@@ -1,9 +1,9 @@
 import { profileInputSchema, toPublicProfile, toSharedCard, type Presentation, type ProfileInput, type StoredProfile } from "@/domain/profile";
 import { modelConfigured, newId } from "@/lib/meta/explain";
-import { persistenceMode, type FileStore } from "@/lib/store";
+import { persistenceMode, type Store } from "@/lib/store";
 import { slugify } from "@/server/match-profile";
 
-export function sessionActions(store: FileStore) {
+export function sessionActions(store: Store) {
   return {
     async session(profileId: string | null) {
       const database = await store.read();

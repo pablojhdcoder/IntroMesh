@@ -1,4 +1,4 @@
-import type { FileStore } from "@/lib/store/file-store";
+import type { Store } from "@/lib/store";
 import { connectActions } from "@/server/connect";
 import { discoverActions } from "@/server/discover";
 import { explainActions } from "@/server/explain";
@@ -7,7 +7,7 @@ import { onboardingActions } from "@/server/onboarding";
 import { presenceActions } from "@/server/presence";
 import { sessionActions } from "@/server/session";
 
-export function createService(store: FileStore) {
+export function createService(store: Store) {
   return {
     ...sessionActions(store),
     ...onboardingActions(store),

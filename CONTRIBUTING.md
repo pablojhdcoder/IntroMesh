@@ -10,7 +10,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The app opens at http://localhost:3000. Without Supabase, data lives in `.data/store.json`, which is not versioned.
+The app opens at http://localhost:3000. Persistence requires Supabase (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`). Apply migrations in `supabase/APPLY.md` before the first join.
 
 Before opening a pull request:
 
@@ -73,7 +73,7 @@ Ask for review when checks pass. If a hook rejects a commit, fix it and create a
 ## Code
 
 - Strict TypeScript. External inputs and outputs are validated with Zod.
-- UI in `src/app` and `src/components`. Use cases in `src/server`. Domain in `src/domain`. Meta in `src/lib/meta`. Supabase in `src/lib/supabase`.
+- UI in `src/app` and `src/components` (`onboarding/`, `signal/`, `share/`). Use cases in `src/server`. Domain in `src/domain`. Persistence in `src/lib/store` and `src/lib/supabase`. Meta in `src/lib/meta`. Session in `src/lib/session`.
 - The interface reuses tokens and components from `docs/DESIGN.md`.
 - Discovery requires consent. Do not invent rows, matches, or model text.
 - Do not compare every profile to every other. Candidates come from the deterministic formula. The model only explains recommendations already chosen.

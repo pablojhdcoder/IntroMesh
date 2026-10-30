@@ -18,11 +18,12 @@ The always-on rule is in `.cursor/rules/intromesh.mdc`. These documents are the 
 - `docs/ARCHITECTURE.md` — layers, presence, matching, and Meta.
 - `docs/PRIVACY.md` — consent, minimization, and analytics.
 - `docs/PRODUCT.md` — product and audience.
+- Deep dives in `docs/`: `EMBEDDING.md`, `MATCHING.md`, `META_AI_CACHE.md`, `ONBOARDING.md`, `EVENT_CONTEXT.md`, `PROFILE_INTELLIGENCE.md`.
 
 ## Conventions
 
 - App Router, strict TypeScript, Tailwind 4, shadcn/ui, Motion, Lucide, Zod, Supabase, OpenAI SDK against `https://api.meta.ai/v1`.
-- UI in `src/app` and `src/components`. Use cases in `src/server`. Domain in `src/domain`. Meta in `src/lib/meta`. Supabase in `src/lib/supabase`.
+- UI in `src/app` and `src/components` (`onboarding/`, `signal/`, `share/`, `ui/`). Use cases in `src/server`. Domain in `src/domain`. Persistence in `src/lib/store` and `src/lib/supabase`. Meta in `src/lib/meta`. Session cookies in `src/lib/session`.
 - The lead agent defines contracts and order. Delegate UI to `ui-design-engineer`, matching and Meta to `meta-ai-matching-engineer`, and review to `qa-privacy-reviewer` (read-only). Do not assign the same file to two agents at once.
 - Project skills: `impeccable`, `emil-design-eng`, `ui-quality-review`, `meta-model-api`.
 - Product-facing copy is English for the Meta hackathon.

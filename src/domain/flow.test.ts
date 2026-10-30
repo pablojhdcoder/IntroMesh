@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { openProfileId, sealProfileId } from "@/lib/session-token";
+import { openProfileId, sealProfileId } from "@/lib/session";
 import { toSharedCard, type StoredProfile } from "./profile";
 import { aggregateActivity } from "./analytics";
 import { assertGrounded, demoExplanation, type GroundedExplanation } from "./ground";

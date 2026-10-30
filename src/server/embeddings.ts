@@ -1,8 +1,8 @@
 import { canonicalContextText, canonicalGlobalText, sha256 } from "@/domain/identity/canonical";
 import { claimEmbedding, finishEmbedding } from "@/domain/embedding/jobs";
-import type { FileStore } from "@/lib/store/file-store";
+import type { Store } from "@/lib/store";
 
-function sourceText(database: Awaited<ReturnType<FileStore["read"]>>, jobId: string): { id: string; text: string; hash: string } | null {
+function sourceText(database: Awaited<ReturnType<Store["read"]>>, jobId: string): { id: string; text: string; hash: string } | null {
   const job = database.embeddings.find((item) => item.id === jobId);
   if (!job) return null;
   if (job.kind === "global") {
@@ -30,7 +30,7 @@ function sourceText(database: Awaited<ReturnType<FileStore["read"]>>, jobId: str
 
 /** Procesa la cola de un proceso. Idempotente: un hash vigente no se regenera. */
 export async function processEmbeddingQueue(
-  store: FileStore,
+  store: Store,
   embed: (text: string) => Promise<number[]>,
   now = Date.now(),
 ): Promise<number> {

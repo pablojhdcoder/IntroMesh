@@ -1,7 +1,7 @@
 import { nextExpiry, type PresenceStatus } from "@/domain/presence";
-import type { FileStore } from "@/lib/store/file-store";
+import type { Store } from "@/lib/store";
 
-export function presenceActions(store: FileStore) {
+export function presenceActions(store: Store) {
   return {
     async setPresence(profileId: string, eventId: string, enabled: boolean, seeking: boolean) {
       const now = Date.now();

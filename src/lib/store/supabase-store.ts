@@ -13,11 +13,11 @@ import {
   type ConnectionRecord,
   type Database,
   type EventRecord,
-  type FileStore,
   type GlobalIdentityRecord,
   type ParticipationRecord,
   type RecommendationRecord,
-} from "./file-store";
+  type Store,
+} from "./types";
 
 type Admin = ReturnType<typeof createSupabaseAdmin>;
 
@@ -591,7 +591,7 @@ async function persistSnapshot(admin: Admin, database: Database): Promise<void> 
   }
 }
 
-export function createSupabaseStore(): FileStore {
+export function createSupabaseStore(): Store {
   let chain: Promise<unknown> = Promise.resolve();
   const admin = () => createSupabaseAdmin();
 
