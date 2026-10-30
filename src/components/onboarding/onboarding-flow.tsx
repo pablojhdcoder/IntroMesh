@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Crossfade } from "@/components/ui/crossfade";
 import { ThemeSwitch } from "@/components/theme-switch";
 
 type EventCard = {
@@ -43,6 +44,7 @@ type Step = "event" | "identity" | "intent" | "review";
 const field = "flex flex-col gap-2 text-sm text-muted-foreground";
 const input = "h-11 rounded-lg border border-border bg-transparent px-3 text-foreground";
 const textarea = "min-h-36 rounded-lg border border-border bg-transparent px-3 py-2 text-foreground";
+const badge = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
 
 function blankIdentity(name: string): Identity {
   return {
@@ -261,27 +263,30 @@ function OnboardingBody({
       }}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-3">
-          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.03em] text-balance min-[720px]:text-[2.75rem]">
-            {step === "event" ? "Where are you going?" : null}
-            {step === "identity" ? "Let's get to know you." : null}
-            {step === "intent" ? "What brings you here?" : null}
-            {step === "review" ? "Your AI-powered identity" : null}
-          </h1>
-          <p className="max-w-[42ch] text-sm text-muted-foreground">
-            {step === "event" ? "Choose an event and discover the people worth meeting." : null}
-            {step === "identity" ? "One description. Your entire professional identity." : null}
-            {step === "intent" ? "Tell us what would make this event meaningful for you." : null}
-            {step === "review" ? (manual ? "No Meta response. Review what you write before saving." : "Review what Meta understood. Nothing is saved until you confirm.") : null}
-          </p>
+        <div className="min-w-0 flex-1">
+          <Crossfade id={step} className="flex flex-col gap-3">
+            <h1 className="font-heading text-[2rem] leading-none tracking-[-0.03em] text-balance min-[720px]:text-[2.75rem]">
+              {step === "event" ? "Where are you going?" : null}
+              {step === "identity" ? "Let's get to know you." : null}
+              {step === "intent" ? "What brings you here?" : null}
+              {step === "review" ? "Your identity" : null}
+            </h1>
+            <p className="max-w-[42ch] text-sm text-muted-foreground">
+              {step === "event" ? "Choose an event." : null}
+              {step === "identity" ? "One description." : null}
+              {step === "intent" ? "What would make this event useful." : null}
+              {step === "review" ? (manual ? "No Meta response. Review before saving." : "Review, then save.") : null}
+            </p>
+          </Crossfade>
         </div>
         <ThemeSwitch />
       </div>
 
+      <Crossfade id={step} className="flex flex-col gap-6">
       {step === "event" ? (
         <div className="flex flex-col gap-6">
           <label className={field}>
-            Buscar
+            Search
             <input className={input} value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" onClick={() => void loadEvents()}>
@@ -354,25 +359,20 @@ function OnboardingBody({
             <input className={input} value={name} onChange={(event) => setName(event.target.value)} required />
           </label>
           <label className={field}>
-            Tell us about yourself
+            About you
             <textarea
               className={textarea}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="I'm a software developer passionate about AI and startups. I'm currently building an AI-powered product, I enjoy prototyping new ideas, and I'm looking to meet ambitious founders, designers and developers..."
+              placeholder="Role, what you’re building, who you want to meet."
               required
               minLength={20}
             />
           </label>
-          <p className="max-w-[52ch] text-sm text-muted-foreground">
-            Tell us what you do, what you&apos;re building, what interests you, what you can bring to a community and the people you&apos;d like to meet.
-          </p>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending}>
             {pending ? "Reading" : "Continue"}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            {metaConfigured ? "Meta Muse Spark will structure this description once." : "MODEL_API_KEY is missing. A Meta response will not be simulated."}
-          </p>
+          <p className={badge}>{metaConfigured ? "Meta · once" : "No key · nothing simulated"}</p>
         </div>
       ) : null}
 
@@ -381,7 +381,7 @@ function OnboardingBody({
           <IdentityPreview identity={identity} editing={editing} onChange={setIdentity} />
           <div className="flex flex-col gap-2 min-[720px]:flex-row">
             <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending}>
-              Looks good — Save my identity
+              Save identity
             </Button>
             <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" onClick={() => setEditing(true)}>
               Edit my profile
@@ -407,14 +407,15 @@ function OnboardingBody({
           </label>
           <label className="flex items-start gap-3 text-sm text-muted-foreground">
             <input type="checkbox" className="mt-1" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-            I want to be discoverable at this event. If unchecked, you join invisible.
+            Appear in discovery. Unchecked stays invisible.
           </label>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || !selected}>
             {pending ? "Joining" : "Join the event"}
           </Button>
-          <p className="text-sm text-muted-foreground">You can leave this empty. Your global identity will be used and Meta is not called for this text.</p>
+          <p className={badge}>Optional · Meta is not called</p>
         </div>
       ) : null}
+      </Crossfade>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </form>

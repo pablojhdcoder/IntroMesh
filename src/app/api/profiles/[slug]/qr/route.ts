@@ -11,7 +11,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   const svg = await QRCode.toString(`${origin}/p/${profile.slug}`, {
     type: "svg",
     margin: 1,
-    color: { dark: "#f4f1ea", light: "#00000000" },
+    color: { dark: "#ffffff", light: "#00000000" },
   });
   return new Response(svg, {
     headers: { "content-type": "image/svg+xml", "cache-control": "no-store" },

@@ -61,10 +61,10 @@ const PALETTE: Record<"light" | "dark", Palette> = {
   light: {
     root: 0x4c6610,
     hot: 0x6d8c1c,
-    cold: 0x8a8478,
-    label: "#16180f",
+    cold: 0x737373,
+    label: "#111111",
     linkHot: "rgba(76, 102, 16, 0.72)",
-    linkCold: "rgba(22, 24, 15, 0.22)",
+    linkCold: "rgba(10, 10, 10, 0.22)",
     particle: "#4c6610",
   },
   dark: {

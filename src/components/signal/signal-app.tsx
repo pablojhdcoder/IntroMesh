@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
 import { Button } from "@/components/ui/button";
+import { Crossfade } from "@/components/ui/crossfade";
 import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding/onboarding-flow";
 import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal/signal-field";
 import { ShareTools } from "@/components/share/share-tools";
@@ -145,10 +146,10 @@ export function SignalApp() {
       setExplanation(null);
       setExplainError(
         body.error === "match"
-          ? "There is not enough evidence to explain this connection."
+          ? "Not enough evidence."
           : body.error === "presence"
-            ? "Turn on your presence to see this explanation."
-            : "Meta did not return a valid explanation. Nothing was replaced with invented text.",
+            ? "Turn on presence."
+            : "Meta returned no explanation.",
       );
       return;
     }
@@ -213,7 +214,7 @@ export function SignalApp() {
           <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em]">IntroMesh</h1>
           <p className="max-w-[36ch] text-sm text-muted-foreground">
             {session.event?.name}
-            {session.event?.demo ? ". Demo nodes are not physically in the room." : "."}
+            {session.event?.demo ? " · Demo" : ""}
           </p>
         </div>
         <div className="flex flex-col gap-2 min-[720px]:items-end">
@@ -251,9 +252,7 @@ export function SignalApp() {
       </header>
 
       {!session.metaConfigured ? (
-        <p className="max-w-[62ch] shrink-0 text-sm text-muted-foreground">
-          Demo mode. MODEL_API_KEY is missing: explanations come from declared fields and are not Meta AI responses.
-        </p>
+        <p className={`${meta} shrink-0`}>Demo · declared fields, not Meta</p>
       ) : null}
       {loadError ? <p className="text-sm text-destructive">{loadError}</p> : null}
 
@@ -265,8 +264,12 @@ export function SignalApp() {
         />
 
         <section className="flex min-h-0 flex-col gap-6 min-[720px]:overflow-y-auto">
+          <Crossfade
+            id={!visible ? "invisible" : selfSelected ? "self" : detail ? `person:${detail.person.id}` : "list"}
+            className="flex flex-col gap-6"
+          >
           {!visible ? (
-            <p className="max-w-[40ch] text-sm text-muted-foreground">You are invisible. Turn on presence to see who else is at the event.</p>
+            <p className="max-w-[40ch] text-sm text-muted-foreground">Invisible. Turn on presence to see the room.</p>
           ) : null}
 
           {selfSelected && session.profile ? (
@@ -283,7 +286,6 @@ export function SignalApp() {
                 <dt className="text-muted-foreground">Looking for</dt>
                 <dd>{session.profile.seeking}</dd>
               </dl>
-              <p className="max-w-[40ch] text-sm text-muted-foreground">Press your node again to see the whole room.</p>
             </article>
           ) : null}
 
@@ -316,21 +318,27 @@ export function SignalApp() {
                 </p>
               </div>
 
-              {explainPending ? <p className="text-sm text-muted-foreground">Preparing the explanation.</p> : null}
-              {explainError ? <p className="text-sm text-destructive">{explainError}</p> : null}
-              {explanation ? (
-                <div className="flex flex-col gap-3">
-                  <p className="max-w-[52ch] text-[0.9375rem] leading-normal">{explanation.summary}</p>
-                  <p className="max-w-[52ch] text-sm text-muted-foreground">{explanation.opener}</p>
-                  <p className={meta}>{explanation.source === "model" ? "Meta AI" : "Demo, not Meta AI"}</p>
-                </div>
-              ) : null}
+              <Crossfade
+                id={explainPending ? "pending" : explainError ? "error" : explanation ? "ready" : "idle"}
+                initial
+                className="flex flex-col gap-3"
+              >
+                {explainPending ? <p className="text-sm text-muted-foreground">Preparing explanation.</p> : null}
+                {explainError ? <p className="text-sm text-destructive">{explainError}</p> : null}
+                {explanation ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="max-w-[52ch] text-[0.9375rem] leading-normal">{explanation.summary}</p>
+                    <p className="max-w-[52ch] text-sm text-muted-foreground">{explanation.opener}</p>
+                    <p className={meta}>{explanation.source === "model" ? "Meta AI" : "Demo"}</p>
+                  </div>
+                ) : null}
+              </Crossfade>
 
               <div className="flex flex-col gap-3">
                 {relation?.status === "pending" ? <p className={meta}>Request pending</p> : null}
                 {relation?.status === "accepted" ? (
                   <p className="max-w-[52ch] text-sm">
-                    Connection accepted. The introduction is saved{relation.intro ? `: ${relation.intro}` : "."}
+                    Connection accepted{relation.intro ? `. ${relation.intro}` : "."}
                   </p>
                 ) : null}
                 <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
@@ -350,7 +358,11 @@ export function SignalApp() {
                 </div>
               </div>
 
-              {relation?.status === "accepted" && session.profile ? <ShareTools slug={session.profile.slug} name={session.profile.displayName} /> : null}
+              {relation?.status === "accepted" && session.profile ? (
+                <Crossfade id="share" initial className="flex flex-col">
+                  <ShareTools slug={session.profile.slug} name={session.profile.displayName} />
+                </Crossfade>
+              ) : null}
             </article>
           ) : null}
 
@@ -359,7 +371,7 @@ export function SignalApp() {
               <h2 className={meta}>{detail ? "More signals" : "Recommendations"}</h2>
               {others.length === 0 ? (
                 <p className="max-w-[40ch] text-sm text-muted-foreground">
-                  {detail ? "No more signals right now." : "Nobody visible shares a goal, interest, or skill with you."}
+                  {detail ? "No more signals." : "Nobody visible yet."}
                 </p>
               ) : (
                 <ul className="flex flex-col">
@@ -382,6 +394,7 @@ export function SignalApp() {
               )}
             </div>
           ) : null}
+          </Crossfade>
         </section>
       </div>
     </div>

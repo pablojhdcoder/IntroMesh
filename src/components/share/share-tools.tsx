@@ -94,9 +94,6 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
           Copy link
         </Button>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="ghost" className={ghostAction} onClick={() => void track("qr")}>
-            QR ready
-          </Button>
           <Button type="button" variant="ghost" className={ghostAction} disabled={!supported} onClick={() => void writeTag()}>
             Write NFC
           </Button>
@@ -106,9 +103,7 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
         </div>
       </div>
       <p className="max-w-[48ch] text-sm text-muted-foreground">
-        {supported
-          ? "Web NFC only writes or reads a tag after your gesture. It does not pair two phones."
-          : "NFC is not available here. Chrome on Android in a secure context is the compatible case. Link and QR do not depend on that."}
+        {supported ? "NFC writes a tag. It does not pair phones." : "NFC unavailable. Use link or QR."}
       </p>
       {message ? (
         <p className="text-sm" role="status" aria-live="polite">

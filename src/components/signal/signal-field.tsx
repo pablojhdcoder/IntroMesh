@@ -66,13 +66,13 @@ export function SignalField({
   return (
     <div
       role="group"
-      aria-label="Campo de asistentes"
+      aria-label="Attendee field"
       className="relative h-[28rem] w-full min-h-0 touch-manipulation min-[720px]:h-full"
     >
       <SignalGalaxy people={shown} selectedId={selectedId} onSelect={onSelect} reducedMotion={reducedMotion} />
       {empty ? (
         <p role="status" className="pointer-events-none absolute bottom-4 left-0 font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">
-          Nadie visible
+          Nobody visible
         </p>
       ) : null}
       <ul className="sr-only">

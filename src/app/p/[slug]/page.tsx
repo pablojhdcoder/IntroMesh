@@ -51,7 +51,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
       <ShareTools slug={profile.slug} name={profile.displayName} />
 
-      <p className="max-w-[48ch] text-sm text-muted-foreground">Only the identity this person authorized is shown. A private connection still needs acceptance.</p>
+      <p className="max-w-[48ch] text-sm text-muted-foreground">Authorized identity only. Connection still needs acceptance.</p>
     </main>
   );
 }

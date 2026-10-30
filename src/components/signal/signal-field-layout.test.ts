@@ -111,7 +111,7 @@ describe("easeOut", () => {
 
 describe("parseCssColor", () => {
   it("lee hexadecimal y rgb con barra de alfa", () => {
-    expect(parseCssColor("#f6f4ef")).toEqual({ r: 246 / 255, g: 244 / 255, b: 239 / 255, a: 1 });
+    expect(parseCssColor("#f4f4f5")).toEqual({ r: 244 / 255, g: 244 / 255, b: 245 / 255, a: 1 });
     expect(parseCssColor(" #fff ")).toEqual({ r: 1, g: 1, b: 1, a: 1 });
     expect(parseCssColor("rgb(22 24 15 / 0.22)")).toEqual({ r: 22 / 255, g: 24 / 255, b: 15 / 255, a: 0.22 });
     expect(parseCssColor("rgba(214, 255, 74, 0.35)")).toEqual({ r: 214 / 255, g: 1, b: 74 / 255, a: 0.35 });

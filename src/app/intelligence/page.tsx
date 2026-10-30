@@ -19,8 +19,7 @@ export default async function IntelligencePage() {
           </p>
           <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] min-[720px]:text-[2.5rem]">Intelligence</h1>
           <p className="max-w-[44ch] text-sm text-muted-foreground">
-            {data.event?.name ?? "Event"}. Aggregates only — no personal histories or people rankings.
-            {data.demo ? " Seed demo data." : ""}
+            {data.event?.name ?? "Event"}. Aggregates only{data.demo ? " · Demo" : ""}.
           </p>
         </div>
         <ThemeSwitch />
