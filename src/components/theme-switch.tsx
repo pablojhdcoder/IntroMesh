@@ -47,22 +47,24 @@ export function ThemeSwitch({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="relative h-7 w-[3.25rem] rounded-full border border-border bg-[var(--switch-track)] transition-[background-color,border-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none">
+      <span className="relative flex h-7 w-[50px] items-center rounded-full border border-border bg-[var(--switch-track)] p-0.5 transition-[background-color,border-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none">
         <span
           aria-hidden
-          className="absolute top-[3px] left-[3px] size-[22px] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:translate-x-6"
+          className="absolute top-0.5 left-0.5 size-[22px] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:translate-x-[22px]"
         >
           <span className="block size-full rounded-full bg-[var(--switch-thumb)] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] group-active:scale-[0.92] motion-reduce:transition-none" />
         </span>
-        <span className="relative z-10 grid h-full w-full grid-cols-2 place-items-center">
+        <span className="relative z-10 grid size-[22px] place-items-center">
           <Sun
             aria-hidden
-            className="size-3 text-foreground transition-[color] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:text-muted-foreground"
+            className="block size-3 text-foreground transition-[color] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:text-muted-foreground"
             strokeWidth={1.75}
           />
+        </span>
+        <span className="relative z-10 grid size-[22px] place-items-center">
           <Moon
             aria-hidden
-            className="size-3 text-muted-foreground transition-[color] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:text-foreground"
+            className="block size-3 text-muted-foreground transition-[color] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:text-foreground"
             strokeWidth={1.75}
           />
         </span>
