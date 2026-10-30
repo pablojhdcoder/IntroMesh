@@ -14,14 +14,15 @@ Plataforma de networking presencial. Hilo: Discover → Understand → Connect �
 
 La regla siempre activa está en `.cursor/rules/intromesh.mdc`. Estos documentos son la fuente de detalle:
 
-- `DESIGN.md` — The Signal Loop. Obligatorio para UI.
-- `ARCHITECTURE.md` — capas, presencia, matching y Meta.
-- `PRIVACY.md` — consentimiento, minimización y analítica.
+- `docs/DESIGN.md` — The Signal Loop. Obligatorio para UI.
+- `docs/ARCHITECTURE.md` — capas, presencia, matching y Meta.
+- `docs/PRIVACY.md` — consentimiento, minimización y analítica.
+- `docs/PRODUCT.md` — producto y audiencia.
 
 ## Convenciones
 
 - App Router, TypeScript estricto, Tailwind 4, shadcn/ui, Motion, Lucide, Zod, Supabase, OpenAI SDK contra `https://api.meta.ai/v1`.
-- UI en `src/components`. Dominio en `src/domain`. Meta en `src/lib/meta`. Supabase en `src/lib/supabase`.
+- UI en `src/app` y `src/components`. Casos de uso en `src/server`. Dominio en `src/domain`. Meta en `src/lib/meta`. Supabase en `src/lib/supabase`.
 - El agente principal define contratos y el orden. Delega UI a `ui-design-engineer`, matching y Meta a `meta-ai-matching-engineer`, y la revisión a `qa-privacy-reviewer` (solo lectura). No encargues el mismo archivo a dos agentes a la vez.
 - Skills de proyecto: `impeccable`, `emil-design-eng`, `ui-quality-review`, `meta-model-api`.
 

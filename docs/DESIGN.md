@@ -16,7 +16,7 @@ Referencias de calidad: la precisión de Linear, la claridad de Vercel y el cuid
 ## Evitar
 
 - Gradientes gratuitos, blobs y mesh backgrounds.
-- Glassmorphism apilado. El campo de señal es la única excepción a “sin 3D”: profundidad real con three, cámara quieta y material mate. El resto de la interfaz sigue plana.
+- Glassmorphism apilado. El campo de señal es la única superficie 3D: esferas de vidrio, hilos con partículas y órbita. El resto de la interfaz sigue plana.
 - Varias animaciones a la vez compitiendo con el texto.
 - Tarjetas genéricas de SaaS con icono, título y tres bullets idénticos.
 - Mezclar radios, sombras o familias tipográficas fuera de estos tokens.
@@ -117,7 +117,7 @@ shadcn/ui es la base. Se reestiliza con estos tokens. No se mezclan otras librer
 - Botón primario: fondo `--signal`, texto `#14160c`, radio `--radius-sm`.
 - Botón secundario: superficie, borde `--line`, texto `--foreground`.
 - Tarjeta de afinidad: superficie, una razón visible, máximo tres evidencias, acción clara.
-- Campo de señal: única superficie 3D. Nodo pequeño con volumen, mate, sobre `--background`. La profundidad sale del dato (score, id), no del azar. “Tú” es el origen. Hilos solo hacia recomendaciones ya elegidas. El seleccionado se acerca y usa `--field-edge-active`; el resto permanece quieto. El nombre va junto al nodo activo o recomendado, alineado al punto, sin caja. En claro, el lima no marca el campo: usa `--signal-strong` / `--node-hot`.
+- Campo de señal: única superficie 3D. “Tú” queda fijo en el centro. El resto orbita con una simulación de fuerzas, esferas de vidrio (transmisión, clearcoat) y partículas que recorren los hilos. Quien es recomendación brilla con la señal; el resto es más tenue. El nombre flota bajo la esfera. Se puede orbitar la cámara. Con `prefers-reduced-motion` no hay partículas ni autorrotación. En claro, el lima no marca el campo: usa `--signal-strong`.
 - Estados obligatorios: carga, vacío, error, éxito, selección y deshabilitado.
 
 ## Accesibilidad
@@ -130,7 +130,6 @@ shadcn/ui es la base. Se reestiliza con estos tokens. No se mezclan otras librer
 ## Responsive
 
 - `< 720px`: una columna. El campo muestra a la persona activa y dos o tres señales; el resto queda en lista. Las acciones primarias ocupan el ancho.
-- `≥ 720px`: lista y detalle.
-- `≥ 1100px`: campo a la izquierda, explicación a la derecha.
+- `≥ 720px`: campo a la izquierda y explicación a la derecha, en una sola pantalla. El detalle, si crece, se desplaza dentro de su columna.
 
 Áreas táctiles de al menos 44px. Inputs a 16px para evitar zoom en iOS.

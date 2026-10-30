@@ -36,7 +36,7 @@ Abierto: el idioma definitivo de la interfaz si el hackathon exige inglés. El a
 
 ## Brand Commitments
 
-Nombre: IntroMesh. La dirección visual vinculante está en `DESIGN.md` (The Signal Loop). No se copia la interfaz de Linear, Vercel ni Apple.
+Nombre: IntroMesh. La dirección visual vinculante está en `docs/DESIGN.md` (The Signal Loop). No se copia la interfaz de Linear, Vercel ni Apple.
 
 ## Evidence on Hand
 
@@ -52,4 +52,4 @@ No hay testimonios, clientes, precios ni métricas de uso. No se fabrican. Los n
 
 ## Accessibility & Inclusion
 
-Teclado, foco visible, contraste del sistema en `DESIGN.md` y respeto de `prefers-reduced-motion`. La red tiene una alternativa en lista. Áreas táctiles de al menos 44px.
+Teclado, foco visible, contraste del sistema en `docs/DESIGN.md` y respeto de `prefers-reduced-motion`. La red tiene una alternativa en lista. Áreas táctiles de al menos 44px.

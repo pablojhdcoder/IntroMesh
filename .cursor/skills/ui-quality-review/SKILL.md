@@ -9,7 +9,7 @@ description: >-
 
 # Revisión visual de IntroMesh
 
-Lee `DESIGN.md` antes de tocar la interfaz. Corrige los problemas de mayor impacto. No entregues solo una lista de críticas.
+Lee `docs/DESIGN.md` antes de tocar la interfaz. Corrige los problemas de mayor impacto. No entregues solo una lista de críticas.
 
 ## Orden de trabajo
 
@@ -25,7 +25,7 @@ Lee `DESIGN.md` antes de tocar la interfaz. Corrige los problemas de mayor impac
 - Jerarquía: un título, un acento, una acción primaria.
 - Tipografía: Instrument Serif solo en display; Geist en UI; mono en etiquetas.
 - Espaciado sobre la escala de 4. Alineación óptica, no solo de caja.
-- Radios, bordes y sombras de `DESIGN.md`. Un acento `#d6ff4a`.
+- Radios, bordes y sombras de `docs/DESIGN.md`. Un acento `#d6ff4a`.
 - Iconos Lucide del mismo tamaño óptico, con texto o `aria-label`.
 - Movimiento en `transform` y `opacity`, ease-out, y corte con `prefers-reduced-motion`.
 - Teclado, foco visible y contraste.
