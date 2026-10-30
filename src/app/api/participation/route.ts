@@ -22,7 +22,9 @@ export async function POST(request: Request) {
       const status = result.error === "ended" ? 410 : result.error === "missing" ? 404 : 409;
       return json(result, status);
     }
-    void processEmbeddingQueue(getStore(), embedText).catch(() => undefined);
+    setTimeout(() => {
+      void processEmbeddingQueue(getStore(), embedText).catch(() => undefined);
+    }, 0);
     return json(result);
   } catch (error) {
     return fail(error);

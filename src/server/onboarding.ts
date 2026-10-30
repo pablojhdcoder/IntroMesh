@@ -80,7 +80,8 @@ export function onboardingActions(store: FileStore) {
         return { userId, identity: null, reused: false as const };
       });
       if (prepared.reused) return { userId: prepared.userId, identity: prepared.identity, source: "cache" as const, metaConfigured: modelConfigured() };
-      if (!modelConfigured()) {
+
+      async function saveDraft() {
         await store.update((database) => {
           const previous = database.identities.find((item) => item.userId === prepared.userId);
           database.identities = database.identities.filter((item) => item.userId !== prepared.userId).concat({
@@ -96,31 +97,40 @@ export function onboardingActions(store: FileStore) {
             updatedAt: new Date().toISOString(),
           });
         });
+      }
+
+      if (!modelConfigured()) {
+        await saveDraft();
         return { error: "meta" as const, userId: prepared.userId };
       }
       const started = Date.now();
-      const normalized = await normalizeDescription({ displayName: draft.displayName, description: draft.description });
-      await store.update((database) => {
-        const previous = database.identities.find((item) => item.userId === userId);
-        const next = {
-          userId,
-          displayName: draft.displayName,
-          originalDescription: draft.description,
-          inputHash: sha256(draft.description.trim()),
-          generated: normalized.identity,
-          confirmed: previous?.confirmed ?? null,
-          revision: previous?.revision ?? 0,
-          status: "generated" as const,
-          source: "model" as const,
-          updatedAt: new Date().toISOString(),
-        };
-        database.identities = database.identities.filter((item) => item.userId !== userId).concat(next);
-        database.metrics.normalizationCalls += 1;
-        database.metrics.latencyMs += Date.now() - started;
-        if (normalized.usage.input) database.metrics.inputTokens += normalized.usage.input;
-        if (normalized.usage.output) database.metrics.outputTokens += normalized.usage.output;
-      });
-      return { userId, identity: normalized.identity, source: "model" as const, metaConfigured: true };
+      try {
+        const normalized = await normalizeDescription({ displayName: draft.displayName, description: draft.description });
+        await store.update((database) => {
+          const previous = database.identities.find((item) => item.userId === userId);
+          const next = {
+            userId,
+            displayName: draft.displayName,
+            originalDescription: draft.description,
+            inputHash: sha256(draft.description.trim()),
+            generated: normalized.identity,
+            confirmed: previous?.confirmed ?? null,
+            revision: previous?.revision ?? 0,
+            status: "generated" as const,
+            source: "model" as const,
+            updatedAt: new Date().toISOString(),
+          };
+          database.identities = database.identities.filter((item) => item.userId !== userId).concat(next);
+          database.metrics.normalizationCalls += 1;
+          database.metrics.latencyMs += Date.now() - started;
+          if (normalized.usage.input) database.metrics.inputTokens += normalized.usage.input;
+          if (normalized.usage.output) database.metrics.outputTokens += normalized.usage.output;
+        });
+        return { userId, identity: normalized.identity, source: "model" as const, metaConfigured: true };
+      } catch {
+        await saveDraft();
+        return { error: "meta" as const, userId: prepared.userId };
+      }
     },
 
     async confirmIdentity(profileId: string, identity: StructuredIdentity) {

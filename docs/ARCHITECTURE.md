@@ -11,7 +11,7 @@ This document sets the hackathon boundaries. The journey is already in the app. 
 | UI | `src/app`, `src/components` | Screens and signal field. Does not call Meta or read secrets |
 | Use cases | `src/server` | Registration, presence, discovery, explanation, connection, and analytics |
 | Domain | `src/domain` | Profile, presence, scoring, and vectors. No network or disk |
-| Persistence | `src/lib/store`, `src/lib/supabase` | Local file today. Postgres when a project exists. Service role only on the server |
+| Persistence | `src/lib/store`, `src/lib/supabase` | Supabase Postgres via service role on the server. No `.data/store.json` |
 | Meta | `src/lib/meta` | Client, schemas, errors, and a local request limit |
 
 Read the code in product order: `session` → `presence` → `discover` → `explain` → `connect` → `learn`.
@@ -75,7 +75,7 @@ No all-pairs matrix is built. Meta only explains a candidate already scored, and
 
 ## Persistence in this hackathon
 
-Without `NEXT_PUBLIC_SUPABASE_URL` or a service role, the server uses `.data/store.json`. That file is local, gitignored, and not the production backend. Migration `supabase/migrations/0001_init.sql` leaves the schema ready for a project. Session presence expires after 90 seconds without a heartbeat. Presence marked `demo` is a labeled fixture, not a phone in the room.
+The server requires Supabase (`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Apply `supabase/migrations/0001_init.sql` through `0004_store_parity.sql` (see `supabase/APPLY.md`). Session presence expires after 90 seconds without a heartbeat. Presence marked `demo` is a labeled fixture, not a phone in the room.
 
 ## Supabase
 
@@ -83,7 +83,7 @@ Public variables, protected by RLS: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUP
 
 Server secret: `SUPABASE_SERVICE_ROLE_KEY`. Never on the client or in `NEXT_PUBLIC_*`.
 
-Without keys the app still starts. Persistence functions fail with an explicit error when used.
+Without keys the app refuses to boot the data layer. Apply the migrations before the first join.
 
 ## Demo mode
 

@@ -34,7 +34,10 @@ export async function POST(request: Request) {
     if (!id) return json({ error: "profile" }, 401);
     const saved = await service().confirmIdentity(id, body.identity);
     if ("error" in saved) return json(saved, 404);
-    void processEmbeddingQueue(getStore(), embedText).catch(() => undefined);
+    // Defer so join can persist before the embedding model load contends for the store.
+    setTimeout(() => {
+      void processEmbeddingQueue(getStore(), embedText).catch(() => undefined);
+    }, 0);
     return json(saved);
   } catch (error) {
     return fail(error);

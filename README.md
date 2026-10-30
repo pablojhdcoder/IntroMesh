@@ -32,7 +32,7 @@ npm run dev
 
 Open http://localhost:3000.
 
-Without Supabase, data lives in `.data/store.json` (not versioned). The first read seeds 180 demo profiles and leaves 28 visible at the Meta Hackathon. The real migration is in `supabase/migrations/0001_init.sql`.
+Persistence is **Supabase only**. Apply the SQL in `supabase/APPLY.md` (migrations `0001` → `0004`), then set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The demo room is the 28 labeled profiles from `0002_demo_seed.sql`.
 
 ## Variables
 
@@ -41,9 +41,9 @@ Without Supabase, data lives in `.data/store.json` (not versioned). The first re
 | `MODEL_API_KEY` | Meta Model API. Server only |
 | `META_MODEL_BASE_URL` | Defaults to `https://api.meta.ai/v1` |
 | `META_MODEL_ID` | Defaults to `muse-spark-1.3` |
-| `NEXT_PUBLIC_SUPABASE_URL` | Not yet wired into the main loop |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public, with RLS when Auth exists |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server only |
+| `NEXT_PUBLIC_SUPABASE_URL` | Project URL. Required |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key. Required |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only. Required for reads/writes |
 
 ## Try the flow
 

@@ -1,11 +1,8 @@
-import path from "node:path";
-import { createFileStore } from "../src/lib/store/file-store";
 import { embedText } from "../src/lib/embedding/engine";
+import { getStore } from "../src/lib/store";
 import { processEmbeddingQueue } from "../src/server/embeddings";
 
-const store = createFileStore(path.join(process.cwd(), ".data"));
-
-processEmbeddingQueue(store, embedText)
+processEmbeddingQueue(getStore(), embedText)
   .then((count) => {
     console.log(`embeddings completed: ${count}`);
   })

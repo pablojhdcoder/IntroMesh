@@ -223,7 +223,7 @@ function OnboardingBody({
   }
 
   async function join() {
-    if (!selected) return;
+    if (!selected || pending) return;
     setPending(true);
     setError(null);
     const response = await fetch("/api/participation", {
@@ -234,7 +234,17 @@ function OnboardingBody({
     const body = await response.json();
     setPending(false);
     if (!response.ok) {
-      setError(body.error === "ended" ? "This event is no longer available." : "Could not join the event.");
+      if (body.error === "ended") {
+        setError("This event is no longer available.");
+      } else if (body.error === "identity") {
+        setError("Confirm your identity before joining the event.");
+        setStep("identity");
+      } else if (response.status === 401) {
+        setError("Your session expired. Describe yourself again.");
+        setStep("identity");
+      } else {
+        setError("Could not join the event.");
+      }
       return;
     }
     onSaved();

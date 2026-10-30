@@ -1,6 +1,6 @@
 import { profileInputSchema, toPublicProfile, toSharedCard, type Presentation, type ProfileInput, type StoredProfile } from "@/domain/profile";
 import { modelConfigured, newId } from "@/lib/meta/explain";
-import type { FileStore } from "@/lib/store/file-store";
+import { persistenceMode, type FileStore } from "@/lib/store";
 import { slugify } from "@/server/match-profile";
 
 export function sessionActions(store: FileStore) {
@@ -35,7 +35,7 @@ export function sessionActions(store: FileStore) {
             : null,
         metaConfigured: modelConfigured(),
         canCreateEvent: process.env.INTROMESH_ALLOW_EVENT_CREATE === "1",
-        persistence: "file" as const,
+        persistence: persistenceMode(),
         event: ready ? event : null,
       };
     },
