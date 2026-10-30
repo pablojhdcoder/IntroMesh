@@ -22,8 +22,8 @@ const identity: StructuredIdentity = {
   profile_summary: "Developer building AI products.",
 };
 
-describe("normalización", () => {
-  it("no vuelve a llamar cuando el hash de la descripción sigue vigente", () => {
+describe("normalization", () => {
+  it("does not call again when the description hash still holds", () => {
     const description = "I build AI products with founders.";
     expect(shouldNormalize({ inputHash: sha256(description.trim()), generated: identity }, description, false)).toBe(false);
     expect(shouldNormalize({ inputHash: sha256(description.trim()), generated: identity }, "Otra descripción distinta y larga.", false)).toBe(true);
@@ -50,7 +50,7 @@ describe("embeddings", () => {
     expect(VECTOR_SEARCH_SQL).toContain("<=>");
   });
 
-  it("reutiliza el vector si el hash y la revisión no cambian y aísla el contexto", () => {
+  it("reuses the vector when hash and revision hold and isolates context", () => {
     const now = Date.parse("2026-10-30T12:00:00.000Z");
     const first = upsertEmbeddingJob(
       [],
@@ -111,7 +111,7 @@ describe("embeddings", () => {
   });
 });
 
-describe("ranking híbrido", () => {
+describe("hybrid ranking", () => {
   it("renormaliza cuando falta el contexto del evento", () => {
     const withContext = finalScore({ semantic: 1, goal: 0, skill: 0, interest: 0, event: 0 });
     const without = finalScore({ semantic: 1, goal: 0, skill: 0, interest: 0, event: null });
@@ -119,7 +119,7 @@ describe("ranking híbrido", () => {
     expect(without.score).toBeGreaterThan(withContext.score);
   });
 
-  it("puntúa complemento aunque no compartan intereses", () => {
+  it("scores complement even without shared interests", () => {
     const scored = scorePair(
       {
         id: "a",
@@ -150,7 +150,7 @@ describe("ranking híbrido", () => {
   });
 });
 
-describe("caché de explicaciones", () => {
+describe("explanation cache", () => {
   const draft = {
     id: "1",
     cacheKey: "k",
@@ -163,7 +163,7 @@ describe("caché de explicaciones", () => {
     createdAt: "2026-10-30T12:00:00.000Z",
   };
 
-  it("abre una vez el modelo y las cinco siguientes salen de la caché", async () => {
+  it("calls the model once and serves the next five from cache", async () => {
     let calls = 0;
     let records: Parameters<typeof resolveExplanation>[0]["records"] = [];
     for (let index = 0; index < 6; index += 1) {
@@ -206,7 +206,7 @@ describe("caché de explicaciones", () => {
       rankingVersion: "hybrid-v1",
       promptVersion: "match-explain-v1",
       modelId: "muse-spark-1.3",
-      locale: "es",
+      locale: "en",
     };
     const forward = explanationCacheKey(base);
     const backward = explanationCacheKey({ ...base, viewerHash: "b", candidateHash: "a" });
@@ -215,7 +215,7 @@ describe("caché de explicaciones", () => {
 });
 
 describe("pgvector", () => {
-  it("la migración crea el índice de coseno", () => {
+  it("migration creates the cosine index", () => {
     const sql = readFileSync("supabase/migrations/0003_intelligence.sql", "utf8");
     expect(sql).toContain("vector_cosine_ops");
     expect(sql).toContain("<=>");

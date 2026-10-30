@@ -1,21 +1,18 @@
 # Profile intelligence
 
-Muse Spark (`muse-spark-1.3`, Responses API, `text.format`) convierte la descripción libre en una identidad Zod. El prompt vive en `NORMALIZE_PROMPT`.
+Muse Spark (`muse-spark-1.3`, Responses API, `text.format`) turns free-form description into a Zod identity. The prompt lives in `NORMALIZE_PROMPT`.
 
-Se llama solo si no hay una generación con el mismo SHA-256, o si la persona pide regenerar. Entrar en la app o en otro evento no llama al modelo.
+It is called only if there is no generation with the same SHA-256, or if the person asks to regenerate. Entering the app or another event does not call the model.
 
-Tres versiones:
-
-| Versión | Dónde |
+| Version | Where |
 | --- | --- |
-| Descripción original | `global_identities.original_description` |
-| Generada | `generated` |
-| Confirmada | `confirmed` |
+| Original description | `global_identities.original_description` |
+| Generated / confirmed | `global_identities.generated` / `confirmed` |
 
-Editar un campo estructurado guarda la versión de la persona y no reenvía el perfil a Meta. Cambiar la descripción original sí puede pedir otra normalización.
+Editing a structured field saves the person’s version and does not resend the profile to Meta. Changing the original description can request another normalization.
 
-Las listas se contrastan con el texto. Lo que no aparece se vacía. No se infieren atributos sensibles: esas frases se retiran antes del prompt.
+Lists are checked against the source text. Unsupported items are cleared. Sensitive attributes are not inferred: those phrases are removed before the prompt.
 
-Sin `MODEL_API_KEY` la ruta responde que Meta no está disponible. No se fabrica un perfil y se presenta como del modelo. La persona puede completar los campos a mano.
+Without `MODEL_API_KEY` the route answers that Meta is unavailable. A fabricated profile is not presented as model output. The person can fill fields by hand.
 
-La proyección al perfil que ya consume el grafo está en `toProfileInput`. El rol ausente queda como `n/d`, no como una profesión inventada.
+Projection into the profile the graph already consumes is in `toProfileInput`. A missing role becomes `Participant`, not an invented profession.

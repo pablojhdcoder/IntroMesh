@@ -1,19 +1,19 @@
-# Código de conducta
+# Code of conduct
 
-IntroMesh se construye para que la gente se encuentre en un evento. El mismo cuidado vale en issues, pull requests y revisiones.
+IntroMesh is built so people can meet at an event. The same care applies in issues, pull requests, and reviews.
 
-## Compromiso
+## Commitment
 
-Quien participa se trata con respeto. Se critica el cambio, no a la persona. Se asume buena fe y se pide aclaración antes de escalar el tono.
+Participants treat each other with respect. Critique the change, not the person. Assume good faith and ask for clarification before escalating tone.
 
-No tienen cabida el acoso, los insultos, la discriminación, la publicación de datos privados ni el uso del proyecto para engañar a quien asiste a un evento.
+Harassment, insults, discrimination, publishing private data, and using the project to deceive event attendees have no place here.
 
-## Alcance
+## Scope
 
-Esta norma cubre el repositorio, las revisiones y cualquier espacio en el que alguien represente al proyecto.
+This standard covers the repository, reviews, and any space where someone represents the project.
 
-## Qué hacer
+## What to do
 
-Si ves una conducta que no encaja aquí, cuéntalo en un aviso privado del repositorio: qué pasó, dónde y cuándo. No lo publiques en un issue ni incluyas datos personales.
+If you see conduct that does not fit here, report it in a private repository advisory: what happened, where, and when. Do not post it in an issue or include personal data.
 
-Quien mantiene el repositorio puede advertir, pedir un cambio, o cerrar la conversación y limitar la participación si el comportamiento continúa.
+Maintainers may warn, ask for a change, or close the conversation and limit participation if the behavior continues.

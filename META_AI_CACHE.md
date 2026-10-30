@@ -1,32 +1,26 @@
-# Caché de explicaciones Meta
+# Meta explanation cache
 
-Abrir una conexión no llama a Muse Spark si la evidencia no ha cambiado.
+Opening a connection does not call Muse Spark if the evidence has not changed.
 
 ```mermaid
 sequenceDiagram
-  participant UI
-  participant API
-  participant DB
-  participant Meta
-  UI->>API: Abrir conexión
-  API->>DB: Claim por cache key
-  alt completed
-    DB-->>API: Texto guardado
-    API-->>UI: Sin llamada
-  else libre
-    API->>Meta: Una llamada
-    Meta-->>API: JSON
-    API->>DB: completed
-    API-->>UI: Explicación
+  UI->>API: Open connection
+  API->>Cache: Lookup key
+  alt Hit
+    Cache-->>API: Explanation
+    API-->>UI: Explanation
+  else Miss
+    API->>Meta: Structured explain
+    Meta-->>API: Validated JSON
+    API->>Cache: Store
+    API-->>UI: Explanation
   end
 ```
 
-La clave SHA-256 es direccional e incluye evento, revisiones y hashes de los dos perfiles y de sus contextos, la huella del ranking, la versión del prompt, el modelo y el locale `es`.
+The SHA-256 key is directional and includes event, revisions and hashes of both profiles and their contexts, the ranking fingerprint, prompt version, model, and locale `en`.
 
-La reserva es atómica en el almacén. Otra petición simultánea ve `processing` y espera. Un lease de 30 segundos permite retomar un trabajo abandonado. Hay tres intentos.
+Reservation is atomic in the store. A concurrent request sees `processing` and waits. A 30-second lease recovers abandoned work. There are three attempts.
 
-El modelo recibe identidades confirmadas, contextos del evento y las señales ya calculadas. No recibe el vector de 384. No escribe puntuaciones. Zod valida la salida. Una señal que no está en las listas permitidas no se guarda como explicación válida.
+The model receives confirmed identities, event contexts, and the signals already computed. It does not receive the 384-d vector. It does not write scores. Zod validates the output. A signal not in the allowed lists is not stored as a valid explanation.
 
-Los tokens se anotan solo si la API los devuelve. No hay un precio inventado.
-
-Regenerar a propósito (`regenerate`) ignora el acierto de caché. Un cambio de perfil o de contexto cambia la clave, así que la explicación vieja deja de servirse sin borrar las de otros eventos.
+Intentional regenerate (`regenerate`) ignores a cache hit. A profile or context change changes the key, so the old explanation stops being served without deleting those from other events.

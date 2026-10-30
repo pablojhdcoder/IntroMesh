@@ -1,28 +1,28 @@
 # IntroMesh
 
-![Meta Global AI Developer Hackathon. Un millón de dólares en premios, del 26 de octubre al 4 de noviembre.](docs/meta-hackathon-2026.jpg)
+![Meta Global AI Developer Hackathon. One million dollars in prizes, October 26 to November 4.](docs/meta-hackathon-2026.jpg)
 
 Discover who you should meet, understand why you connect, and make the introduction happen.
 
-IntroMesh está hecho para el **Meta Global AI Developer Hackathon 2026**. Es una capa para eventos presenciales. El recorrido es uno: **Discover → Understand → Connect → Learn**. No es una red social, ni un chat, ni un dashboard suelto.
+IntroMesh is built for the **Meta Global AI Developer Hackathon 2026**. It is a layer for in-person events. The loop is one: **Discover → Understand → Connect → Learn**. It is not a social network, a chat app, or a loose dashboard.
 
-## Problema
+## Problem
 
-En un evento es difícil saber a quién hablar y por qué. Las listas de asistentes no explican la conversación. IntroMesh muestra quién está visible, por qué encaja contigo y deja la conexión en manos de las dos personas.
+At an event it is hard to know who to talk to and why. Attendee lists do not explain the conversation. IntroMesh shows who is visible, why they fit you, and leaves the connection in both people’s hands.
 
 ## Meta AI
 
-El modelo `muse-spark-1.3` se llama desde el servidor con el SDK de OpenAI y `MODEL_API_KEY`, contra `https://api.meta.ai/v1`. Hace tres cosas, siempre con salida estructurada y Zod:
+The `muse-spark-1.3` model is called from the server with the OpenAI SDK and `MODEL_API_KEY`, against `https://api.meta.ai/v1`. It does three things, always with structured output and Zod:
 
-1. Redactar una presentación a partir de los campos del perfil, sin añadir hechos.
-2. Explicar una recomendación ya elegida por el ranking determinista.
-3. Proponer una frase para empezar. Se puede editar, descartar o regenerar.
+1. Draft a presentation from profile fields without adding facts.
+2. Explain a recommendation already chosen by deterministic ranking.
+3. Propose an opening line. You can edit, discard, or regenerate it.
 
-Si la respuesta cita un interés o una habilidad que no está en los datos, se rechaza. No se sustituye por un texto inventado.
+If the response cites an interest or skill that is not in the data, it is rejected. Nothing is replaced with invented text.
 
-Sin `MODEL_API_KEY` la interfaz lo dice y usa una redacción de **demostración** construida solo con los campos declarados. Eso no es una respuesta de Meta.
+Without `MODEL_API_KEY` the UI says so and uses a **demo** draft built only from declared fields. That is not a Meta response.
 
-## Arranque
+## Start
 
 ```bash
 npm install
@@ -30,42 +30,42 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Abre http://localhost:3000.
+Open http://localhost:3000.
 
-Sin Supabase, los datos viven en `.data/store.json` (no se versiona). La primera lectura siembra 180 perfiles de demostración y deja 28 visibles en el Meta Hackathon. La migración real está en `supabase/migrations/0001_init.sql`.
+Without Supabase, data lives in `.data/store.json` (not versioned). The first read seeds 180 demo profiles and leaves 28 visible at the Meta Hackathon. The real migration is in `supabase/migrations/0001_init.sql`.
 
 ## Variables
 
-| Variable | Uso |
+| Variable | Use |
 | --- | --- |
-| `MODEL_API_KEY` | Meta Model API. Solo servidor |
-| `META_MODEL_BASE_URL` | Por defecto `https://api.meta.ai/v1` |
-| `META_MODEL_ID` | Por defecto `muse-spark-1.3` |
-| `NEXT_PUBLIC_SUPABASE_URL` | Aún no conectada al recorrido |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Pública, con RLS cuando exista Auth |
-| `SUPABASE_SERVICE_ROLE_KEY` | Solo servidor |
+| `MODEL_API_KEY` | Meta Model API. Server only |
+| `META_MODEL_BASE_URL` | Defaults to `https://api.meta.ai/v1` |
+| `META_MODEL_ID` | Defaults to `muse-spark-1.3` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Not yet wired into the main loop |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public, with RLS when Auth exists |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only |
 
-## Probar el flujo
+## Try the flow
 
-1. Crea tu perfil. Elige intereses del catálogo (`modelos`, `producto`…) para coincidir con la comunidad de demostración.
-2. Pulsa **Activo** o **Buscando**. La presencia de tu sesión caduca a los 90 segundos si se abandona.
-3. Elige un nodo con acento. La lista de debajo es la misma información, para teclado y móvil.
-4. Lee la explicación. Si no hay clave, la etiqueta es «Demostración, no es Meta AI».
-5. Solicita la conexión y, si la otra persona es un fixture, **Simular aceptación**.
-6. Copia el enlace o abre el QR. NFC solo aparece en Chrome para Android, en un contexto seguro, y escribe una etiqueta: no detecta otros teléfonos.
-7. Abre **Inteligencia**. Los números salen de eventos guardados. Los temas con menos de cinco casos no se muestran.
+1. Create your identity. Pick catalog interests (`models`, `product`…) to overlap the demo community.
+2. Press **Active** or **Seeking**. Session presence expires after 90 seconds if abandoned.
+3. Select a highlighted node. The list below is the same information for keyboard and mobile.
+4. Read the explanation. Without a key, the label is “Demo, not Meta AI”.
+5. Request the connection and, if the other person is a fixture, **Simulate accept**.
+6. Copy the link or open the QR. NFC only appears in Chrome for Android, in a secure context, and writes a tag: it does not detect other phones.
+7. Open **Intelligence**. Numbers come from stored events. Topics with fewer than five cases are hidden.
 
-## Demo de 60–90 segundos
+## 60–90 second demo
 
-1. Entra, guarda un perfil con objetivo de hackathon e interés `modelos`.
-2. Activa la presencia.
-3. Selecciona un nodo de demostración con interés compartido.
-4. Muestra la explicación etiquetada.
-5. Solicita y simula la aceptación.
-6. Muestra el QR.
-7. Abre Inteligencia y señala que los agregados no son un ranking de personas.
+1. Join, save a profile with a hackathon goal and interest `models`.
+2. Turn on presence.
+3. Select a demo node with a shared interest.
+4. Show the labeled explanation.
+5. Request and simulate acceptance.
+6. Show the QR.
+7. Open Intelligence and point out that aggregates are not a people ranking.
 
-## Comprobaciones
+## Checks
 
 ```bash
 npm test
@@ -74,30 +74,30 @@ npm run build
 npm run verify:meta
 ```
 
-`verify:meta` solo llama a Meta si hay clave.
+`verify:meta` only calls Meta when a key is present.
 
-## Mapa del repositorio
+## Repository map
 
-| Carpeta | Qué es |
+| Folder | What it is |
 | --- | --- |
-| `src/app` | Páginas y rutas HTTP |
-| `src/components` | Campo de señal, perfil, tema |
-| `src/server` | El recorrido, un archivo por paso: `session`, `presence`, `discover`, `explain`, `connect`, `learn` |
-| `src/domain` | Reglas puras. `matching` puntúa. `embedding` coloca el grafo |
-| `src/lib` | Sesión, tema, almacén, Supabase y cliente de Meta |
-| `docs` | Arquitectura, diseño, privacidad y producto |
-| `supabase/migrations` | Esquema para cuando haya proyecto |
-| `scripts` | Comprobaciones de Meta y de la semilla demo |
+| `src/app` | Pages and HTTP routes |
+| `src/components` | Signal field, profile, theme |
+| `src/server` | The loop, one file per step: `session`, `presence`, `discover`, `explain`, `connect`, `learn` |
+| `src/domain` | Pure rules. `matching` scores. `embedding` places the graph |
+| `src/lib` | Session, theme, store, Supabase, and Meta client |
+| `docs` | Architecture, design, privacy, and product |
+| `supabase/migrations` | Schema for when a project exists |
+| `scripts` | Meta checks and the demo seed |
 
-## Decisiones
+## Decisions
 
-- El ranking es determinista: objetivos×3, intereses×2, habilidades×1, complementos×2. Meta no recorre la comunidad.
-- El vector del grafo es local: etiquetas declaradas, no un embedding de Meta. La API no documenta ese endpoint.
-- La presencia en la app no es distancia física.
-- El organizador ve agregados. No hay historial individual en esa vista.
+- Ranking is deterministic: goals×3, interests×2, skills×1, complements×2. Meta does not scan the room.
+- The graph vector is local: declared labels, not a Meta embedding. That API does not document embeddings.
+- In-app presence is not physical distance.
+- Organizers see aggregates. That view has no individual history.
 
-## Contribuir
+## Contribute
 
-Las ramas, los commits, los issues y los pull requests están en [CONTRIBUTING.md](CONTRIBUTING.md). El trato al colaborar está en [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Una vulnerabilidad se reporta como indica [SECURITY.md](SECURITY.md).
+Branches, commits, issues, and pull requests are in [CONTRIBUTING.md](CONTRIBUTING.md). Collaboration norms are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Report a vulnerability as described in [SECURITY.md](SECURITY.md).
 
-El código se publica bajo la licencia [MIT](LICENSE).
+The code is published under the [MIT](LICENSE) license.

@@ -61,7 +61,7 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
   const rand = mulberry32(20261104);
   const profiles: StoredProfile[] = [];
   for (let index = 0; index < count; index += 1) {
-    const name = NAMES[index % NAMES.length] ?? "Invitada";
+    const name = NAMES[index % NAMES.length] ?? "Guest";
     const displayName = index < NAMES.length ? name : `${name} ${index + 1}`;
     const goal = GOALS[index % GOALS.length]?.id ?? "hackathon";
     const interests = pickMany(rand, INTERESTS, 2 + (index % 3));
@@ -71,21 +71,21 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
     const presentation: Presentation = {
       source: "demo",
       headline: `${displayName.split(" ")[0]} · ${goalLabelSafe(goal)}`,
-      summary: `Trabaja en ${projects[0]} y declara ${interests.slice(0, 2).join(" y ")}.`,
-      opener: `¿Qué parte de ${projects[0]} estás enseñando aquí?`,
+      summary: `Works on ${projects[0]} and lists ${interests.slice(0, 2).join(" and ")}.`,
+      opener: `Which part of ${projects[0]} are you showing here?`,
     };
     profiles.push({
       id,
       slug: `${slugify(displayName)}-${id}`,
       displayName,
-      role: index % 2 === 0 ? "Investiga producto" : "Construye prototipos",
+      role: index % 2 === 0 ? "Researches product" : "Builds prototypes",
       bio: "",
       interests,
       skills,
       projects,
       links: [],
-      offers: skills[0] ? `Puede ayudar con ${skills[0]}.` : "",
-      seeking: interests[0] ? `Busca conversaciones sobre ${interests[0]}.` : "Busca una conversación concreta.",
+      offers: skills[0] ? `Can help with ${skills[0]}.` : "",
+      seeking: interests[0] ? `Looking for conversations about ${interests[0]}.` : "Looking for a concrete conversation.",
       goal,
       demo: true,
       presentation,

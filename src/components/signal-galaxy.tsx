@@ -149,7 +149,7 @@ export function SignalGalaxy({
   const rosterKey = people.map((person) => `${person.id}:${person.recommendation ? 1 : 0}`).join("|");
 
   const graphData = useMemo(() => {
-    const nodes: GraphNode[] = [{ id: ORIGIN, name: "Tú", kind: "root", val: 18 }];
+    const nodes: GraphNode[] = [{ id: ORIGIN, name: "You", kind: "root", val: 18 }];
     const links: GraphLink[] = [];
     for (const person of people) {
       const hot = person.recommendation !== null;

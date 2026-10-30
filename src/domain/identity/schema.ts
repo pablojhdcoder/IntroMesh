@@ -123,7 +123,7 @@ Never invent credentials, experience or professional achievements.
 
 If information is missing, return null or an empty collection.
 
-Preserve the original language and generate a concise, natural professional introduction.`;
+Write all structured fields and the professional introduction in English. Generate a concise, natural professional introduction.`;
 
 const SENSITIVE =
   /\b(religion|religión|iglesia|gay|lesbian|bisexual|pregnant|embaraz|diagnós|diagnos|cancer|cáncer|muslim|musulm|judío|judio|cristian|orientation|orientación|salary|salario|ingreso)\b/i;

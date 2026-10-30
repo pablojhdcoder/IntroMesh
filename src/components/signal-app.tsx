@@ -44,8 +44,8 @@ type Presence = "invisible" | "active" | "seeking";
 
 const PRESENCE_OPTIONS: { id: Presence; label: string; enabled: boolean; seeking: boolean }[] = [
   { id: "invisible", label: "Invisible", enabled: false, seeking: false },
-  { id: "active", label: "Activo", enabled: true, seeking: false },
-  { id: "seeking", label: "Buscando", enabled: true, seeking: true },
+  { id: "active", label: "Active", enabled: true, seeking: false },
+  { id: "seeking", label: "Seeking", enabled: true, seeking: true },
 ];
 
 const meta = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
@@ -54,14 +54,14 @@ const focusRing = "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ri
 
 function evidenceOf(recommendation: NonNullable<FieldPerson["recommendation"]>) {
   return [
-    ...recommendation.shared.interests.map((value) => ({ kind: "Interés común", value })),
-    ...recommendation.shared.skills.map((value) => ({ kind: "Habilidad común", value })),
-    ...recommendation.complement.map((value) => ({ kind: "Complementa", value })),
+    ...recommendation.shared.interests.map((value) => ({ kind: "Shared interest", value })),
+    ...recommendation.shared.skills.map((value) => ({ kind: "Shared skill", value })),
+    ...recommendation.complement.map((value) => ({ kind: "Complements", value })),
   ].slice(0, 3);
 }
 
 function reasonOf(person: FieldPerson) {
-  return person.recommendation?.shared.interests[0] ?? person.recommendation?.shared.skills[0] ?? person.recommendation?.complement[0] ?? "objetivo común";
+  return person.recommendation?.shared.interests[0] ?? person.recommendation?.shared.skills[0] ?? person.recommendation?.complement[0] ?? "shared goal";
 }
 
 export function SignalApp() {
@@ -85,7 +85,7 @@ export function SignalApp() {
       fetch(`/api/connections?eventId=${nextSession.event.id}`),
     ]);
     if (!discoveryResponse.ok) {
-      setLoadError("No se pudo cargar el evento.");
+      setLoadError("Could not load the event.");
       return;
     }
     const discovery = await discoveryResponse.json();
@@ -96,8 +96,8 @@ export function SignalApp() {
   }, []);
 
   useEffect(() => {
-    // La sesión vive en el servidor; el primer pintado tiene que leerla.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial, el setState ocurre tras el fetch
+    // Session lives on the server; the first paint must read it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load; setState runs after fetch
     void load();
   }, [load]);
 
@@ -145,10 +145,10 @@ export function SignalApp() {
       setExplanation(null);
       setExplainError(
         body.error === "match"
-          ? "No hay evidencia suficiente para explicar esta conexión."
+          ? "There is not enough evidence to explain this connection."
           : body.error === "presence"
-            ? "Activa tu presencia para ver esta explicación."
-            : "Meta no devolvió una explicación válida. No se ha sustituido por un texto inventado.",
+            ? "Turn on your presence to see this explanation."
+            : "Meta did not return a valid explanation. Nothing was replaced with invented text.",
       );
       return;
     }
@@ -181,7 +181,7 @@ export function SignalApp() {
   if (!session) {
     return (
       <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-4 px-4 py-6 sm:px-8">
-        <p className="text-sm text-muted-foreground">Cargando la sesión.</p>
+        <p className="text-sm text-muted-foreground">Loading session.</p>
         <ThemeSwitch />
       </div>
     );
@@ -213,13 +213,13 @@ export function SignalApp() {
           <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em]">IntroMesh</h1>
           <p className="max-w-[36ch] text-sm text-muted-foreground">
             {session.event?.name}
-            {session.event?.demo ? ". Los nodos demo no están en la sala." : "."}
+            {session.event?.demo ? ". Demo nodes are not physically in the room." : "."}
           </p>
         </div>
         <div className="flex flex-col gap-2 min-[720px]:items-end">
           <ThemeSwitch className="absolute top-0 right-0 min-[720px]:static" />
           <div className="-mx-3 flex items-center justify-between gap-4 min-[720px]:justify-end">
-            <div role="group" aria-label="Presencia" className="flex items-center">
+            <div role="group" aria-label="Presence" className="flex items-center">
               {PRESENCE_OPTIONS.map((option) => {
                 const active = presence === option.id;
                 return (
@@ -244,7 +244,7 @@ export function SignalApp() {
               href="/intelligence"
               className={cn("inline-flex h-11 items-center rounded-sm px-3 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline", focusRing)}
             >
-              Inteligencia
+              Intelligence
             </Link>
           </div>
         </div>
@@ -252,7 +252,7 @@ export function SignalApp() {
 
       {!session.metaConfigured ? (
         <p className="max-w-[62ch] shrink-0 text-sm text-muted-foreground">
-          Demostración. Falta MODEL_API_KEY: las explicaciones salen de los datos declarados y no son respuestas de Meta AI.
+          Demo mode. MODEL_API_KEY is missing: explanations come from declared fields and are not Meta AI responses.
         </p>
       ) : null}
       {loadError ? <p className="text-sm text-destructive">{loadError}</p> : null}
@@ -266,24 +266,24 @@ export function SignalApp() {
 
         <section className="flex min-h-0 flex-col gap-6 min-[720px]:overflow-y-auto">
           {!visible ? (
-            <p className="max-w-[40ch] text-sm text-muted-foreground">Estás invisible. Activa la presencia para ver a quien también está en el evento.</p>
+            <p className="max-w-[40ch] text-sm text-muted-foreground">You are invisible. Turn on presence to see who else is at the event.</p>
           ) : null}
 
           {selfSelected && session.profile ? (
             <article className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] min-[720px]:text-[2.5rem]">{session.profile.displayName}</h2>
-                <p className="text-sm text-muted-foreground">{session.profile.role} · Tú</p>
+                <p className="text-sm text-muted-foreground">{session.profile.role} · You</p>
               </div>
               <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-                <dt className="text-muted-foreground">Intereses</dt>
+                <dt className="text-muted-foreground">Interests</dt>
                 <dd>{session.profile.interests.join(", ")}</dd>
-                <dt className="text-muted-foreground">Habilidades</dt>
+                <dt className="text-muted-foreground">Skills</dt>
                 <dd>{session.profile.skills.join(", ")}</dd>
-                <dt className="text-muted-foreground">Buscas</dt>
+                <dt className="text-muted-foreground">Looking for</dt>
                 <dd>{session.profile.seeking}</dd>
               </dl>
-              <p className="max-w-[40ch] text-sm text-muted-foreground">Vuelve a pulsar tu nodo para ver el salón entero.</p>
+              <p className="max-w-[40ch] text-sm text-muted-foreground">Press your node again to see the whole room.</p>
             </article>
           ) : null}
 
@@ -293,7 +293,7 @@ export function SignalApp() {
                 <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] text-balance min-[720px]:text-[2.5rem]">{detail.person.displayName}</h2>
                 <p className="text-sm text-muted-foreground">
                   {detail.person.role}
-                  {detail.person.demo ? " · Demostración" : ""}
+                  {detail.person.demo ? " · Demo" : ""}
                   {detail.recommendation.shared.goals[0] ? ` · ${detail.recommendation.shared.goals[0]}` : ""}
                 </p>
               </div>
@@ -309,43 +309,43 @@ export function SignalApp() {
                 </dl>
                 <p className={meta}>
                   {detail.recommendation.confidence === "low"
-                    ? "Confianza baja · no es un hecho"
+                    ? "Low confidence · not a fact"
                     : detail.recommendation.confidence === "medium"
-                      ? "Confianza media"
-                      : "Confianza alta"}
+                      ? "Medium confidence"
+                      : "High confidence"}
                 </p>
               </div>
 
-              {explainPending ? <p className="text-sm text-muted-foreground">Preparando la explicación.</p> : null}
+              {explainPending ? <p className="text-sm text-muted-foreground">Preparing the explanation.</p> : null}
               {explainError ? <p className="text-sm text-destructive">{explainError}</p> : null}
               {explanation ? (
                 <div className="flex flex-col gap-3">
                   <p className="max-w-[52ch] text-[0.9375rem] leading-normal">{explanation.summary}</p>
                   <p className="max-w-[52ch] text-sm text-muted-foreground">{explanation.opener}</p>
-                  <p className={meta}>{explanation.source === "model" ? "Meta AI" : "Demostración, no es Meta AI"}</p>
+                  <p className={meta}>{explanation.source === "model" ? "Meta AI" : "Demo, not Meta AI"}</p>
                 </div>
               ) : null}
 
               <div className="flex flex-col gap-3">
-                {relation?.status === "pending" ? <p className={meta}>Solicitud pendiente</p> : null}
+                {relation?.status === "pending" ? <p className={meta}>Request pending</p> : null}
                 {relation?.status === "accepted" ? (
                   <p className="max-w-[52ch] text-sm">
-                    Conexión aceptada. La introducción queda guardada{relation.intro ? `: ${relation.intro}` : "."}
+                    Connection accepted. The introduction is saved{relation.intro ? `: ${relation.intro}` : "."}
                   </p>
                 ) : null}
                 <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
                   {!relation ? (
                     <Button type="button" className={actionSize} disabled={!explanation} onClick={() => void requestIntro()}>
-                      Solicitar conexión
+                      Request connection
                     </Button>
                   ) : null}
                   {relation?.status === "pending" && relation.other.demo ? (
                     <Button type="button" className={actionSize} onClick={() => void resolve(relation, "accept")}>
-                      Simular aceptación
+                      Simulate accept
                     </Button>
                   ) : null}
                   <Button type="button" variant="ghost" className={actionSize} onClick={() => void openPerson(detail.person.id, true)}>
-                    Regenerar
+                    Regenerate
                   </Button>
                 </div>
               </div>
@@ -356,10 +356,10 @@ export function SignalApp() {
 
           {visible ? (
             <div className={cn("flex flex-col gap-3", (detail || selfSelected) && "min-[720px]:hidden")}>
-              <h2 className={meta}>{detail ? "Más señales" : "Recomendaciones"}</h2>
+              <h2 className={meta}>{detail ? "More signals" : "Recommendations"}</h2>
               {others.length === 0 ? (
                 <p className="max-w-[40ch] text-sm text-muted-foreground">
-                  {detail ? "No hay más señales ahora mismo." : "Nadie visible comparte un objetivo, un interés o una habilidad contigo."}
+                  {detail ? "No more signals right now." : "Nobody visible shares a goal, interest, or skill with you."}
                 </p>
               ) : (
                 <ul className="flex flex-col">

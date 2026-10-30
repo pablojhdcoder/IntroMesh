@@ -8,48 +8,48 @@ web
 
 ## Stack
 
-Next.js (App Router), React, TypeScript estricto, Tailwind CSS, shadcn/ui, Motion, Lucide, Zod, Supabase y Meta Model API a través del SDK de OpenAI. El encargo fijó este stack. La entrega del hackathon es el 4 de noviembre de 2026.
+Next.js (App Router), React, strict TypeScript, Tailwind CSS, shadcn/ui, Motion, Lucide, Zod, Supabase, and Meta Model API through the OpenAI SDK. The brief fixed this stack. Hackathon delivery is November 4, 2026.
 
 ## Users
 
-Persona que asiste a un evento presencial y quiere descubrir a quién le conviene hablar, entender el motivo y crear una relación. El organizador ve solo métricas agregadas del evento.
+Someone attending an in-person event who wants to discover who to talk to, understand why, and start a relationship. Organizers see only aggregated event metrics.
 
 ## Product Purpose
 
-IntroMesh ayuda a convertir un encuentro presencial en una conexión consciente. Éxito es una introducción aceptada por las dos personas, con una razón comprensible, sin exponer a quien no consintió aparecer.
+IntroMesh turns an in-person encounter into a deliberate connection. Success is an introduction accepted by both people, with a clear reason, without exposing anyone who did not consent to appear.
 
 ## Positioning
 
-La presencia en el descubrimiento es voluntaria y separable de la proximidad física. El filtro de candidatos es determinista; Meta Model API explica las recomendaciones ya elegidas. El mismo identificador público viaja por enlace, QR y, si el navegador lo permite, NFC.
+Discovery presence is voluntary and separate from physical proximity. Candidate filtering is deterministic; Meta Model API explains recommendations already chosen. The same public identifier travels by link, QR, and NFC when the browser allows it.
 
 ## Operating Context
 
-Evento de networking, sobre todo desde el teléfono. La persona entra en una sesión, decide si es visible, recorre asistentes, lee por qué conectar y acepta o no. El organizador consulta agregados al cierre.
+A networking event, mostly from a phone. The person joins a session, chooses visibility, browses attendees, reads why to connect, and accepts or not. Organizers review aggregates at the end.
 
 ## Capabilities and Constraints
 
-Confirmado: perfiles contextuales, presencia voluntaria en tiempo real, descubrimiento, matching por objetivos, intereses y habilidades, explicaciones de Meta, introducciones, conexiones mutuas, enlace, QR, NFC progresivo y analítica agregada.
+Confirmed: contextual profiles, voluntary real-time presence, discovery, matching by goals, interests, and skills, Meta explanations, introductions, mutual connections, link, QR, progressive NFC, and aggregated analytics.
 
-Restricciones: sin simular la salida del modelo; sin embeddings de Meta Model API (no están documentados); sin detección física automática entre teléfonos; sin ubicación precisa continua; sin inferir atributos sensibles.
+Constraints: do not simulate model output; no Meta Model API embeddings (undocumented); no automatic physical phone detection; no continuous precise location; no inferred sensitive attributes.
 
-Abierto: el idioma definitivo de la interfaz si el hackathon exige inglés. El armazón actual está en español, el idioma del encargo.
+Language: the product UI, prompts, and public docs are English for the Meta Global AI Developer Hackathon.
 
 ## Brand Commitments
 
-Nombre: IntroMesh. La dirección visual vinculante está en `docs/DESIGN.md` (The Signal Loop). No se copia la interfaz de Linear, Vercel ni Apple.
+Name: IntroMesh. The binding visual direction is in `docs/DESIGN.md` (The Signal Loop). Do not copy Linear, Vercel, or Apple UI.
 
 ## Evidence on Hand
 
-No hay testimonios, clientes, precios ni métricas de uso. No se fabrican. Los nodos de la vista inicial son una demostración etiquetada, no asistentes.
+No testimonials, customers, prices, or usage metrics. Do not invent them. Nodes in the initial view are a labeled demo, not attendees.
 
 ## Product Principles
 
-- Nadie aparece en el descubrimiento sin consentirlo, y puede dejar de aparecer.
-- Una recomendación sin razón concreta no se muestra.
-- Lo que no respondió el modelo no se rellena.
-- El móvil es la escena principal del evento.
-- El organizador no recibe perfiles privados ni texto de introducciones.
+- Nobody appears in discovery without consent, and they can leave.
+- A recommendation without a concrete reason is not shown.
+- What the model did not answer is not filled in.
+- Mobile is the main scene at the event.
+- Organizers do not receive private profiles or introduction text.
 
 ## Accessibility & Inclusion
 
-Teclado, foco visible, contraste del sistema en `docs/DESIGN.md` y respeto de `prefers-reduced-motion`. La red tiene una alternativa en lista. Áreas táctiles de al menos 44px.
+Keyboard, visible focus, system contrast in `docs/DESIGN.md`, and respect for `prefers-reduced-motion`. The graph has a list alternative. Touch targets at least 44px.

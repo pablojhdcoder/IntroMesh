@@ -75,7 +75,7 @@ export function OnboardingFlow({
   onSaved: () => void;
 }) {
   return (
-    <Suspense fallback={<p className="px-4 py-6 text-sm text-muted-foreground">Cargando el evento.</p>}>
+    <Suspense fallback={<p className="px-4 py-6 text-sm text-muted-foreground">Loading the event.</p>}>
       <OnboardingBody
         metaConfigured={metaConfigured}
         identityConfirmed={identityConfirmed}
@@ -124,7 +124,7 @@ function OnboardingBody({
         const body = await response.json();
         setEvents(body.events ?? []);
       })
-      .catch(() => setError("No se pudieron consultar los eventos."));
+      .catch(() => setError("Could not load events."));
   }, []);
 
   useEffect(() => {
@@ -134,13 +134,13 @@ function OnboardingBody({
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) {
-          setError(body.error === "ended" ? "Este evento ya no está disponible." : "No encuentro ese evento.");
+          setError(body.error === "ended" ? "This event is no longer available." : "I cannot find that event.");
           return;
         }
         setSelected(body.event as EventCard);
         setStep(identityConfirmed ? "intent" : "identity");
       })
-      .catch(() => setError("No encuentro ese evento."));
+      .catch(() => setError("I cannot find that event."));
   }, [identityConfirmed, params]);
 
   async function loadEvents(next = query) {
@@ -156,7 +156,7 @@ function OnboardingBody({
     const body = await response.json();
     setPending(false);
     if (!response.ok) {
-      setError(body.error === "ended" ? "Este evento ya no está disponible." : "No encuentro ese código.");
+      setError(body.error === "ended" ? "This event is no longer available." : "I cannot find that code.");
       return;
     }
     setSelected(body.event as EventCard);
@@ -174,7 +174,7 @@ function OnboardingBody({
     const body = await response.json();
     setPending(false);
     if (!response.ok) {
-      setError("No se ha podido crear el evento.");
+      setError("Could not create the event.");
       return;
     }
     setSelected(body.event as EventCard);
@@ -195,7 +195,7 @@ function OnboardingBody({
       setManual(true);
       setIdentity(blankIdentity(name));
       setEditing(true);
-      setError("Meta no está disponible. Puedes completar la identidad a mano. No se ha inventado un perfil.");
+      setError("Meta is unavailable. You can complete the identity by hand. No profile was invented.");
       setStep("review");
       return;
     }
@@ -216,7 +216,7 @@ function OnboardingBody({
     });
     setPending(false);
     if (!response.ok) {
-      setError("La identidad no se ha guardado.");
+      setError("The identity was not saved.");
       return;
     }
     setStep("intent");
@@ -234,7 +234,7 @@ function OnboardingBody({
     const body = await response.json();
     setPending(false);
     if (!response.ok) {
-      setError(body.error === "ended" ? "Este evento ya no está disponible." : "No se ha podido entrar en el evento.");
+      setError(body.error === "ended" ? "This event is no longer available." : "Could not join the event.");
       return;
     }
     onSaved();
@@ -262,7 +262,7 @@ function OnboardingBody({
             {step === "event" ? "Choose an event and discover the people worth meeting." : null}
             {step === "identity" ? "One description. Your entire professional identity." : null}
             {step === "intent" ? "Tell us what would make this event meaningful for you." : null}
-            {step === "review" ? (manual ? "Sin respuesta de Meta. Revisa lo que escribes antes de guardarlo." : "Revisa lo que Meta ha entendido. Nada se guarda hasta que lo confirmes.") : null}
+            {step === "review" ? (manual ? "No Meta response. Review what you write before saving." : "Review what Meta understood. Nothing is saved until you confirm.") : null}
           </p>
         </div>
         <ThemeSwitch />
@@ -275,7 +275,7 @@ function OnboardingBody({
             <input className={input} value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" onClick={() => void loadEvents()}>
-            Consultar eventos
+            Search events
           </Button>
           <ul className="flex flex-col gap-4">
             {events.map((event) => (
@@ -291,7 +291,7 @@ function OnboardingBody({
                   <span className="text-foreground">{event.name}</span>
                   <span className="text-sm text-muted-foreground">
                     {[event.category, event.startsAt?.slice(0, 10), event.status].filter(Boolean).join(" · ")}
-                    {event.demo ? " · Demostración" : ` · ${event.attendees} en el registro`}
+                    {event.demo ? " · Demo" : ` · ${event.attendees} registered`}
                   </span>
                   {event.description ? <span className="text-sm text-muted-foreground">{event.description}</span> : null}
                 </button>
@@ -299,37 +299,37 @@ function OnboardingBody({
             ))}
           </ul>
           <label className={field}>
-            Código o enlace
-            <input className={input} value={code} onChange={(event) => setCode(event.target.value)} placeholder="código del evento" />
+            Code or link
+            <input className={input} value={code} onChange={(event) => setCode(event.target.value)} placeholder="event code" />
           </label>
           <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || code.trim().length === 0} onClick={() => void chooseCode()}>
-            Entrar con código
+            Join with code
           </Button>
           {canCreateEvent ? (
             <button type="button" className="text-left text-sm text-muted-foreground underline-offset-4 hover:underline" onClick={() => setCreating((value) => !value)}>
-              Crear un evento
+              Create an event
             </button>
           ) : null}
           {canCreateEvent && creating ? (
             <div className="flex flex-col gap-4">
               <label className={field}>
-                Nombre
+                Name
                 <input className={input} value={eventDraft.name} onChange={(event) => setEventDraft({ ...eventDraft, name: event.target.value })} required />
               </label>
               <label className={field}>
-                Descripción
+                Description
                 <textarea className={textarea} value={eventDraft.description} onChange={(event) => setEventDraft({ ...eventDraft, description: event.target.value })} />
               </label>
               <label className={field}>
-                Categoría
+                Category
                 <input className={input} value={eventDraft.category} onChange={(event) => setEventDraft({ ...eventDraft, category: event.target.value })} />
               </label>
               <label className={field}>
-                Fecha
+                Date
                 <input className={input} type="date" value={eventDraft.startsAt} onChange={(event) => setEventDraft({ ...eventDraft, startsAt: event.target.value })} />
               </label>
               <Button type="button" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending} onClick={() => void createEvent()}>
-                Crear evento
+                Create event
               </Button>
             </div>
           ) : null}
@@ -340,7 +340,7 @@ function OnboardingBody({
         <div className="flex flex-col gap-4">
           {selected ? <p className="text-sm text-muted-foreground">{selected.name}</p> : null}
           <label className={field}>
-            Nombre
+            Name
             <input className={input} value={name} onChange={(event) => setName(event.target.value)} required />
           </label>
           <label className={field}>
@@ -358,10 +358,10 @@ function OnboardingBody({
             Tell us what you do, what you&apos;re building, what interests you, what you can bring to a community and the people you&apos;d like to meet.
           </p>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending}>
-            {pending ? "Leyendo" : "Continuar"}
+            {pending ? "Reading" : "Continue"}
           </Button>
           <p className="text-sm text-muted-foreground">
-            {metaConfigured ? "Meta Muse Spark estructurará esta descripción una vez." : "No hay MODEL_API_KEY. No se va a simular una respuesta de Meta."}
+            {metaConfigured ? "Meta Muse Spark will structure this description once." : "MODEL_API_KEY is missing. A Meta response will not be simulated."}
           </p>
         </div>
       ) : null}
@@ -378,7 +378,7 @@ function OnboardingBody({
             </Button>
           </div>
           <button type="button" className="text-left text-sm text-muted-foreground underline-offset-4 hover:underline" onClick={() => void normalize(true)}>
-            Volver a generar desde la descripción
+            Regenerate from the description
           </button>
         </div>
       ) : null}
@@ -387,7 +387,7 @@ function OnboardingBody({
         <div className="flex flex-col gap-4">
           {selected ? <p className="text-sm text-muted-foreground">{selected.name}</p> : null}
           <label className={field}>
-            Este evento
+            This event
             <textarea
               className={textarea}
               value={intent}
@@ -397,12 +397,12 @@ function OnboardingBody({
           </label>
           <label className="flex items-start gap-3 text-sm text-muted-foreground">
             <input type="checkbox" className="mt-1" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-            Quiero que puedan descubrirme en este evento. Si no lo marcas, entras invisible.
+            I want to be discoverable at this event. If unchecked, you join invisible.
           </label>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || !selected}>
-            {pending ? "Entrando" : "Entrar al evento"}
+            {pending ? "Joining" : "Join the event"}
           </Button>
-          <p className="text-sm text-muted-foreground">Puedes dejarlo vacío. Se usará tu identidad global y no se llama a Meta por este texto.</p>
+          <p className="text-sm text-muted-foreground">You can leave this empty. Your global identity will be used and Meta is not called for this text.</p>
         </div>
       ) : null}
 

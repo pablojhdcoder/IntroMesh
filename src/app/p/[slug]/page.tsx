@@ -13,9 +13,9 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   if (!profile) notFound();
 
   const facts = [
-    ...profile.interests.map((value) => ({ kind: "Interés", value })),
-    ...profile.skills.map((value) => ({ kind: "Habilidad", value })),
-    ...profile.projects.map((value) => ({ kind: "Proyecto", value })),
+    ...profile.interests.map((value) => ({ kind: "Interest", value })),
+    ...profile.skills.map((value) => ({ kind: "Skill", value })),
+    ...profile.projects.map((value) => ({ kind: "Project", value })),
   ];
 
   return (
@@ -30,7 +30,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
           <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] text-balance min-[720px]:text-[2.5rem]">{profile.displayName}</h1>
           <p className="text-sm text-muted-foreground">
             {profile.role}
-            {profile.demo ? " · Demostración" : ""} · {goalLabel(profile.goal)}
+            {profile.demo ? " · Demo" : ""} · {goalLabel(profile.goal)}
           </p>
         </div>
         <ThemeSwitch />
@@ -51,7 +51,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
       <ShareTools slug={profile.slug} name={profile.displayName} />
 
-      <p className="max-w-[48ch] text-sm text-muted-foreground">Solo se muestra la identidad que la persona autorizó. Una conexión privada sigue pidiendo aceptación.</p>
+      <p className="max-w-[48ch] text-sm text-muted-foreground">Only the identity this person authorized is shown. A private connection still needs acceptance.</p>
     </main>
   );
 }

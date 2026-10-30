@@ -22,14 +22,14 @@ const people = [
 ];
 
 describe("placePeople", () => {
-  it("ordena recomendados por score y deja el resto detrás", () => {
+  it("ranks recommendations by score and leaves the rest behind", () => {
     const placed = placePeople(people);
     expect(placed.map((point) => point.id)).toEqual(["hot-high", "hot-mid", "hot-low", "cold-a", "cold-b"]);
     expect(placed.slice(0, 3).every((point) => point.hot && point.z > 0)).toBe(true);
     expect(placed.slice(3).every((point) => !point.hot && point.z < 0)).toBe(true);
   });
 
-  it("acerca más a quien tiene mayor score", () => {
+  it("moves higher scores closer", () => {
     const [high, mid, low] = placePeople(people);
     expect(high.z).toBeGreaterThan(mid.z);
     expect(mid.z).toBeGreaterThan(low.z);
@@ -50,11 +50,11 @@ describe("placePeople", () => {
     expect(a.z).toBeGreaterThanOrEqual(-1.2);
   });
 
-  it("con un único recomendado lo coloca en el frente", () => {
+  it("places a single recommendation in front", () => {
     expect(depthFor({ id: "solo", score: 3 }, { min: 3, max: 3 })).toBe(1.6);
   });
 
-  it("asigna el lado de la etiqueta según la mitad del campo", () => {
+  it("assigns label side from field half", () => {
     const placed = placePeople(people);
     expect(placed.find((point) => point.id === "hot-mid")?.side).toBe("left");
     expect(placed.find((point) => point.id === "hot-high")?.side).toBe("right");
@@ -70,7 +70,7 @@ describe("coordenadas de mundo", () => {
     expect(worldY(100)).toBe(-2.25);
   });
 
-  it("estira el ancho con la proporción dentro de límites", () => {
+  it("stretches width with aspect within limits", () => {
     expect(fieldWidth(1)).toBe(4.5);
     expect(fieldWidth(4)).toBe(8);
     expect(fieldWidth(Number.NaN)).toBe(6);
@@ -78,12 +78,12 @@ describe("coordenadas de mundo", () => {
 });
 
 describe("compactSelection", () => {
-  it("en móvil deja las tres señales de mayor score", () => {
+  it("on mobile keeps the three highest-score signals", () => {
     const shown = compactSelection(people, null);
     expect(shown.map((point) => point.id)).toEqual(["hot-high", "hot-mid", "hot-low"]);
   });
 
-  it("añade a la seleccionada si no está entre las señales", () => {
+  it("adds the selected person if missing from signals", () => {
     const shown = compactSelection(people, "cold-b", 2);
     expect(shown.map((point) => point.id)).toEqual(["hot-high", "hot-mid", "cold-b"]);
   });
@@ -95,7 +95,7 @@ describe("compactSelection", () => {
 });
 
 describe("easeOut", () => {
-  it("respeta los extremos y es monótona", () => {
+  it("respects bounds and stays monotonic", () => {
     expect(easeOut(0)).toBe(0);
     expect(easeOut(1)).toBe(1);
     let previous = 0;

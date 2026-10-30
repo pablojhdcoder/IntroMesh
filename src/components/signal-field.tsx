@@ -78,13 +78,13 @@ export function SignalField({
       <ul className="sr-only">
         <li>
           <button type="button" aria-pressed={selectedId === FIELD_SELF_ID} onClick={() => onSelect(selectedId === FIELD_SELF_ID ? null : FIELD_SELF_ID)}>
-            Tú
+            You
           </button>
         </li>
         {shown.map((person) => (
           <li key={person.id}>
             <button type="button" aria-pressed={person.id === selectedId} onClick={() => onSelect(person.id === selectedId ? null : person.id)}>
-              {person.demo ? `${person.displayName}, demostración` : person.displayName}
+              {person.demo ? `${person.displayName}, demo` : person.displayName}
             </button>
           </li>
         ))}

@@ -6,9 +6,9 @@ import { resetMetaRateLimit } from "./rate-limit";
 import { affinityExplanationSchema, zodToResponseSchema } from "./schema";
 
 const explanation = {
-  summary: "Los dos buscan modelos aplicados a producto.",
+  summary: "Both are looking for models applied to product.",
   reasons: [{ label: "Objetivo", evidence: "Ambos declararon contratar." }],
-  suggestedOpener: "¿En qué parte del producto estáis usando modelos?",
+  suggestedOpener: "Where in the product are you using models?",
 };
 
 function fakeClient(output: unknown): OpenAI {
@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 
 describe("zodToResponseSchema", () => {
-  it("cierra el objeto y omite límites que el modo estricto rechaza", () => {
+  it("closes the object and drops constraints strict mode rejects", () => {
     const schema = zodToResponseSchema(affinityExplanationSchema);
     expect(schema).not.toHaveProperty("$schema");
     expect(schema).not.toHaveProperty("minLength");
@@ -37,18 +37,18 @@ describe("zodToResponseSchema", () => {
 });
 
 describe("createStructuredResponse", () => {
-  it("devuelve la explicación cuando el JSON encaja", async () => {
+  it("returns the explanation when the JSON fits", async () => {
     const result = await createStructuredResponse({
       schema: affinityExplanationSchema,
       name: "affinity_explanation",
       instructions: "Explica la afinidad solo con los atributos declarados.",
-      input: "Ada busca contratar. Bruno declaró contratar y modelos.",
+      input: "Ada is looking to hire. Bruno declared hire and models.",
       client: fakeClient(explanation),
     });
     expect(result.summary).toBe(explanation.summary);
   });
 
-  it("rechaza una respuesta que no es JSON válido", async () => {
+  it("rejects a response that is not valid JSON", async () => {
     await expect(
       createStructuredResponse({
         schema: affinityExplanationSchema,
@@ -60,7 +60,7 @@ describe("createStructuredResponse", () => {
     ).rejects.toMatchObject({ type: "invalid_response" });
   });
 
-  it("corta la ráfaga local antes de seguir llamando", async () => {
+  it("stops a local burst before calling again", async () => {
     const env = { META_MODEL_MAX_REQUESTS_PER_MINUTE: "1" };
     const options = {
       schema: affinityExplanationSchema,

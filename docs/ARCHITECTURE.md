@@ -1,90 +1,90 @@
-# Arquitectura — IntroMesh
+# Architecture — IntroMesh
 
-Hilo único: **Discover → Understand → Connect → Learn.**
+Single loop: **Discover → Understand → Connect → Learn.**
 
-Este documento fija los límites del hackathon. El recorrido ya está en la app. Meta solo explica una recomendación ya elegida.
+This document sets the hackathon boundaries. The journey is already in the app. Meta only explains a recommendation that was already chosen.
 
-## Capas
+## Layers
 
-| Capa | Ubicación | Responsabilidad |
+| Layer | Location | Responsibility |
 | --- | --- | --- |
-| UI | `src/app`, `src/components` | Pantallas y campo de señal. No llama a Meta ni lee secretos |
-| Casos de uso | `src/server` | Registro, presencia, descubrimiento, explicación, conexión y analítica |
-| Dominio | `src/domain` | Perfil, presencia, puntuación y vectores. Sin red ni disco |
-| Persistencia | `src/lib/store`, `src/lib/supabase` | Archivo local hoy. Postgres cuando haya proyecto. Service role solo en servidor |
-| Meta | `src/lib/meta` | Cliente, esquemas, errores y límite local de peticiones |
+| UI | `src/app`, `src/components` | Screens and signal field. Does not call Meta or read secrets |
+| Use cases | `src/server` | Registration, presence, discovery, explanation, connection, and analytics |
+| Domain | `src/domain` | Profile, presence, scoring, and vectors. No network or disk |
+| Persistence | `src/lib/store`, `src/lib/supabase` | Local file today. Postgres when a project exists. Service role only on the server |
+| Meta | `src/lib/meta` | Client, schemas, errors, and a local request limit |
 
-El orden al leer el código es el del producto: `session` → `presence` → `discover` → `explain` → `connect` → `learn`.
+Read the code in product order: `session` → `presence` → `discover` → `explain` → `connect` → `learn`.
 
-Los componentes de cliente importan tipos y datos ya preparados. Las Route Handlers y Server Actions son el único borde que habla con Supabase privilegiado o con Meta.
+Client components import prepared types and data. Route Handlers and Server Actions are the only edge that talks to privileged Supabase or Meta.
 
-## Datos previstos
+## Planned data
 
-- Perfil contextual: lo que la persona elige mostrar en un evento.
-- Presencia voluntaria: sesión digital en un evento, con consentimiento explícito.
-- Descubrimiento: asistentes visibles en esa sesión.
-- Matching: objetivos, intereses y habilidades declarados.
-- Explicación: texto estructurado de Meta solo para las recomendaciones que ya pasaron el filtro.
-- Introducción: borrador personalizado, enviado solo si ambas partes aceptan.
-- Conexión: acuerdo mutuo.
-- Enlace, QR y NFC como transporte del mismo identificador público.
-- Analítica del organizador: agregados, sin perfiles privados.
+- Contextual profile: what the person chooses to show at an event.
+- Voluntary presence: digital session at an event, with explicit consent.
+- Discovery: attendees visible in that session.
+- Matching: declared goals, interests, and skills.
+- Explanation: structured Meta text only for recommendations that already passed the filter.
+- Introduction: personalized draft, sent only if both sides accept.
+- Connection: mutual agreement.
+- Link, QR, and NFC as transport for the same public identifier.
+- Organizer analytics: aggregates, no private profiles.
 
-## Presencia y proximidad
+## Presence and proximity
 
-Supabase Realtime Presence encaja para la presencia digital: quién está visible en la sesión del evento. No mide distancia física.
+Supabase Realtime Presence fits digital presence: who is visible in the event session. It does not measure physical distance.
 
-No hay detección automática entre teléfonos. Web NFC existe en Chrome para Android y no en Safari ni en la mayoría de escritorio. NFC es mejora progresiva. El QR y el enlace resuelven el mismo flujo cuando NFC no está disponible.
+There is no automatic phone-to-phone detection. Web NFC exists in Chrome for Android and not in Safari or most desktop browsers. NFC is progressive enhancement. QR and link cover the same flow when NFC is unavailable.
 
-No se recoge ubicación precisa de forma continua.
+Precise continuous location is not collected.
 
-## Matching a escala
+## Matching at scale
 
-Hay dos canales. El campo de señal sigue proyectando el vecindario con el feature hashing de `src/domain/embedding/vector.ts` para no mover el layout aprobado. La compatibilidad nueva vive en `src/domain/matching/hybrid.ts` y en los documentos `EMBEDDING_ARCHITECTURE.md`, `MATCHING_ARCHITECTURE.md` y `META_AI_CACHE.md`.
+There are two channels. The signal field still projects the neighborhood with feature hashing in `src/domain/embedding/vector.ts` so the approved layout does not move. The newer compatibility lives in `src/domain/matching/hybrid.ts` and in `EMBEDDING_ARCHITECTURE.md`, `MATCHING_ARCHITECTURE.md`, and `META_AI_CACHE.md`.
 
-No se compara cada perfil con todos los demás.
+Profiles are not compared all-to-all.
 
-1. Indexar los atributos de filtro: evento, objetivos, intereses y habilidades.
-2. Exigir presencia en el evento. El salón ya es el conjunto reducido.
-3. Proyectar cada perfil visible a un vector local (`src/domain/embedding`). El texto es el objetivo, los intereses, las habilidades y lo que busca. Los pesos son los de `MATCH_WEIGHTS`. La cercanía es el coseno.
-4. Quedarse con un vecindario pequeño por ese coseno. Eso coloca el campo: más cerca de «Tú» quien más se parece. El ángulo sale del vector, no de un índice ni del azar.
-5. Puntuar en código, con la fórmula de abajo, solo dentro de ese salón. Un vecino sin solapamiento no es recomendación y no lleva hilo.
-6. Pedir a Meta una explicación solo para las recomendaciones que se van a mostrar.
+1. Index filter attributes: event, goals, interests, and skills.
+2. Require presence at the event. The room is already the reduced set.
+3. Project each visible profile to a local vector (`src/domain/embedding`). The text is the goal, interests, skills, and what they seek. Weights are `MATCH_WEIGHTS`. Closeness is cosine.
+4. Keep a small neighborhood by that cosine. That places the field: closer to “You” means more alike. Angle comes from the vector, not from an index or randomness.
+5. Score in code, with the formula below, only inside that room. A neighbor with no overlap is not a recommendation and gets no thread.
+6. Ask Meta for an explanation only for recommendations that will be shown.
 
-Meta Model API no documenta un endpoint de embeddings. El vector no sale de esa API ni de otro proveedor: es un feature hashing determinista y se recalcula. No se persiste. Si más adelante hubiera embeddings oficiales, se sustituye `embedProfile` y se puede guardar el vector; la recuperación y el mapa no cambian de contrato. El campo de señal dibuja ese vecindario.
+Meta Model API does not document an embeddings endpoint. The vector does not come from that API or another provider: it is deterministic feature hashing and is recomputed. It is not persisted. If official embeddings appear later, replace `embedProfile` and optionally store the vector; retrieval and the map keep the same contract. The signal field draws that neighborhood.
 
 ## Meta Model API
 
 - Base URL: `https://api.meta.ai/v1`
-- Modelo de texto: `muse-spark-1.3`
-- SDK: `openai`, con `baseURL` y `apiKey` explícitos. El SDK no lee `MODEL_API_KEY` por sí solo.
-- Superficie: Responses API (`client.responses.create`).
-- Salida estructurada: `text.format` con `type: "json_schema"`. En Responses, `response_format` no configura la salida y puede devolver HTTP 400.
-- El cliente vive en servidor (`server-only`). Timeout 25s. El SDK reintenta 429 y 5xx hasta 2 veces. Un límite local adicional evita ráfagas.
-- La respuesta del modelo se valida con Zod. Si no encaja, es un error, no un resultado inventado.
+- Text model: `muse-spark-1.3`
+- SDK: `openai`, with explicit `baseURL` and `apiKey`. The SDK does not read `MODEL_API_KEY` on its own.
+- Surface: Responses API (`client.responses.create`).
+- Structured output: `text.format` with `type: "json_schema"`. On Responses, `response_format` does not configure output and can return HTTP 400.
+- The client lives on the server (`server-only`). Timeout 25s. The SDK retries 429 and 5xx up to 2 times. An extra local limit prevents bursts.
+- Model responses are validated with Zod. If they do not fit, that is an error, not an invented result.
 
-## Fórmula de matching
+## Matching formula
 
-Sobre el conjunto ya filtrado por evento y presencia vigente:
+Over the set already filtered by event and live presence:
 
-`score = objetivos×3 + intereses×2 + habilidades×1 + complementos×2`
+`score = goals×3 + interests×2 + skills×1 + complements×2`
 
-Un complemento es una habilidad del otro que aparece en el texto de lo que tú buscas y que no está ya en las habilidades compartidas. Confianza baja con menos de dos señales, media con dos o tres, alta con cuatro o más. Los pesos viven en `MATCH_WEIGHTS`.
+A complement is a skill the other has that appears in what you are looking for and is not already a shared skill. Confidence is low with fewer than two signals, medium with two or three, high with four or more. Weights live in `MATCH_WEIGHTS`.
 
-No se construye una matriz de todas las parejas. Meta solo explica un candidato ya puntuado, y el resultado se cachea. Un perfil `demo` no llama a Meta: la explicación se arma con los datos declarados y se etiqueta como demostración.
+No all-pairs matrix is built. Meta only explains a candidate already scored, and the result is cached. A `demo` profile does not call Meta: the explanation is built from declared data and labeled as demo.
 
-## Persistencia en este hackathon
+## Persistence in this hackathon
 
-Sin `NEXT_PUBLIC_SUPABASE_URL` ni service role, el servidor usa `.data/store.json`. Ese archivo es local, está en `.gitignore` y no es el backend de producción. La migración `supabase/migrations/0001_init.sql` deja el esquema listo para cuando exista proyecto. La presencia de sesión caduca a los 90 segundos sin heartbeat. La presencia marcada `demo` es un fixture etiquetado, no un teléfono en la sala.
+Without `NEXT_PUBLIC_SUPABASE_URL` or a service role, the server uses `.data/store.json`. That file is local, gitignored, and not the production backend. Migration `supabase/migrations/0001_init.sql` leaves the schema ready for a project. Session presence expires after 90 seconds without a heartbeat. Presence marked `demo` is a labeled fixture, not a phone in the room.
 
 ## Supabase
 
-Variables públicas, protegidas por RLS: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+Public variables, protected by RLS: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
-Secreto de servidor: `SUPABASE_SERVICE_ROLE_KEY`. Nunca en el cliente ni en `NEXT_PUBLIC_*`.
+Server secret: `SUPABASE_SERVICE_ROLE_KEY`. Never on the client or in `NEXT_PUBLIC_*`.
 
-Sin claves, la app arranca. Las funciones de persistencia fallan con un error explícito al usarse.
+Without keys the app still starts. Persistence functions fail with an explicit error when used.
 
-## Modo demostración
+## Demo mode
 
-`INTROMESH_DATA_MODE=demo` permite datos sintéticos etiquetados en la interfaz. No sustituye una respuesta del modelo. Una explicación de IA solo aparece tras una llamada real validada.
+`INTROMESH_DATA_MODE=demo` allows synthetic data labeled in the UI. It does not stand in for a model response. An AI explanation appears only after a real validated call.

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseTheme } from "@/lib/theme";
 
 describe("parseTheme", () => {
-  it("abre en claro si no hay una elección guardada", () => {
+  it("opens in light when no choice is stored", () => {
     expect(parseTheme(undefined)).toBe("light");
     expect(parseTheme(null)).toBe("light");
     expect(parseTheme("")).toBe("light");

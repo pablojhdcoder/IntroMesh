@@ -23,7 +23,7 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: "IntroMesh",
-  description: "Networking presencial. Descubre, comprende y conecta.",
+  description: "In-person networking. Discover, understand, and connect.",
 };
 
 const themeScript = `(function(){try{var m=document.cookie.match(/(?:^|; )intromesh-theme=(light|dark)(?:;|$)/);var dark=m&&m[1]==="dark";document.documentElement.classList.toggle("dark",Boolean(dark));}catch(e){}})();`;
@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   return (
     <html
-      lang="es"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}${theme === "dark" ? " dark" : ""} h-full antialiased`}
       suppressHydrationWarning
     >

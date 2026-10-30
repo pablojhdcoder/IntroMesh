@@ -1,13 +1,13 @@
-## Qué cambia
+## What changes
 
-<!-- El efecto para quien está en el evento, en una o dos frases. -->
+<!-- Effect for someone at the event, in one or two sentences. -->
 
-## Cómo se probó
+## How it was tested
 
 - [ ] `npm test`
 - [ ] `npm run lint`
-- [ ] Recorrido afectado en el navegador, si hay cambio de interfaz
+- [ ] Affected path in the browser, if the UI changed
 
-## Fuera de este cambio
+## Out of scope
 
-<!-- Qué no entra en esta rama. -->
+<!-- What this branch does not include. -->

@@ -1,17 +1,15 @@
 # Matching
 
-Meta no ordena. El ranking es determinista.
+1. Visible attendees at the same event, with consent.
+2. Global and event-context embeddings when ready.
+3. Retrieve at most 24 by global embedding similarity (`1 - (embedding <=> query)` in pgvector; dot product if the vector is already normalized).
+4. If both sides have a context embedding, it enters the semantic blend: 35% global and 65% contextual.
+5. Initial final score is 40% semantic, 25% goal, 20% skill complement, 10% shared interests, and 5% event relevance.
+6. If a component is missing, its weights are redistributed among those that exist. Missing context is not punished.
+7. At most 8 recommendations for the viewer are stored in `event_match_recommendations`.
 
-1. Asistentes visibles del mismo evento, con consentimiento.
-2. Se excluye al propio visor.
-3. Se recuperan como máximo 24 por similitud del embedding global (`1 - (embedding <=> consulta)` en pgvector; el producto escalar si el vector ya está normalizado).
-4. Si hay embedding de contexto en los dos lados, entra en la mezcla semántica: 35 % global y 65 % contextual.
-5. La nota final inicial es 40 % semántica, 25 % objetivo, 20 % complemento de habilidad, 10 % intereses compartidos y 5 % relevancia del evento.
-6. Si falta un componente, sus pesos se reparten entre los que sí existen. No se castiga la ausencia de contexto.
-7. Se guardan como máximo 8 recomendaciones del visor en `event_match_recommendations`.
+Complementarity can sustain a recommendation even without shared interests. Semantic similarity is not treated as compatibility alone: it is one more term.
 
-La complementariedad puede sostener una recomendación aunque no haya intereses comunes. La similitud semántica no se trata como compatibilidad por sí sola: es un término más.
+Changing identity clears recommendations where that person is viewer or candidate. Changing event context only clears that event’s rows. The other side recalculates when that person opens theirs.
 
-Cambiar la identidad borra las recomendaciones en las que esa persona es visor o candidata. Cambiar el contexto de un evento solo borra las de ese evento. El otro lado se recalcula cuando esa persona abre el suyo.
-
-Signal Field recibe el mismo objeto de siempre. Si los dos embeddings multilingües están listos, el peso de la arista es la nota híbrida. Si no, se mantiene la puntuación anterior para que la sala de demostración no cambie de aspecto.
+Signal Field receives the same object as before. If both multilingual embeddings are ready, the edge weight is the hybrid score. If not, the previous score is kept so the demo room does not change appearance.

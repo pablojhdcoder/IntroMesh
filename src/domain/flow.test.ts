@@ -7,7 +7,7 @@ import { isPresenceLive, nextExpiry } from "./presence";
 import { selectCandidates } from "./matching/select-candidates";
 
 describe("presence", () => {
-  it("caduca un heartbeat abandonado", () => {
+  it("expires an abandoned heartbeat", () => {
     const now = Date.parse("2026-11-04T12:00:00.000Z");
     expect(
       isPresenceLive(
@@ -26,44 +26,44 @@ describe("presence", () => {
 });
 
 describe("grounding", () => {
-  it("rechaza un interés que no está en la evidencia", () => {
+  it("rejects an interest that is not in the evidence", () => {
     const explanation: GroundedExplanation = {
       source: "model",
-      summary: "Compartís modelos y también hardware.",
-      opener: "¿Hablamos de modelos?",
+      summary: "You both share models and also hardware.",
+      opener: "Shall we talk about models?",
       citedGoals: [],
-      citedInterests: ["modelos"],
+      citedInterests: ["models"],
       citedSkills: [],
       complement: [],
       confidence: "medium",
     };
-    expect(assertGrounded(explanation, { goals: [], interests: ["modelos"], skills: [], complement: [] })).toBe(
+    expect(assertGrounded(explanation, { goals: [], interests: ["models"], skills: [], complement: [] })).toBe(
       "unsupported-term",
     );
   });
 
-  it("la explicación de demostración solo cita lo compartido", () => {
+  it("demo explanation only cites shared evidence", () => {
     const explanation = demoExplanation({
       otherName: "Ada",
-      shared: { goals: [], interests: ["modelos"], skills: [] },
+      shared: { goals: [], interests: ["models"], skills: [] },
       complement: [],
       confidence: "low",
       goalLabels: [],
     });
-    expect(assertGrounded(explanation, { goals: [], interests: ["modelos"], skills: [], complement: [] })).toBeNull();
+    expect(assertGrounded(explanation, { goals: [], interests: ["models"], skills: [], complement: [] })).toBeNull();
     expect(explanation.source).toBe("demo");
   });
 });
 
 describe("analytics", () => {
-  it("oculta temas con menos de cinco casos y calcula la conversión", () => {
+  it("hides topics under five cases and computes conversion", () => {
     const events = [
       ...Array.from({ length: 4 }, (_, index) => ({
         id: `a${index}`,
         eventId: "e",
         type: "recommendation_shown" as const,
         at: "2026-11-04T10:00:00.000Z",
-        topic: "modelos",
+        topic: "models",
       })),
       {
         id: "ok",
@@ -81,16 +81,16 @@ describe("analytics", () => {
 });
 
 describe("complement", () => {
-  it("puntúa una habilidad que el otro tiene y tú estás buscando", () => {
+  it("scores a skill the other has that you are seeking", () => {
     const [match] = selectCandidates(
       {
         id: "me",
-        displayName: "Yo",
+        displayName: "Me",
         discoverable: true,
         goals: ["hackathon"],
         interests: [],
         skills: [],
-        seeking: "busco frontend para el prototipo",
+        seeking: "looking for frontend for the prototype",
       },
       [
         {
@@ -108,27 +108,27 @@ describe("complement", () => {
   });
 });
 
-describe("sesión y ficha compartida", () => {
-  it("no acepta un id de perfil sin firma", () => {
+describe("session and shared card", () => {
+  it("rejects an unsigned profile id", () => {
     const token = sealProfileId("user-1", "secret");
     expect(openProfileId(token, "secret")).toBe("user-1");
     expect(openProfileId("user-1", "secret")).toBeNull();
-    expect(openProfileId(token, "otro")).toBeNull();
+    expect(openProfileId(token, "other")).toBeNull();
   });
 
-  it("la ficha compartida omite lo que se busca y lo que se ofrece", () => {
+  it("shared card omits seeking and offers", () => {
     const profile: StoredProfile = {
       id: "user-1",
       slug: "ada",
       displayName: "Ada",
-      role: "Diseño",
-      bio: "privado",
-      interests: ["diseño"],
+      role: "Design",
+      bio: "private",
+      interests: ["design"],
       skills: ["frontend"],
       projects: [],
       links: [{ label: "Web", url: "https://example.com" }],
-      offers: "mentoría",
-      seeking: "un cofundador",
+      offers: "mentoring",
+      seeking: "a cofounder",
       goal: "hackathon",
       demo: false,
       presentation: null,

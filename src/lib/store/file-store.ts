@@ -128,7 +128,7 @@ function demoEvent(): EventRecord {
     id: DEMO_EVENT_ID,
     name: "Meta Hackathon",
     demo: true,
-    description: "Fixture de demostración.",
+    description: "Demo fixture.",
     category: "hackathon",
     code: "META-HACK",
     status: "live",

@@ -19,10 +19,10 @@ const matchExplanationSchema = z.object({
   confidence_notes: z.string(),
 });
 
-const MATCH_PROMPT = `Eres IntroMesh. Explica en español por qué A podría hablar con B.
-Usa solo los hechos del JSON. No inventes coincidencias, empleos ni puntuaciones.
-No modifiques las señales numéricas. Si la evidencia es escasa, dilo en confidence_notes.
-Copia shared_signals y complementary_signals desde las listas permitidas, sin parafrasear.`;
+const MATCH_PROMPT = `You are IntroMesh. Explain in English why A might talk with B.
+Use only the facts in the JSON. Do not invent overlaps, jobs, or scores.
+Do not change the numeric signals. If evidence is thin, say so in confidence_notes.
+Copy shared_signals and complementary_signals from the allowed lists without paraphrasing.`;
 
 function same(value: string, allowed: readonly string[]): boolean {
   return allowed.some((item) => item.toLowerCase() === value.toLowerCase());
@@ -93,7 +93,7 @@ export function explainActions(store: FileStore) {
         rankingVersion: persisted?.rankingVersion ?? RANKING_VERSION,
         promptVersion: PROMPT_VERSION,
         modelId: readMetaTextConfig().model,
-        locale: "es",
+        locale: "en",
       });
       const draft = {
         id: `explain:${viewer.id}:${other.id}:${eventId}`,

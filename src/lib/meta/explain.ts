@@ -69,7 +69,7 @@ export async function explainAffinity(input: {
       schema: modelExplanationSchema,
       name: "affinity_explanation",
       instructions:
-        "Escribe en español. Usa solo los hechos del JSON. No añadas intereses, habilidades ni objetivos que no estén en las listas. Si la evidencia es escasa, dilo.",
+        "Write in English. Use only the facts in the JSON. Do not add interests, skills, or goals that are not in the lists. If evidence is thin, say so.",
       input: JSON.stringify({
         viewer: input.viewer.displayName,
         other: input.other.displayName,
@@ -103,12 +103,12 @@ export async function explainAffinity(input: {
 
 export async function contextualizeProfile(input: ProfileInput): Promise<Presentation> {
   if (!hasModelKey()) {
-    const interest = input.interests[0] ?? "este evento";
+    const interest = input.interests[0] ?? "this event";
     return presentationSchema.parse({
       source: "demo",
-      headline: `${input.displayName.split(" ")[0]} busca ${goalLabel(input.goal).toLowerCase()}`,
-      summary: `${input.role}. ${input.seeking} Declara ${input.interests.slice(0, 3).join(", ")}.`,
-      opener: `Estoy buscando conversaciones sobre ${interest}.`,
+      headline: `${input.displayName.split(" ")[0]} wants to ${goalLabel(input.goal).toLowerCase()}`,
+      summary: `${input.role}. ${input.seeking} Declares ${input.interests.slice(0, 3).join(", ")}.`,
+      opener: `I am looking for conversations about ${interest}.`,
     });
   }
 
@@ -116,7 +116,7 @@ export async function contextualizeProfile(input: ProfileInput): Promise<Present
     schema: modelPresentationSchema,
     name: "profile_context",
     instructions:
-      "Escribe en español una presentación breve. No inventes empleos, proyectos ni habilidades fuera del JSON.",
+      "Write a short presentation in English. Do not invent jobs, projects, or skills outside the JSON.",
     input: JSON.stringify({
       displayName: input.displayName,
       role: input.role,

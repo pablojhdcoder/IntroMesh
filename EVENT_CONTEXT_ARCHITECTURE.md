@@ -1,25 +1,15 @@
-# Contexto de evento
+# Event context
 
-La identidad global y el contexto del evento no se mezclan.
+Global identity and event context stay separate.
 
-| Global, reutilizable | Por participación |
+| Global, reusable | Per participation |
 | --- | --- |
-| Rol, bio, intereses, habilidades, proyectos, oferta, foco, temas | Evento, intención libre, visibilidad, consentimiento, estado |
+| Role, bio, interests, skills, projects, offer, focus, topics | Event, free-form intent, visibility, consent, status |
 
-```mermaid
-flowchart TB
-  person[Persona] --> identity[Identidad global]
-  person --> p1[Evento A]
-  person --> p2[Evento B]
-  identity --> e1[Embedding global]
-  p1 --> c1[Embedding contextual A]
-  p2 --> c2[Embedding contextual B]
-```
+Leaving visibility — the existing Invisible control — sets consent to false and hides the person at that event. It does not turn off their identity or recommendations at other events.
 
-Salir de la visibilidad —el control Invisible que ya existe— pone el consentimiento en falso y oculta a la persona en ese evento. No apaga su identidad ni las recomendaciones de otros eventos.
+Digital presence is still not physical proximity. QR, link, and NFC do not change. NFC only appears where the browser exposes `NDEFReader` in a secure context.
 
-La presencia digital sigue sin ser proximidad física. QR, enlace y NFC no cambian. NFC solo aparece donde el navegador expone `NDEFReader` en un contexto seguro.
+Embeddings and explanations are not public. RLS is on for the new tables and there is no policy for the anonymous role: only the server, with the service role, reads them. `MODEL_API_KEY` does not leave the server.
 
-Los embeddings y las explicaciones no son públicos. RLS está activo en las tablas nuevas y no hay política para el rol anónimo: solo el servidor, con la service role, las lee. `MODEL_API_KEY` no sale del servidor.
-
-Al entrar en un evento no se llama a Meta. Solo se programa el embedding que falte y se recalculan las recomendaciones de ese visor.
+Joining an event does not call Meta. Only missing embeddings are scheduled and that viewer’s recommendations are recalculated.

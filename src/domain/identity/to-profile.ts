@@ -24,7 +24,7 @@ export function toProfileInput(input: {
   const goal = inferGoal(blob);
   return {
     displayName: input.displayName.trim(),
-    role: (input.identity.professional_role ?? "").trim().slice(0, 80) || "Participante",
+    role: (input.identity.professional_role ?? "").trim().slice(0, 80) || "Participant",
     bio: (input.identity.short_bio ?? input.identity.profile_summary ?? "").slice(0, 400),
     interests: input.identity.interests.map((item) => item.slice(0, 48)).slice(0, 12),
     skills: input.identity.skills.map((item) => item.slice(0, 48)).slice(0, 12),

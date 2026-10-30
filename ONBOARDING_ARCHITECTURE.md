@@ -1,27 +1,27 @@
-# Onboarding — evento primero
+# Onboarding — event first
 
-La identidad profesional se crea una vez. Cada evento añade un objetivo distinto.
+Professional identity is created once. Each event adds a distinct intent.
 
 ```mermaid
 flowchart TD
-  invite[Enlace o código] --> resolve{Evento vigente}
-  resolve -->|no| error[Error comprensible]
-  resolve -->|sí| known{Identidad confirmada}
+  invite[Link or code] --> resolve{Open event}
+  resolve -->|no| error[Clear error]
+  resolve -->|yes| known{Identity confirmed}
   start[Where are you going?] --> known
-  known -->|no| identity[Nombre y descripción]
-  identity --> meta[Muse Spark una vez por hash]
-  meta --> review[Revisión editable]
-  review --> save[Confirmación explícita]
-  known -->|sí| intent[What brings you here?]
+  known -->|no| identity[Name and description]
+  identity --> meta[Muse Spark once per hash]
+  meta --> review[Editable review]
+  review --> save[Explicit confirmation]
+  known -->|yes| intent[What brings you here?]
   save --> intent
-  intent --> join[Participación]
-  join --> field[Signal Field existente]
+  intent --> join[Participation]
+  join --> field[Existing Signal Field]
 ```
 
-1. El usuario elige un evento real, entra con código o crea uno. No hay eventos inventados. El conteo sale de `presence`.
-2. Si no hay identidad confirmada, solo pide nombre y descripción libre.
-3. Meta normaliza. La persona corrige y pulsa «Looks good — Save my identity».
-4. Un texto opcional guarda el contexto de ese evento. No llama a Meta.
-5. Quien ya confirmó su identidad no la reescribe al cambiar de evento.
+1. The user picks a real event, joins with a code, or creates one. No invented events. Counts come from `presence`.
+2. Without a confirmed identity, only name and free-form description are asked.
+3. Meta normalizes. The person corrects and presses “Looks good — Save my identity”.
+4. An optional text stores that event’s context. It does not call Meta.
+5. Someone who already confirmed identity does not rewrite it when changing events.
 
-La pantalla sustituye el formulario largo anterior. Signal Field no cambia de presentación.
+This screen replaces the previous long form. Signal Field presentation does not change.

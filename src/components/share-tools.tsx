@@ -37,22 +37,22 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
   async function copyLink() {
     await navigator.clipboard.writeText(url);
     await track("link");
-    setMessage("Enlace copiado.");
+    setMessage("Link copied.");
   }
 
   async function writeTag() {
     const Reader = window.NDEFReader;
     if (!Reader) {
-      setMessage("Este navegador no expone Web NFC. El QR y el enlace siguen disponibles.");
+      setMessage("This browser does not expose Web NFC. The QR and link still work.");
       return;
     }
     try {
       const reader = new Reader();
       await reader.write({ records: [{ recordType: "url", data: url }] });
       await track("nfc");
-      setMessage("Etiqueta escrita con la URL pública.");
+      setMessage("Tag written with the public URL.");
     } catch {
-      setMessage("NFC cancelado, sin permiso o sin hardware. Usa el QR.");
+      setMessage("NFC cancelled, denied, or unavailable. Use the QR code.");
     }
   }
 
@@ -68,14 +68,14 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
         const text = new TextDecoder().decode(record.data);
         const target = profileLink(text);
         if (!target) {
-          setMessage("La etiqueta no apunta a un perfil de IntroMesh en este sitio.");
+          setMessage("That tag does not point to an IntroMesh profile on this site.");
           return;
         }
         window.location.assign(target);
       };
-      setMessage("Acerca una etiqueta compatible. Esto no detecta otros teléfonos.");
+      setMessage("Hold a compatible tag close. This does not detect other phones.");
     } catch {
-      setMessage("No se pudo leer. Hace falta un gesto, contexto seguro y hardware compatible.");
+      setMessage("Could not read. You need a gesture, a secure context, and compatible hardware.");
     }
   }
 
@@ -83,7 +83,7 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
     <div className="flex flex-col gap-4">
       <Image
         src={`/api/profiles/${slug}/qr`}
-        alt={`Código QR del perfil de ${name}`}
+        alt={`QR code for ${name}'s profile`}
         width={144}
         height={144}
         unoptimized
@@ -91,24 +91,24 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
       />
       <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:flex-wrap min-[720px]:items-center">
         <Button type="button" className={action} onClick={() => void copyLink()}>
-          Copiar enlace
+          Copy link
         </Button>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="ghost" className={ghostAction} onClick={() => void track("qr")}>
-            QR listo
+            QR ready
           </Button>
           <Button type="button" variant="ghost" className={ghostAction} disabled={!supported} onClick={() => void writeTag()}>
-            Escribir NFC
+            Write NFC
           </Button>
           <Button type="button" variant="ghost" className={ghostAction} disabled={!supported} onClick={() => void readTag()}>
-            Leer NFC
+            Read NFC
           </Button>
         </div>
       </div>
       <p className="max-w-[48ch] text-sm text-muted-foreground">
         {supported
-          ? "Web NFC solo actúa sobre una etiqueta, con un gesto tuyo. No empareja dos teléfonos."
-          : "NFC no está disponible aquí. Chrome en Android y un contexto seguro son el caso compatible. El enlace y el QR no dependen de eso."}
+          ? "Web NFC only writes or reads a tag after your gesture. It does not pair two phones."
+          : "NFC is not available here. Chrome on Android in a secure context is the compatible case. Link and QR do not depend on that."}
       </p>
       {message ? (
         <p className="text-sm" role="status" aria-live="polite">

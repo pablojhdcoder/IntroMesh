@@ -1,135 +1,136 @@
 # IntroMesh — The Signal Loop
 
-Dirección visual de un producto de networking presencial asistido por IA. La interfaz muestra cómo una persona pasa de descubrir a comprender por qué conecta y, después, a crear una relación.
+Visual direction for an AI-assisted in-person networking product. The interface shows how someone moves from discovering to understanding why they connect, then creating a relationship.
 
-Referencias de calidad: la precisión de Linear, la claridad de Vercel y el cuidado de Apple. No se copian sus interfaces.
+Quality references: Linear’s precision, Vercel’s clarity, Apple’s care. Their interfaces are not copied.
 
-## Principios
+## Principles
 
-1. La información manda. El movimiento explica el estado; no decora.
-2. Dos temas diseñados aparte. El claro es papel; el oscuro sigue siendo cinematográfico. El contraste es intencionado en los dos.
-3. Un solo acento luminoso: la señal.
-4. Cada recomendación muestra una razón concreta. Nunca un porcentaje huérfano.
-5. Lo sintético se etiqueta como demostración. Lo generado por el modelo se distingue de los datos de dominio.
-6. Móvil es una experiencia propia, no una columna estrecha del escritorio.
+1. Information leads. Motion explains state; it does not decorate.
+2. Two themes designed separately. Light is paper; dark stays cinematic. Contrast is intentional in both.
+3. One luminous accent: the signal.
+4. Every recommendation shows a concrete reason. Never an orphan percentage.
+5. Synthetic data is labeled as demo. Model-generated text is distinguished from domain data.
+6. Mobile is its own experience, not a narrow desktop column.
 
-## Evitar
+## Avoid
 
-- Gradientes gratuitos, blobs y mesh backgrounds.
-- Glassmorphism apilado. El campo de señal es la única superficie 3D: esferas de vidrio, hilos con partículas y órbita. El resto de la interfaz sigue plana.
-- Varias animaciones a la vez compitiendo con el texto.
-- Tarjetas genéricas de SaaS con icono, título y tres bullets idénticos.
-- Mezclar radios, sombras o familias tipográficas fuera de estos tokens.
+- Gratuitous gradients, blobs, and mesh backgrounds.
+- Stacked glassmorphism. The signal field is the only 3D surface: glass spheres, particle threads, and orbit. The rest of the UI stays flat.
+- Several animations competing with text at once.
+- Generic SaaS cards with icon, title, and three identical bullets.
+- Mixing radii, shadows, or type families outside these tokens.
 
-## Hilo visual
+## Visual thread
 
 **Discover → Understand → Connect → Learn.**
 
-La visualización central es un campo espacial: nodos con volumen, hilos hacia recomendaciones y una ruta hacia una conexión posible. En móvil, el campo muestra a la persona activa y dos o tres señales; el resto queda en una lista. El campo es funcional y se alimenta de datos reales o de datos sintéticos marcados.
+The central visualization is a spatial field: volumetric nodes, threads toward recommendations, and a path toward a possible connection. On mobile, the field shows the active person and two or three signals; the rest stays in a list. The field is functional and fed by real data or labeled synthetic data.
 
 ## Color
 
-El tema predeterminado es el claro. La primera visita abre en claro aunque el sistema esté en oscuro. La preferencia manual se guarda en la cookie `intromesh-theme` y se vuelve a aplicar en el servidor, así que no hay un parpadeo del tema contrario. No se sigue `prefers-color-scheme`.
+The default theme is light. The first visit opens in light even if the system is dark. Manual preference is stored in the `intromesh-theme` cookie and reapplied on the server, so the opposite theme does not flash. `prefers-color-scheme` is not followed.
 
-Un control en cápsula, arriba a la derecha del header, alterna los temas. La cápsula visible es de 28px; el área táctil sigue en 44px. Lleva los iconos `Sun` y `Moon`. El thumb marca el tema activo y se desplaza en 300ms con `cubic-bezier(0.32, 0.72, 0, 1)`. Con `prefers-reduced-motion: reduce` el cambio de tema y el thumb son instantáneos.
+A capsule control at the top right of the header switches themes. The visible capsule is 28px; the touch target stays 44px. It uses `Sun` and `Moon` icons. The thumb marks the active theme and moves in 300ms with `cubic-bezier(0.32, 0.72, 0, 1)`. With `prefers-reduced-motion: reduce`, theme change and thumb are instant.
 
-Los nombres semánticos (`--background`, `--foreground`, `--surface`, `--border`, `--signal`) son la fuente de verdad. El modo claro no es el negativo del oscuro.
+Semantic names (`--background`, `--foreground`, `--surface`, `--border`, `--signal`) are the source of truth. Light mode is not the negative of dark.
 
-### Claro
+### Light
 
-| Token | Valor | Uso |
+| Token | Value | Use |
 | --- | --- | --- |
-| `--background` | `#f6f4ef` | Lienzo, blanco roto cálido |
-| `--surface` | `#fffcf8` | Paneles y campos de formulario |
-| `--surface-raised` | `#efede6` | Hover y bloque seleccionado |
-| `--foreground` | `#16180f` | Texto principal |
-| `--muted` | `#5c584f` | Texto secundario. En CSS vive en `--muted-foreground` |
-| `--line` | `rgb(22 24 15 / 0.12)` | Bordes. En CSS vive en `--border` |
-| `--signal` | `#d6ff4a` | Acción primaria, con texto `#14160c` |
-| `--signal-strong` | `#4c6610` | Marca, foco, nodo activo y arista activa sobre el papel |
-| `--signal-dim` | `rgb(76 102 16 / 0.12)` | Pista suave de una ruta |
-| `--danger` | `#b42318` | Error. En CSS vive en `--destructive` |
-| `--success` | `#1f7a4a` | Éxito |
-| `--shadow-raise` | `0 10px 28px rgb(22 24 15 / 0.06)` | Reservada. El campo se posa sobre el papel, sin marco ni sombra |
+| `--background` | `#f6f4ef` | Canvas, warm off-white |
+| `--surface` | `#fffcf8` | Panels and form fields |
+| `--surface-raised` | `#efede6` | Hover and selected block |
+| `--foreground` | `#16180f` | Primary text |
+| `--muted` | `#5c584f` | Secondary text. Lives in CSS as `--muted-foreground` |
+| `--line` | `rgb(22 24 15 / 0.12)` | Borders. Lives in CSS as `--border` |
+| `--signal` | `#d6ff4a` | Primary action, with text `#14160c` |
+| `--signal-strong` | `#4c6610` | Brand, focus, active node and active edge on paper |
+| `--signal-dim` | `rgb(76 102 16 / 0.12)` | Soft path hint |
+| `--danger` | `#b42318` | Error. Lives in CSS as `--destructive` |
+| `--success` | `#1f7a4a` | Success |
+| `--shadow-raise` | `0 10px 28px rgb(22 24 15 / 0.06)` | Reserved. The field sits on paper, no frame or shadow |
 
-### Oscuro
+### Dark
 
-| Token | Valor | Uso |
+| Token | Value | Use |
 | --- | --- | --- |
-| `--background` | `#07080c` | Lienzo |
-| `--surface` | `#101218` | Paneles y tarjetas |
-| `--surface-raised` | `#171a22` | Elemento seleccionado o elevado |
-| `--foreground` | `#f4f1ea` | Texto principal, cálido sobre negro |
-| `--muted` | `#9a958c` | Texto secundario. En CSS vive en `--muted-foreground` |
-| `--line` | `rgb(244 241 234 / 0.12)` | Bordes. En CSS vive en `--border` |
-| `--signal` | `#d6ff4a` | Acento de conexión. Un solo uso dominante por vista |
-| `--signal-strong` | `#d6ff4a` | Misma señal: sobre negro el lima ya tiene contraste |
-| `--signal-dim` | `rgb(214 255 74 / 0.16)` | Halo o pista de una ruta |
-| `--danger` | `#ff6b5a` | Error. En CSS vive en `--destructive` |
-| `--success` | `#8ee0b0` | Éxito y conexión aceptada |
-| `--shadow-raise` | `0 16px 40px rgb(0 0 0 / 0.35)` | Reservada. El campo oscuro se posa sobre el lienzo, sin marco |
+| `--background` | `#07080c` | Canvas |
+| `--surface` | `#101218` | Panels and cards |
+| `--surface-raised` | `#171a22` | Selected or raised element |
+| `--foreground` | `#f4f1ea` | Primary text, warm on black |
+| `--muted` | `#9a958c` | Secondary text. Lives in CSS as `--muted-foreground` |
+| `--line` | `rgb(244 241 234 / 0.12)` | Borders. Lives in CSS as `--border` |
+| `--signal` | `#d6ff4a` | Connection accent. One dominant use per view |
+| `--signal-strong` | `#d6ff4a` | Same signal: on black the lime already contrasts |
+| `--signal-dim` | `rgb(214 255 74 / 0.16)` | Halo or path hint |
+| `--danger` | `#ff6b5a` | Error. Lives in CSS as `--destructive` |
+| `--success` | `#8ee0b0` | Success and accepted connection |
+| `--shadow-raise` | `0 16px 40px rgb(0 0 0 / 0.35)` | Reserved. The dark field sits on the canvas, no frame |
 
-El acento no tiñe fondos grandes. Marca la señal activa, el foco y la acción primaria. En claro, el lima `#d6ff4a` se reserva al botón primario: sobre papel no alcanza contraste, y las marcas del campo usan `--signal-strong`.
+The accent does not tint large backgrounds. It marks the active signal, focus, and primary action. In light, lime `#d6ff4a` is reserved for the primary button: on paper it lacks contrast, and field marks use `--signal-strong`.
 
-Al cambiar de tema, color, fondo, borde, trazo y sombra transicionan en `220ms` con `--ease-out`. La clase `theme-ready` se añade después del primer pintado para que esa transición no corra durante la carga.
+On theme change, color, background, border, stroke, and shadow transition in `220ms` with `--ease-out`. The `theme-ready` class is added after first paint so that transition does not run during load.
 
-## Tipografía
+## Typography
 
-| Rol | Familia | Uso |
+| Role | Family | Use |
 | --- | --- | --- |
-| Display | Instrument Serif | Títulos de sección y nombres en la red. Itálica solo para una palabra de énfasis |
-| UI | Geist Sans | Interfaz, botones, cuerpo |
-| Meta | Geist Mono | Etiquetas cortas, estados, identificadores |
+| Display | Instrument Serif | Section titles and names in the network. Italic only for one emphasis word |
+| UI | Geist Sans | Interface, buttons, body |
+| Meta | Geist Mono | Short labels, states, identifiers |
 
-Escala: display `clamp(2.5rem, 6vw, 4.5rem)` con tracking `-0.03em`; título de tarjeta `1.125rem`; cuerpo `0.9375rem` / line-height `1.5`; meta `0.75rem` con tracking `0.08em` en mayúsculas.
+Scale: display `clamp(2.5rem, 6vw, 4.5rem)` with tracking `-0.03em`; card title `1.125rem`; body `0.9375rem` / line-height `1.5`; meta `0.75rem` with tracking `0.08em` in uppercase.
 
-## Espaciado, radio y sombra
+## Spacing, radius, and shadow
 
-Escala de 4: `4, 8, 12, 16, 24, 32, 48, 64`.
+Scale of 4: `4, 8, 12, 16, 24, 32, 48, 64`.
 
-| Token | Valor |
+| Token | Value |
 | --- | --- |
 | `--radius-sm` | `8px` |
 | `--radius-md` | `12px` |
 | `--radius-lg` | `20px` |
-`--shadow-raise` depende del tema. Ver la sección Color.
 
-Los bordes son de 1px con `--line`. El campo no lleva marco, superficie ni sombra: se posa sobre `--background`.
+`--shadow-raise` depends on the theme. See Color.
 
-## Movimiento
+Borders are 1px with `--line`. The field has no frame, surface, or shadow: it sits on `--background`.
 
-| Token | Valor |
+## Motion
+
+| Token | Value |
 | --- | --- |
 | `--duration-fast` | `160ms` |
 | `--duration-base` | `280ms` |
 | `--ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` |
 
-Entradas y cambios de estado usan ease-out. No usar ease-in para aparecer. Propiedades animables: `transform` y `opacity`.
+Entries and state changes use ease-out. Do not use ease-in to appear. Animatable properties: `transform` and `opacity`.
 
-`prefers-reduced-motion: reduce` elimina traslaciones y deja cambios instantáneos de opacidad o estado.
+`prefers-reduced-motion: reduce` removes translations and leaves instant opacity or state changes.
 
-Transiciones del hilo: Discover desplaza el foco al nodo; Understand abre la razón; Connect confirma con el acento; Learn deja la conexión en reposo.
+Loop transitions: Discover moves focus to the node; Understand opens the reason; Connect confirms with the accent; Learn leaves the connection at rest.
 
-## Componentes
+## Components
 
-shadcn/ui es la base. Se reestiliza con estos tokens. No se mezclan otras librerías de componentes.
+shadcn/ui is the base. Restyle it with these tokens. Do not mix other component libraries.
 
-- Botón primario: fondo `--signal`, texto `#14160c`, radio `--radius-sm`.
-- Botón secundario: superficie, borde `--line`, texto `--foreground`.
-- Tarjeta de afinidad: superficie, una razón visible, máximo tres evidencias, acción clara.
-- Campo de señal: única superficie 3D. “Tú” queda fijo en el centro. El resto orbita con una simulación de fuerzas, esferas de vidrio (transmisión, clearcoat) y partículas que recorren los hilos. Quien es recomendación brilla con la señal; el resto es más tenue. El nombre flota bajo la esfera. Se puede orbitar la cámara. Con `prefers-reduced-motion` no hay partículas ni autorrotación. En claro, el lima no marca el campo: usa `--signal-strong`.
-- Estados obligatorios: carga, vacío, error, éxito, selección y deshabilitado.
+- Primary button: `--signal` background, text `#14160c`, radius `--radius-sm`.
+- Secondary button: surface, `--line` border, `--foreground` text.
+- Affinity card: surface, one visible reason, at most three evidence items, clear action.
+- Signal field: only 3D surface. “You” stays fixed at the center. Everyone else orbits with a force simulation, glass spheres (transmission, clearcoat), and particles along threads. Recommendations glow with the signal; the rest is dimmer. The name floats under the sphere. The camera can orbit. With `prefers-reduced-motion` there are no particles or autorotation. In light, lime does not mark the field: use `--signal-strong`.
+- Required states: loading, empty, error, success, selection, and disabled.
 
-## Accesibilidad
+## Accessibility
 
-- Contraste de texto principal sobre lienzo por encima de 7:1. El acento `#d6ff4a` sobre `#14160c` supera 4.5:1 para controles. En claro, el foco y el texto secundario usan tintas que se leen sobre `#f6f4ef`.
-- Foco visible con anillo de 2px `--ring` (`--signal-strong`) y offset de 2px.
-- Toda acción funciona con teclado. La red tiene una alternativa en lista.
-- Iconos de Lucide acompañan texto, salvo cuando el `aria-label` nombra la acción.
+- Primary text contrast on canvas above 7:1. Accent `#d6ff4a` on `#14160c` exceeds 4.5:1 for controls. In light, focus and secondary text use inks readable on `#f6f4ef`.
+- Visible focus with a 2px `--ring` (`--signal-strong`) and 2px offset.
+- Every action works with the keyboard. The network has a list alternative.
+- Lucide icons accompany text, except when `aria-label` names the action.
 
 ## Responsive
 
-- `< 720px`: una columna. El campo muestra a la persona activa y dos o tres señales; el resto queda en lista. Las acciones primarias ocupan el ancho.
-- `≥ 720px`: campo a la izquierda y explicación a la derecha, en una sola pantalla. El detalle, si crece, se desplaza dentro de su columna.
+- `< 720px`: one column. The field shows the active person and two or three signals; the rest is a list. Primary actions are full width.
+- `≥ 720px`: field on the left and explanation on the right, on one screen. Detail, if it grows, scrolls inside its column.
 
-Áreas táctiles de al menos 44px. Inputs a 16px para evitar zoom en iOS.
+Touch targets at least 44px. Inputs at 16px to avoid iOS zoom.

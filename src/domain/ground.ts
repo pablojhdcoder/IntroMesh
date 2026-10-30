@@ -57,20 +57,20 @@ export function demoExplanation(input: {
   const skill = input.shared.skills[0];
   const complement = input.complement[0];
   const bits = [
-    interest ? `los dos marcasteis ${interest}` : null,
-    skill ? `compartís ${skill}` : null,
-    complement ? `${input.otherName} aporta ${complement}, que encaja con lo que buscas` : null,
+    interest ? `you both marked ${interest}` : null,
+    skill ? `you share ${skill}` : null,
+    complement ? `${input.otherName} brings ${complement}, which fits what you are looking for` : null,
   ].filter(Boolean);
   const raw =
     bits.length > 0
       ? `${bits.join("; ")}.`
-      : `La señal es débil: solo coincide el objetivo y no hay más evidencia declarada.`;
+      : `The signal is thin: only the goal overlaps and there is no other declared evidence.`;
   const summary = raw.charAt(0).toUpperCase() + raw.slice(1);
   const opener = complement
-    ? `¿En qué parte de tu trabajo entra ${complement}?`
+    ? `Where does ${complement} show up in your work?`
     : interest
-      ? `¿Qué estás haciendo ahora con ${interest}?`
-      : `¿Qué buscas exactamente en este evento?`;
+      ? `What are you doing with ${interest} right now?`
+      : `What are you hoping to find at this event?`;
   return {
     source: "demo",
     summary,

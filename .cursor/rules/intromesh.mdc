@@ -1,15 +1,16 @@
 ---
-description: Arquitectura, diseño, secretos y verificación de IntroMesh
+description: IntroMesh product and engineering constraints
 alwaysApply: true
 ---
 
 # IntroMesh
 
-- Lee `docs/DESIGN.md` antes de cualquier UI. Reutiliza tokens y componentes shadcn; no mezcles otra librería visual.
-- Separa UI (`src/app`, `src/components`), casos de uso (`src/server`), dominio (`src/domain`), persistencia (`src/lib/supabase`) y Meta (`src/lib/meta`).
-- TypeScript estricto. Valida entradas y salidas externas con Zod.
-- `MODEL_API_KEY` y `SUPABASE_SERVICE_ROLE_KEY` solo en servidor. Prohibido `NEXT_PUBLIC_` para secretos.
-- El descubrimiento exige consentimiento. No inventes filas, matches ni texto del modelo. Lo sintético lleva marca `demo`.
-- No compares todos los perfiles entre sí. Candidatos deterministas primero; el modelo solo explica recomendaciones ya elegidas.
-- Antes de cerrar una tarea, ejecuta `npm test` y `npm run lint` cuando el cambio los afecte. Si no hay clave, no afirmes que Meta responde.
-- Detalle de producto: `docs/ARCHITECTURE.md`, `docs/PRIVACY.md`, `docs/PRODUCT.md`, `AGENTS.md`.
+- Read `docs/DESIGN.md` before any UI. Reuse tokens and shadcn components; do not mix another visual library.
+- Separate UI (`src/app`, `src/components`), use cases (`src/server`), domain (`src/domain`), persistence (`src/lib/supabase`), and Meta (`src/lib/meta`).
+- Strict TypeScript. Validate external inputs and outputs with Zod.
+- `MODEL_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` only on the server. No `NEXT_PUBLIC_` for secrets.
+- Discovery requires consent. Do not invent rows, matches, or model text. Synthetic data carries the `demo` mark.
+- Do not compare every profile to every other. Deterministic candidates first; the model only explains recommendations already chosen.
+- Product-facing copy is English for the Meta hackathon.
+- Before closing a task, run `npm test` and `npm run lint` when the change affects them. Without a key, do not claim Meta responds.
+- Product detail: `docs/ARCHITECTURE.md`, `docs/PRIVACY.md`, `docs/PRODUCT.md`, `AGENTS.md`.

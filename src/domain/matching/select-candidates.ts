@@ -62,7 +62,7 @@ export function confidenceFor(signalCount: number): "low" | "medium" | "high" {
  * Puntúa un conjunto ya reducido (el mismo evento). No compara el evento consigo mismo.
  * Quien no consintió el descubrimiento queda fuera. Sin solapamiento ni complementariedad, no hay candidato.
  *
- * score = objetivos×3 + intereses×2 + habilidades×1 + complementos×2
+ * score = goals×3 + interests×2 + skills×1 + complements×2
  */
 export function selectCandidates(
   viewer: MatchProfile,

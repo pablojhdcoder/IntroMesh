@@ -50,7 +50,7 @@ export function onboardingActions(store: FileStore) {
           description: input.description.trim(),
           category: input.category.trim(),
           startsAt: input.startsAt,
-          code: `${slugify(name) || "evento"}-${id.slice(-6)}`,
+          code: `${slugify(name) || "event"}-${id.slice(-6)}`,
           status: "live" as const,
           createdBy: ownerId,
         };

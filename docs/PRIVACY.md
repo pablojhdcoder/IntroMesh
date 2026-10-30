@@ -1,36 +1,36 @@
-# Privacidad — IntroMesh
+# Privacy — IntroMesh
 
-## Consentimiento
+## Consent
 
-Aparecer en el descubrimiento es opt-in. El valor por defecto es no visible. La persona puede dejar de estar visible en cualquier momento; la presencia en tiempo real debe retirarse en ese momento, no al cerrar la pestaña.
+Appearing in discovery is opt-in. The default is not visible. A person can leave visibility at any time; real-time presence must be withdrawn then, not when the tab closes.
 
-Aceptar una conexión es independiente de ser visible. Ver una recomendación no crea una relación.
+Accepting a connection is independent of being visible. Seeing a recommendation does not create a relationship.
 
-## Minimización
+## Minimization
 
-Se guarda lo necesario para el evento: nombre visible, objetivo, intereses y habilidades que la persona declara. No se infieren atributos sensibles (salud, origen, religión, orientación, situación económica) para hacer matching. Esos campos no entran en el prompt aunque aparezcan en una biografía libre: se excluyen antes de llamar al modelo.
+Only what the event needs is stored: visible name, goal, interests, and skills the person declares. Sensitive attributes (health, origin, religion, orientation, economic status) are not inferred for matching. Those fields do not enter the prompt even if they appear in free-form bio text: they are removed before calling the model.
 
-No hay seguimiento continuo de ubicación.
+There is no continuous location tracking.
 
-## Público y privado
+## Public and private
 
-| Público en el evento, si hay consentimiento | Privado |
+| Public at the event, with consent | Private |
 | --- | --- |
-| Nombre visible, objetivo, intereses y habilidades declarados | Contacto personal, notas, rechazos, borradores de introducción no enviados |
-| Ruta de conexión (enlace o QR) | Claves, identificadores internos, service role |
+| Visible name, goal, declared interests and skills | Personal contact, notes, rejections, unsent introduction drafts |
+| Connection path (link or QR) | Keys, internal identifiers, service role |
 
-El organizador ve métricas agregadas: asistentes visibles, conexiones mutuas, temas más declarados. No ve perfiles que no consintieron ni el contenido de las introducciones.
+Organizers see aggregated metrics: visible attendees, mutual connections, most-declared topics. They do not see profiles that did not consent or the content of introductions.
 
-## Servidor y secretos
+## Server and secrets
 
-`MODEL_API_KEY` y `SUPABASE_SERVICE_ROLE_KEY` solo se leen en el servidor. No usan prefijo `NEXT_PUBLIC_`. No se escriben en logs, respuestas de error al cliente ni en el repositorio.
+`MODEL_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are read only on the server. They do not use the `NEXT_PUBLIC_` prefix. They are not written to logs, client error responses, or the repository.
 
-Los logs de Meta pueden incluir estado HTTP, tipo de error y latencia. No incluyen el prompt, el perfil ni la clave.
+Meta logs may include HTTP status, error type, and latency. They do not include the prompt, the profile, or the key.
 
-## Analítica
+## Analytics
 
-Solo agregados del evento. Sin exportar texto libre de perfiles ni mensajes.
+Event aggregates only. No export of free-form profile text or messages.
 
-## Demostración
+## Demo
 
-Los datos sintéticos llevan la marca `demo` en el modelo y la etiqueta "Demostración" en la interfaz. No se presentan como asistentes reales ni como salida del modelo.
+Synthetic data carries the `demo` mark in the model and a “Demo” label in the UI. It is not presented as real attendees or as model output.

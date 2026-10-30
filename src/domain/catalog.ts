@@ -1,43 +1,43 @@
 export const GOALS = [
-  { id: "cofounder", label: "Encontrar un cofundador" },
-  { id: "collaborate", label: "Colaborar en un proyecto" },
-  { id: "discipline", label: "Conocer una disciplina" },
-  { id: "hackathon", label: "Explorar el hackathon" },
+  { id: "cofounder", label: "Find a cofounder" },
+  { id: "collaborate", label: "Collaborate on a project" },
+  { id: "discipline", label: "Meet someone in a field" },
+  { id: "hackathon", label: "Explore the hackathon" },
 ] as const;
 
 export type GoalId = (typeof GOALS)[number]["id"];
 
 export const INTERESTS = [
-  "modelos",
-  "producto",
-  "diseño",
-  "datos",
-  "clima",
-  "salud",
-  "educación",
+  "models",
+  "product",
+  "design",
+  "data",
+  "climate",
+  "health",
+  "education",
   "hardware",
-  "comunidad",
-  "privacidad",
+  "community",
+  "privacy",
 ] as const;
 
 export const SKILLS = [
-  "investigación",
-  "prototipado",
+  "research",
+  "prototyping",
   "frontend",
   "backend",
-  "facilitación",
-  "análisis",
+  "facilitation",
+  "analysis",
   "hardware",
-  "escritura",
+  "writing",
 ] as const;
 
 export const PROJECTS = [
-  "mapa de señales",
-  "archivo climático",
-  "tutor de oficio",
-  "mesa de matching",
-  "sensor abierto",
-  "bitácora clínica",
+  "signal map",
+  "climate archive",
+  "craft tutor",
+  "matching table",
+  "open sensor",
+  "clinical log",
 ] as const;
 
 export const DEMO_EVENT_ID = "meta-hackathon-2026";

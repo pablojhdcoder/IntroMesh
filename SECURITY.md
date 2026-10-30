@@ -1,13 +1,13 @@
-# Seguridad
+# Security
 
-No abras un issue público para una vulnerabilidad, una clave filtrada o un fallo que permita leer perfiles sin consentimiento.
+Do not open a public issue for a vulnerability, a leaked key, or a bug that lets someone read profiles without consent.
 
-Abre un aviso privado en [Security Advisories](https://github.com/pablojhdcoder/IntroMesh/security/advisories/new) con:
+Open a private report in [Security Advisories](https://github.com/pablojhdcoder/IntroMesh/security/advisories/new) with:
 
-- qué componente está afectado
-- qué podría hacer alguien con el fallo
-- los pasos mínimos para reproducirlo, sin datos reales de otras personas
+- which component is affected
+- what someone could do with the bug
+- the minimum steps to reproduce it, without real data from other people
 
-Si has pegado `MODEL_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` u otra clave en un commit, un issue o un log, dilo en ese aviso y rota la clave. No la incluyas en el mensaje.
+If you pasted `MODEL_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, or another key in a commit, issue, or log, say so in that report and rotate the key. Do not include the key in the message.
 
-Las versiones cubiertas son las de `main`. Este repositorio no publica la app en npm (`private: true` en `package.json`).
+Covered versions are those on `main`. This repository does not publish the app to npm (`private: true` in `package.json`).

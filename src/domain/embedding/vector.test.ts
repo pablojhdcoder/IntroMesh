@@ -15,25 +15,25 @@ function profile(overrides: Partial<MatchProfile> & Pick<MatchProfile, "id">): M
 }
 
 describe("embedProfile", () => {
-  it("devuelve un vector fijo y normalizado", () => {
-    const viewer = profile({ id: "me", goals: ["contratar"], interests: ["modelos"], skills: ["producto"] });
+  it("returns a fixed normalized vector", () => {
+    const viewer = profile({ id: "me", goals: ["hire"], interests: ["models"], skills: ["product"] });
     const vector = embedProfile(viewer);
     expect(vector).toHaveLength(EMBEDDING_DIM);
     expect(Math.hypot(...vector)).toBeCloseTo(1, 5);
     expect(embedProfile(viewer)).toEqual(vector);
   });
 
-  it("acerca perfiles que comparten atributos y aleja los que no", () => {
-    const viewer = profile({ id: "me", goals: ["contratar"], interests: ["modelos"], skills: ["producto"] });
-    const close = profile({ id: "close", goals: ["contratar"], interests: ["modelos"] });
-    const far = profile({ id: "far", goals: ["invertir"], interests: ["hardware"], skills: ["finanzas"] });
+  it("brings overlapping profiles closer and pushes others away", () => {
+    const viewer = profile({ id: "me", goals: ["hire"], interests: ["models"], skills: ["product"] });
+    const close = profile({ id: "close", goals: ["hire"], interests: ["models"] });
+    const far = profile({ id: "far", goals: ["invest"], interests: ["hardware"], skills: ["finance"] });
     const origin = embedProfile(viewer);
     expect(cosineSimilarity(origin, embedProfile(viewer))).toBeCloseTo(1, 5);
     expect(cosineSimilarity(origin, embedProfile(close))).toBeGreaterThan(cosineSimilarity(origin, embedProfile(far)));
   });
 
-  it("un perfil vacío no finge cercanía", () => {
-    const viewer = profile({ id: "me", skills: ["producto"] });
+  it("an empty profile does not fake closeness", () => {
+    const viewer = profile({ id: "me", skills: ["product"] });
     const empty = profile({ id: "empty" });
     expect(embedProfile(empty).every((value) => value === 0)).toBe(true);
     expect(cosineSimilarity(embedProfile(viewer), embedProfile(empty))).toBe(0);
@@ -41,12 +41,12 @@ describe("embedProfile", () => {
 });
 
 describe("rankBySimilarity", () => {
-  it("recupera el vecindario por encima del umbral, ordenado y acotado", () => {
-    const viewer = embedProfile(profile({ id: "me", interests: ["modelos"], skills: ["producto"] }));
+  it("retrieves neighborhood above the threshold, sorted and capped", () => {
+    const viewer = embedProfile(profile({ id: "me", interests: ["models"], skills: ["product"] }));
     const pool = [
-      profile({ id: "b", interests: ["modelos"] }),
-      profile({ id: "far", goals: ["invertir"], skills: ["finanzas"] }),
-      profile({ id: "a", interests: ["modelos"], skills: ["producto"] }),
+      profile({ id: "b", interests: ["models"] }),
+      profile({ id: "far", goals: ["invest"], skills: ["finance"] }),
+      profile({ id: "a", interests: ["models"], skills: ["product"] }),
     ].map((item) => ({ item, vector: embedProfile(item) }));
 
     const ranked = rankBySimilarity(viewer, pool, { limit: 2, minSimilarity: 0.2 });
@@ -56,9 +56,9 @@ describe("rankBySimilarity", () => {
 });
 
 describe("mapSignalGraph", () => {
-  it("coloca más cerca del centro a quien más se parece y es estable", () => {
-    const viewer = embedProfile(profile({ id: "me", interests: ["modelos"], skills: ["producto"] }));
-    const close = profile({ id: "close", interests: ["modelos"], skills: ["producto"] });
+  it("places closer neighbors nearer the center and stays stable", () => {
+    const viewer = embedProfile(profile({ id: "me", interests: ["models"], skills: ["product"] }));
+    const close = profile({ id: "close", interests: ["models"], skills: ["product"] });
     const far = profile({ id: "far", goals: ["otro"], skills: ["distinto"] });
     const nodes = [far, close].map((item) => ({
       id: item.id,

@@ -17,37 +17,37 @@ export default async function IntelligencePage() {
               IntroMesh
             </Link>
           </p>
-          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] min-[720px]:text-[2.5rem]">Inteligencia</h1>
+          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] min-[720px]:text-[2.5rem]">Intelligence</h1>
           <p className="max-w-[44ch] text-sm text-muted-foreground">
-            {data.event?.name ?? "Evento"}. Agregados, sin historiales ni rankings de personas.
-            {data.demo ? " Datos semilla de demostración." : ""}
+            {data.event?.name ?? "Event"}. Aggregates only — no personal histories or people rankings.
+            {data.demo ? " Seed demo data." : ""}
           </p>
         </div>
         <ThemeSwitch />
       </header>
 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
-        <Stat label="Visibles" value={String(report.visible)} />
-        <Stat label="Recomendaciones" value={String(report.recommendations)} />
-        <Stat label="Perfiles vistos" value={String(report.profileViews)} />
-        <Stat label="Solicitudes" value={String(report.requests)} />
-        <Stat label="Aceptadas" value={String(report.accepted)} />
-        <Stat label="Conversión" value={report.conversion === null ? "—" : `${Math.round(report.conversion * 100)}%`} />
+        <Stat label="Visible" value={String(report.visible)} />
+        <Stat label="Recommendations" value={String(report.recommendations)} />
+        <Stat label="Profiles viewed" value={String(report.profileViews)} />
+        <Stat label="Requests" value={String(report.requests)} />
+        <Stat label="Accepted" value={String(report.accepted)} />
+        <Stat label="Conversion" value={report.conversion === null ? "—" : `${Math.round(report.conversion * 100)}%`} />
       </dl>
 
       <div className="grid gap-12 sm:grid-cols-2">
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium">Intercambio</h2>
+          <h2 className="text-sm font-medium">Sharing</h2>
           <dl className="grid grid-cols-[1fr_max-content] gap-x-6 gap-y-1 text-sm">
-            <Row label="Enlaces" value={String(report.shares.link)} />
+            <Row label="Links" value={String(report.shares.link)} />
             <Row label="QR" value={String(report.shares.qr)} />
             <Row label="NFC" value={String(report.shares.nfc)} />
           </dl>
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium">Temas</h2>
-          {report.topics.length === 0 ? <p className="text-sm text-muted-foreground">Todavía no hay un tema con suficientes casos.</p> : null}
+          <h2 className="text-sm font-medium">Topics</h2>
+          {report.topics.length === 0 ? <p className="text-sm text-muted-foreground">No topic has enough cases yet.</p> : null}
           {report.topics.length > 0 ? (
             <dl className="grid grid-cols-[1fr_max-content] gap-x-6 gap-y-1 text-sm">
               {report.topics.map((topic) => (
@@ -56,7 +56,7 @@ export default async function IntelligencePage() {
             </dl>
           ) : null}
           {report.suppressedTopics > 0 ? (
-            <p className="text-sm text-muted-foreground">{report.suppressedTopics} temas ocultos por ser grupos de menos de 5.</p>
+            <p className="text-sm text-muted-foreground">{report.suppressedTopics} topics hidden because the group is under 5.</p>
           ) : null}
         </section>
       </div>

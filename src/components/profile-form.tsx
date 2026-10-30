@@ -10,8 +10,8 @@ const empty: ProfileInput = {
   displayName: "",
   role: "",
   bio: "",
-  interests: ["modelos"],
-  skills: ["prototipado"],
+  interests: ["models"],
+  skills: ["prototyping"],
   projects: [],
   links: [],
   offers: "",
@@ -57,7 +57,7 @@ export function ProfileForm({
     const body = await response.json();
     setPending(null);
     if (!response.ok) {
-      setError("No se pudo redactar la presentación. Revisa los campos o el estado de Meta.");
+      setError("Could not draft the presentation. Check the fields or Meta status.");
       return;
     }
     setPresentation(body.presentation as Presentation);
@@ -73,7 +73,7 @@ export function ProfileForm({
     });
     setPending(null);
     if (!response.ok) {
-      setError("El perfil no se ha guardado. Nombre, rol, un interés, una habilidad y lo que buscas son obligatorios.");
+      setError("Profile was not saved. Name, role, one interest, one skill, and what you seek are required.");
       return;
     }
     onSaved();
@@ -89,25 +89,25 @@ export function ProfileForm({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] min-[720px]:text-[2.5rem]">Tu identidad</h1>
-          <p className="max-w-[40ch] text-sm text-muted-foreground">Un perfil para todos los eventos. La presentación se edita antes de compartirla.</p>
+          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] min-[720px]:text-[2.5rem]">Your identity</h1>
+          <p className="max-w-[40ch] text-sm text-muted-foreground">One profile for every event. Edit the presentation before you share it.</p>
         </div>
         <ThemeSwitch />
       </div>
 
       <div className="flex flex-col gap-4">
         <label className={field}>
-          Nombre
+          Name
           <input className={input} value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} required />
         </label>
         <label className={field}>
-          Rol
+          Role
           <input className={input} value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value })} required />
         </label>
       </div>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-3 text-sm text-muted-foreground">Objetivo en este evento</legend>
+        <legend className="mb-3 text-sm text-muted-foreground">Goal at this event</legend>
         <div className="flex flex-wrap gap-2">
           {GOALS.map((goal) => {
             const selected = draft.goal === goal.id;
@@ -127,20 +127,20 @@ export function ProfileForm({
         </div>
       </fieldset>
 
-      <ChipSet legend="Intereses" options={INTERESTS} selected={draft.interests} onToggle={(value) => toggle("interests", value)} />
-      <ChipSet legend="Habilidades" options={SKILLS} selected={draft.skills} onToggle={(value) => toggle("skills", value)} />
+      <ChipSet legend="Interests" options={INTERESTS} selected={draft.interests} onToggle={(value) => toggle("interests", value)} />
+      <ChipSet legend="Skills" options={SKILLS} selected={draft.skills} onToggle={(value) => toggle("skills", value)} />
 
       <div className="flex flex-col gap-4">
         <label className={field}>
-          Proyecto
+          Project
           <input className={input} value={project} onChange={(event) => setProject(event.target.value)} />
         </label>
         <label className={field}>
-          Qué puedes aportar
+          What you can offer
           <textarea className={textarea} value={draft.offers} onChange={(event) => setDraft({ ...draft, offers: event.target.value })} />
         </label>
         <label className={field}>
-          Qué estás buscando
+          What you are looking for
           <textarea className={textarea} value={draft.seeking} onChange={(event) => setDraft({ ...draft, seeking: event.target.value })} required />
         </label>
       </div>
@@ -148,16 +148,16 @@ export function ProfileForm({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col-reverse gap-2 min-[720px]:flex-row min-[720px]:items-center">
           <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending !== null} onClick={() => void draftPresentation()}>
-            {pending === "draft" ? "Redactando" : "Redactar presentación"}
+            {pending === "draft" ? "Drafting" : "Draft presentation"}
           </Button>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending !== null}>
-            {pending === "save" ? "Guardando" : "Entrar al evento"}
+            {pending === "save" ? "Saving" : "Join the event"}
           </Button>
         </div>
         <p className="max-w-[52ch] text-sm text-muted-foreground">
           {metaConfigured
-            ? "La redacción usa Meta AI. Puedes corregirla antes de guardarla."
-            : "Demostración. No hay MODEL_API_KEY: la redacción se arma solo con tus campos y no es una respuesta del modelo."}
+            ? "Drafting uses Meta AI. You can edit it before saving."
+            : "Demo. MODEL_API_KEY is missing: the draft is built from your fields only and is not a model response."}
         </p>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </div>
@@ -165,18 +165,18 @@ export function ProfileForm({
       {presentation ? (
         <div className="flex flex-col gap-4 border-t border-border pt-8">
           <p className={meta}>
-            {presentation.source === "model" ? "Presentación · Meta AI" : presentation.source === "demo" ? "Presentación · Demostración, no es Meta AI" : "Presentación · editada"}
+            {presentation.source === "model" ? "Presentation · Meta AI" : presentation.source === "demo" ? "Presentation · Demo, not Meta AI" : "Presentation · edited"}
           </p>
           <label className={field}>
-            Titular
+            Headline
             <input className={input} value={presentation.headline} onChange={(event) => setPresentation({ ...presentation, headline: event.target.value, source: "user" })} />
           </label>
           <label className={field}>
-            Resumen
+            Summary
             <textarea className={`${textarea} min-h-24`} value={presentation.summary} onChange={(event) => setPresentation({ ...presentation, summary: event.target.value, source: "user" })} />
           </label>
           <label className={field}>
-            Cómo empezar
+            How to start
             <textarea className={textarea} value={presentation.opener} onChange={(event) => setPresentation({ ...presentation, opener: event.target.value, source: "user" })} />
           </label>
         </div>

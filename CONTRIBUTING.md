@@ -1,8 +1,8 @@
-# Contribuir a IntroMesh
+# Contributing to IntroMesh
 
-Gracias por querer mejorar el recorrido Discover → Understand → Connect → Learn. Los cambios pequeños y revisables entran antes que los rediseños amplios.
+Thanks for helping improve the Discover → Understand → Connect → Learn loop. Small, reviewable changes land faster than broad redesigns.
 
-## Puesta en marcha
+## Setup
 
 ```bash
 npm install
@@ -10,79 +10,80 @@ cp .env.example .env.local
 npm run dev
 ```
 
-La app abre en http://localhost:3000. Sin Supabase, los datos viven en `.data/store.json`, que no se versiona.
+The app opens at http://localhost:3000. Without Supabase, data lives in `.data/store.json`, which is not versioned.
 
-Antes de abrir un pull request:
+Before opening a pull request:
 
 ```bash
 npm test
 npm run lint
 ```
 
-`npm run build` cuando el cambio toca rutas, configuración o el grafo. `npm run verify:meta` solo si hay `MODEL_API_KEY` en `.env.local`. Una llamada no verificada no se declara exitosa.
+Run `npm run build` when the change touches routes, config, or the graph. Run `npm run verify:meta` only if `MODEL_API_KEY` is in `.env.local`. An unverified call is not declared successful.
 
-## Ramas
+## Branches
 
-`main` se mantiene desplegable. El trabajo nuevo sale de `main` actualizada.
+`main` stays deployable. New work starts from an up-to-date `main`.
 
-| Prefijo | Cuándo |
+| Prefix | When |
 | --- | --- |
-| `feat/` | Comportamiento nuevo del recorrido |
-| `fix/` | Corrección de un fallo |
-| `docs/` | Documentación, sin cambio de producto |
-| `chore/` | Dependencias, tooling o tareas que no ve la persona usuaria |
+| `feat/` | New behavior in the loop |
+| `fix/` | Bug fix |
+| `docs/` | Documentation only |
+| `chore/` | Dependencies, tooling, or work the attendee never sees |
 
-El nombre va en kebab-case y dice el cambio, no el número de issue: `fix/camera-returns-to-room`. Una rama, un tema. Si el tema crece, se parte en pull requests distintos.
+Names are kebab-case and describe the change, not the issue number: `fix/camera-returns-to-room`. One branch, one topic. If the topic grows, split into separate pull requests.
 
-No se hace push directo a `main`.
+Do not push directly to `main`.
 
 ## Commits
 
-Un commit, una idea. El mensaje está en inglés, en imperativo, y explica el porqué. El asunto cabe en una línea. El cuerpo, si hace falta, dice qué queda resuelto.
+One commit, one idea. The message is English, imperative, and explains why. The subject fits on one line. The body, if needed, says what is resolved.
 
 ```
-Keep the camera on the selected person so a second look does not jump back to the room center.
+feat: keep the camera on the selected person so a second look stays put
 ```
 
-No se usan mensajes vacíos (`update`, `fix`, `wip`) ni se mezclan formato, refactor y producto en el mismo commit si se pueden separar.
+Do not use empty messages (`update`, `fix`, `wip`) or mix formatting, refactor, and product in the same commit when they can be separated.
 
-No entran en el commit:
+Do not commit:
 
-- `.env`, `.env.local` ni ninguna clave (`MODEL_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`)
+- `.env`, `.env.local`, or any key (`MODEL_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`)
 - `.data/`
-- `node_modules/` ni `.next/`
+- `node_modules/` or `.next/`
 
 ## Issues
 
-Abre un issue antes de una rama grande. Usa la plantilla de fallo o de propuesta.
+Open an issue before a large branch. Use the bug or proposal template.
 
-Un fallo incluye qué esperabas, qué ocurrió y los pasos para repetirlo. Una propuesta dice qué momento del recorrido cambia y a quién ayuda. Las dudas de producto pueden ir en una propuesta corta.
+A bug includes what you expected, what happened, and steps to reproduce. A proposal says which moment of the loop changes and who it helps. Product questions can be a short proposal.
 
-No pegues claves, cookies, perfiles reales ni capturas con datos de otras personas. Los perfiles de demostración se marcan como `demo`.
+Do not paste keys, cookies, real profiles, or screenshots with other people’s data. Demo profiles are marked `demo`.
 
 ## Pull requests
 
-La rama apunta a `main`. El título sigue el tono de los commits. La descripción dice:
+The branch targets `main`. The title follows the commit tone. The description says:
 
-1. Qué cambia para quien usa el evento.
-2. Cómo se probó (`npm test`, `npm run lint` y, si aplica, el recorrido en el navegador).
-3. Qué queda fuera.
+1. What changes for someone at the event.
+2. How it was tested (`npm test`, `npm run lint`, and the browser path if UI changed).
+3. What is out of scope.
 
-Pide revisión cuando las comprobaciones pasen. Si un hook rechaza el commit, se corrige y se crea un commit nuevo. No se reescribe historia ya publicada.
+Ask for review when checks pass. If a hook rejects a commit, fix it and create a new commit. Do not rewrite published history.
 
-## Código
+## Code
 
-- TypeScript estricto. Las entradas y salidas externas se validan con Zod.
-- UI en `src/app` y `src/components`. Casos de uso en `src/server`. Dominio en `src/domain`. Meta en `src/lib/meta`. Supabase en `src/lib/supabase`.
-- La interfaz reutiliza los tokens y componentes descritos en `docs/DESIGN.md`.
-- El descubrimiento exige consentimiento. No se inventan filas, matches ni texto del modelo.
-- No se comparan todos los perfiles entre sí. Los candidatos salen de la fórmula determinista. El modelo solo explica recomendaciones ya elegidas.
-- Los secretos solo viven en el servidor. Nada de `NEXT_PUBLIC_` para claves.
+- Strict TypeScript. External inputs and outputs are validated with Zod.
+- UI in `src/app` and `src/components`. Use cases in `src/server`. Domain in `src/domain`. Meta in `src/lib/meta`. Supabase in `src/lib/supabase`.
+- The interface reuses tokens and components from `docs/DESIGN.md`.
+- Discovery requires consent. Do not invent rows, matches, or model text.
+- Do not compare every profile to every other. Candidates come from the deterministic formula. The model only explains recommendations already chosen.
+- Secrets live only on the server. No `NEXT_PUBLIC_` for keys.
+- Product UI copy is English for the Meta hackathon.
 
-El detalle está en `docs/ARCHITECTURE.md`, `docs/PRIVACY.md` y `docs/PRODUCT.md`.
+Detail lives in `docs/ARCHITECTURE.md`, `docs/PRIVACY.md`, and `docs/PRODUCT.md`.
 
-## Conducta y seguridad
+## Conduct and security
 
-El trato al colaborar está en [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Una vulnerabilidad no se reporta en un issue público: el camino está en [SECURITY.md](SECURITY.md).
+How we collaborate is in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Do not report a vulnerability in a public issue: the path is in [SECURITY.md](SECURITY.md).
 
-La licencia del código es [MIT](LICENSE).
+The code license is [MIT](LICENSE).
