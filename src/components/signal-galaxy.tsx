@@ -40,6 +40,13 @@ type GraphLink = {
   hot: boolean;
 };
 
+type CameraPose = { x: number; y: number; z: number };
+
+/** Los tipos de la librería no declaran la lectura sin argumentos. El runtime la devuelve. */
+function readCamera(graph: { cameraPosition: (...args: never[]) => unknown }): CameraPose {
+  return (graph.cameraPosition as unknown as () => CameraPose)();
+}
+
 type Palette = {
   root: number;
   hot: number;
@@ -212,7 +219,7 @@ export function SignalGalaxy({
     const frame = window.setTimeout(() => {
       if (focusedId.current) return;
       graph.zoomToFit(0, 8);
-      const fitted = graph.cameraPosition();
+      const fitted = readCamera(graph);
       const pose = { x: fitted.x * 0.2 + 36, y: fitted.y * 0.25 + 28, z: fitted.z };
       overviewPose.current = pose;
       graph.cameraPosition(pose, { x: 0, y: 0, z: 0 }, reducedMotion ? 0 : 800);
@@ -245,7 +252,7 @@ export function SignalGalaxy({
       }, duration + 40);
       return;
     }
-    const from = graph.cameraPosition();
+    const from = readCamera(graph);
     const fromLook = controls.target.clone();
     const duration = 700;
     const start = performance.now();

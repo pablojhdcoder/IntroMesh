@@ -72,6 +72,7 @@ export async function createStructuredResponse<T>(options: {
   client?: OpenAI;
   env?: MetaEnv;
   now?: number;
+  usage?: { input: number | null; output: number | null };
 }): Promise<T> {
   if (!responseName.test(options.name)) {
     throw new MetaApiError({
@@ -158,6 +159,11 @@ export async function createStructuredResponse<T>(options: {
         param: null,
         retryable: false,
       });
+    }
+    if (options.usage) {
+      const usage = response.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+      options.usage.input = usage?.input_tokens ?? null;
+      options.usage.output = usage?.output_tokens ?? null;
     }
     return result.data;
   } catch (error) {

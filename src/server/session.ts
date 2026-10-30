@@ -8,12 +8,35 @@ export function sessionActions(store: FileStore) {
     async session(profileId: string | null) {
       const database = await store.read();
       const profile = database.profiles.find((item) => item.id === profileId) ?? null;
+      const identity = profileId ? (database.identities.find((item) => item.userId === profileId) ?? null) : null;
+      const legacy = Boolean(profile && !profile.demo && !identity);
+      const confirmed = Boolean((identity?.status === "confirmed" && identity.confirmed) || legacy);
+      const participation = profileId
+        ? (database.participations.find((item) => item.userId === profileId && item.status === "joined") ?? null)
+        : null;
+      const legacyPresence = profile
+        ? (database.presence.find((item) => item.profileId === profile.id && item.source === "session") ?? null)
+        : null;
+      const legacyEvent = legacy ? (database.events[0]?.id ?? null) : null;
+      const eventId = participation?.eventId ?? legacyPresence?.eventId ?? legacyEvent;
+      const event = eventId ? (database.events.find((item) => item.id === eventId) ?? null) : null;
+      const ready = confirmed && Boolean(event);
       return {
-        profile: profile ? toPublicProfile(profile) : null,
-        needsSetup: !profile || profile.demo,
+        profile: confirmed && profile ? toPublicProfile(profile) : null,
+        needsSetup: !ready,
+        identityConfirmed: confirmed,
+        draft:
+          identity && !confirmed
+            ? {
+                displayName: identity.displayName,
+                description: identity.originalDescription,
+                identity: identity.generated,
+              }
+            : null,
         metaConfigured: modelConfigured(),
+        canCreateEvent: process.env.INTROMESH_ALLOW_EVENT_CREATE === "1",
         persistence: "file" as const,
-        event: database.events[0] ?? null,
+        event: ready ? event : null,
       };
     },
 

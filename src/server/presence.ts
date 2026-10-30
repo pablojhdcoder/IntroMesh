@@ -11,8 +11,23 @@ export function presenceActions(store: FileStore) {
         database.presence = database.presence.filter(
           (record) => !(record.profileId === profileId && record.source === "session"),
         );
-        if (!enabled) return { status: "invisible" as const };
+        if (!enabled) {
+          const participation = database.participations.find((item) => item.userId === profileId && item.eventId === eventId);
+          if (participation) {
+            participation.consent = false;
+            participation.visibility = "hidden";
+            participation.updatedAt = new Date(now).toISOString();
+          }
+          return { status: "invisible" as const };
+        }
         const status: PresenceStatus = seeking ? "seeking" : "active";
+        const participation = database.participations.find((item) => item.userId === profileId && item.eventId === eventId);
+        if (participation) {
+          participation.consent = true;
+          participation.visibility = "discoverable";
+          participation.status = "joined";
+          participation.updatedAt = new Date(now).toISOString();
+        }
         database.presence.push({
           profileId,
           eventId,

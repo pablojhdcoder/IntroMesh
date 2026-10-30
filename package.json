@@ -9,9 +9,11 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "verify:meta": "tsx scripts/verify-meta-api.ts"
+    "verify:meta": "tsx scripts/verify-meta-api.ts",
+    "worker:embeddings": "tsx scripts/embedding-worker.ts"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.3.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "@types/three": "^0.186.0",

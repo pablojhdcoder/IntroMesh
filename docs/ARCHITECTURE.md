@@ -40,6 +40,8 @@ No se recoge ubicación precisa de forma continua.
 
 ## Matching a escala
 
+Hay dos canales. El campo de señal sigue proyectando el vecindario con el feature hashing de `src/domain/embedding/vector.ts` para no mover el layout aprobado. La compatibilidad nueva vive en `src/domain/matching/hybrid.ts` y en los documentos `EMBEDDING_ARCHITECTURE.md`, `MATCHING_ARCHITECTURE.md` y `META_AI_CACHE.md`.
+
 No se compara cada perfil con todos los demás.
 
 1. Indexar los atributos de filtro: evento, objetivos, intereses y habilidades.

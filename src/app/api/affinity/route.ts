@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({
   profileId: z.string().min(1),
   regenerate: z.boolean().optional(),
+  eventId: z.string().min(1).optional(),
 });
 
 export async function POST(request: Request) {
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
   if (!id) return json({ error: "profile" }, 401);
   try {
     const body = bodySchema.parse(await request.json());
-    const result = await service().affinity(id, body.profileId, body.regenerate);
+    const result = await service().affinity(id, body.profileId, body.regenerate, body.eventId);
     if ("error" in result) {
       const status = result.error === "match" ? 422 : result.error === "presence" ? 403 : 404;
       return json(result, status);

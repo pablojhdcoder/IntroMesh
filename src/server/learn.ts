@@ -33,6 +33,7 @@ export function learnActions(store: FileStore) {
           events: database.analytics.filter((item) => item.eventId === eventId),
           visible,
         }),
+        engine: database.metrics,
       };
     },
   };

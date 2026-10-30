@@ -11,6 +11,11 @@ export type GroundedExplanation = {
   citedSkills: string[];
   complement: string[];
   confidence: "low" | "medium" | "high";
+  matchReason?: string;
+  sharedSignals?: string[];
+  complementarySignals?: string[];
+  conversationStarter?: string;
+  confidenceNotes?: string;
 };
 
 export function unsupportedTerms(text: string, allowed: readonly string[]): string[] {

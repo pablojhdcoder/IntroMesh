@@ -7,9 +7,9 @@ export const profileInputSchema = z.object({
   displayName: z.string().trim().min(2).max(60),
   role: z.string().trim().min(2).max(80),
   bio: z.string().trim().max(400).default(""),
-  interests: z.array(z.string().trim().min(2).max(32)).min(1).max(6),
-  skills: z.array(z.string().trim().min(2).max(32)).min(1).max(6),
-  projects: z.array(z.string().trim().min(2).max(60)).max(4).default([]),
+  interests: z.array(z.string().trim().min(2).max(48)).max(12).default([]),
+  skills: z.array(z.string().trim().min(2).max(48)).max(12).default([]),
+  projects: z.array(z.string().trim().min(2).max(80)).max(8).default([]),
   links: z
     .array(
       z.object({
@@ -20,7 +20,7 @@ export const profileInputSchema = z.object({
     .max(4)
     .default([]),
   offers: z.string().trim().max(240).default(""),
-  seeking: z.string().trim().min(2).max(240),
+  seeking: z.string().trim().max(500).default(""),
   goal: z.enum(goalIds),
 });
 

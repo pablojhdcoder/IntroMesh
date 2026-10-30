@@ -5,7 +5,7 @@ import Link from "next/link";
 import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
 import { Button } from "@/components/ui/button";
-import { ProfileForm } from "@/components/profile-form";
+import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding-flow";
 import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal-field";
 import { ShareTools } from "@/components/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -33,6 +33,9 @@ type Connection = {
 type Session = {
   profile: PublicProfile | null;
   needsSetup: boolean;
+  identityConfirmed?: boolean;
+  canCreateEvent?: boolean;
+  draft?: OnboardingDraft | null;
   metaConfigured: boolean;
   event: { id: string; name: string; demo: boolean } | null;
 };
@@ -134,7 +137,7 @@ export function SignalApp() {
     const response = await fetch("/api/affinity", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ profileId: id, regenerate }),
+      body: JSON.stringify({ profileId: id, regenerate, eventId: session?.event?.id }),
     });
     const body = await response.json();
     setExplainPending(false);
@@ -184,7 +187,15 @@ export function SignalApp() {
     );
   }
   if (session.needsSetup || !session.profile) {
-    return <ProfileForm metaConfigured={session.metaConfigured} onSaved={() => void load()} />;
+    return (
+      <OnboardingFlow
+        metaConfigured={session.metaConfigured}
+        identityConfirmed={session.identityConfirmed ?? false}
+        canCreateEvent={session.canCreateEvent ?? false}
+        draft={session.draft ?? null}
+        onSaved={() => void load()}
+      />
+    );
   }
 
   const visible = presence !== "invisible";

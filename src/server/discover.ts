@@ -6,6 +6,7 @@ import { toSharedCard } from "@/domain/profile";
 import { isPresenceLive, nextExpiry } from "@/domain/presence";
 import type { FileStore } from "@/lib/store/file-store";
 import { asMatch } from "@/server/match-profile";
+import { confidenceOf, refreshViewerRecommendations } from "@/server/recommendations";
 
 export function discoverActions(store: FileStore) {
   return {
@@ -22,6 +23,7 @@ export function discoverActions(store: FileStore) {
         );
         const viewer = database.profiles.find((item) => item.id === profileId);
         if (!viewer) return { error: "profile" as const };
+        refreshViewerRecommendations(database, profileId, eventId, now);
         const live = new Map(
           database.presence.filter((record) => record.eventId === eventId).map((record) => [record.profileId, record]),
         );
@@ -68,12 +70,33 @@ export function discoverActions(store: FileStore) {
         const people = shown.map((entry) => {
           const match = recommended.get(entry.item.id);
           const point = points.get(entry.item.id) ?? { x: 50, y: 50 };
+          const persisted = database.recommendations.find(
+            (item) => item.eventId === eventId && item.viewerId === viewer.id && item.candidateId === entry.item.id,
+          );
+          const viewerVectorReady = database.embeddings.some(
+            (item) => item.kind === "global" && item.userId === viewer.id && item.status === "completed" && item.vector,
+          );
+          const candidateVectorReady = database.embeddings.some(
+            (item) => item.kind === "global" && item.userId === entry.item.id && item.status === "completed" && item.vector,
+          );
+          const hybrid = viewerVectorReady && candidateVectorReady && persisted ? persisted : null;
           return {
             ...toSharedCard(entry.item),
             x: point.x,
             y: point.y,
             presence: live.get(entry.item.id)?.status ?? "active",
-            recommendation: match
+            recommendation: hybrid
+              ? {
+                  score: hybrid.finalScore,
+                  confidence: confidenceOf(hybrid),
+                  shared: {
+                    goals: match?.shared.goals.map(goalLabel) ?? [],
+                    interests: match?.shared.interests ?? [],
+                    skills: match?.shared.skills ?? [],
+                  },
+                  complement: match?.complement ?? [],
+                }
+              : match
               ? {
                   score: match.score,
                   confidence: match.confidence,
