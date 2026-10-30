@@ -1,0 +1,24 @@
+name: Propuesta
+description: Un cambio en Discover, Understand, Connect o Learn.
+title: "[propuesta] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: moment
+    attributes:
+      label: Qué momento del recorrido cambia
+    validations:
+      required: true
+  - type: textarea
+    id: who
+    attributes:
+      label: A quién ayuda y por qué
+    validations:
+      required: true
+  - type: textarea
+    id: out
+    attributes:
+      label: Qué no debería hacer este cambio
+      description: Por ejemplo, no inventar matches ni comparar todos los perfiles.
+    validations:
+      required: false

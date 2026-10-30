@@ -1,8 +1,10 @@
 # IntroMesh
 
+![Meta Global AI Developer Hackathon. Un millón de dólares en premios, del 26 de octubre al 4 de noviembre.](docs/meta-hackathon-2026.jpg)
+
 Discover who you should meet, understand why you connect, and make the introduction happen.
 
-IntroMesh es una capa para eventos presenciales. El recorrido es uno: **Discover → Understand → Connect → Learn**. No es una red social, ni un chat, ni un dashboard suelto.
+IntroMesh está hecho para el **Meta Global AI Developer Hackathon 2026**. Es una capa para eventos presenciales. El recorrido es uno: **Discover → Understand → Connect → Learn**. No es una red social, ni un chat, ni un dashboard suelto.
 
 ## Problema
 
@@ -74,9 +76,28 @@ npm run verify:meta
 
 `verify:meta` solo llama a Meta si hay clave.
 
+## Mapa del repositorio
+
+| Carpeta | Qué es |
+| --- | --- |
+| `src/app` | Páginas y rutas HTTP |
+| `src/components` | Campo de señal, perfil, tema |
+| `src/server` | El recorrido, un archivo por paso: `session`, `presence`, `discover`, `explain`, `connect`, `learn` |
+| `src/domain` | Reglas puras. `matching` puntúa. `embedding` coloca el grafo |
+| `src/lib` | Sesión, tema, almacén, Supabase y cliente de Meta |
+| `docs` | Arquitectura, diseño, privacidad y producto |
+| `supabase/migrations` | Esquema para cuando haya proyecto |
+| `scripts` | Comprobaciones de Meta y de la semilla demo |
+
 ## Decisiones
 
 - El ranking es determinista: objetivos×3, intereses×2, habilidades×1, complementos×2. Meta no recorre la comunidad.
-- No hay embeddings: la API no los documenta.
+- El vector del grafo es local: etiquetas declaradas, no un embedding de Meta. La API no documenta ese endpoint.
 - La presencia en la app no es distancia física.
 - El organizador ve agregados. No hay historial individual en esa vista.
+
+## Contribuir
+
+Las ramas, los commits, los issues y los pull requests están en [CONTRIBUTING.md](CONTRIBUTING.md). El trato al colaborar está en [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Una vulnerabilidad se reporta como indica [SECURITY.md](SECURITY.md).
+
+El código se publica bajo la licencia [MIT](LICENSE).

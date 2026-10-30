@@ -1,0 +1,39 @@
+name: Fallo
+description: Algo del recorrido no hace lo que debería.
+title: "[fallo] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qué esperabas
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Qué ocurrió
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para repetirlo
+      description: Perfil de demostración, presencia y ruta. Sin claves ni datos de otras personas.
+      placeholder: |
+        1. Activo
+        2. Pulso un nodo
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: checks
+    attributes:
+      label: Comprobaciones
+      multiple: true
+      options:
+        - npm test
+        - npm run lint
+        - Solo lo vi en el navegador
+    validations:
+      required: false
