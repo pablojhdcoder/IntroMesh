@@ -24,9 +24,13 @@ export function connectActions(store: FileStore) {
         );
         if (existing) return existing;
         const other = database.profiles.find((item) => item.id === otherId);
+        const eventId =
+          database.participations.find((item) => item.userId === profileId && item.status === "joined")?.eventId ??
+          database.presence.find((item) => item.profileId === profileId && item.source === "session")?.eventId ??
+          DEMO_EVENT_ID;
         const record = {
           id: `cx-${newId()}`,
-          eventId: DEMO_EVENT_ID,
+          eventId,
           fromId: profileId,
           toId: otherId,
           status: "pending" as const,
@@ -38,7 +42,7 @@ export function connectActions(store: FileStore) {
         database.connections.push(record);
         database.analytics.push({
           id: `req-${record.id}`,
-          eventId: DEMO_EVENT_ID,
+          eventId,
           type: "intro_requested" as const,
           at: record.createdAt,
           topic: other?.interests[0] ?? null,

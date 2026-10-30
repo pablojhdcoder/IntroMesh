@@ -9,14 +9,17 @@ export function learnActions(store: FileStore) {
     async share(profileId: string, method: "link" | "qr" | "nfc") {
       const type = method === "link" ? "share_link" : method === "qr" ? "share_qr" : "share_nfc";
       await store.update((database) => {
+        const eventId =
+          database.participations.find((item) => item.userId === profileId && item.status === "joined")?.eventId ??
+          database.presence.find((item) => item.profileId === profileId && item.source === "session")?.eventId ??
+          DEMO_EVENT_ID;
         database.analytics.push({
           id: `share-${newId()}`,
-          eventId: DEMO_EVENT_ID,
+          eventId,
           type,
           at: new Date().toISOString(),
           topic: null,
         });
-        void profileId;
       });
     },
 
