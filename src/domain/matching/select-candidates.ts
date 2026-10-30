@@ -43,7 +43,7 @@ function overlap(left: readonly string[], right: readonly string[]): string[] {
   return shared;
 }
 
-function seekingTokens(seeking: string | undefined): string[] {
+export function seekingTokens(seeking: string | undefined): string[] {
   if (!seeking) return [];
   const stop = new Set(["para", "como", "esta", "este", "unos", "unas", "con", "los", "las", "que", "una", "por"]);
   return seeking
