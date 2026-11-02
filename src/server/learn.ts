@@ -6,8 +6,17 @@ import type { Store } from "@/lib/store";
 
 export function learnActions(store: Store) {
   return {
-    async share(profileId: string, method: "link" | "qr" | "nfc") {
-      const type = method === "link" ? "share_link" : method === "qr" ? "share_qr" : "share_nfc";
+    async share(profileId: string, method: "link" | "qr" | "nfc" | "wallet" | "vcard") {
+      const type =
+        method === "link"
+          ? "share_link"
+          : method === "qr"
+            ? "share_qr"
+            : method === "nfc"
+              ? "share_nfc"
+              : method === "wallet"
+                ? "share_wallet"
+                : "share_vcard";
       await store.update((database) => {
         const eventId =
           database.participations.find((item) => item.userId === profileId && item.status === "joined")?.eventId ??

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Check, Link2, Nfc } from "lucide-react";
+import { Check, Link2, Nfc, Wallet, Contact } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function profileLink(value: string): string | null {
@@ -32,7 +32,7 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
   }, []);
   const url = typeof window === "undefined" ? `/p/${slug}` : `${window.location.origin}/p/${slug}`;
 
-  async function track(method: "link" | "qr" | "nfc") {
+  async function track(method: "link" | "qr" | "nfc" | "wallet" | "vcard") {
     await fetch("/api/share", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -46,6 +46,48 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
     setMessage("Link copied.");
   }
 
+  async function downloadVCard() {
+    const anchor = document.createElement("a");
+    anchor.href = `/api/profiles/${slug}/vcard`;
+    anchor.download = `${slug}.vcf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    await track("vcard");
+  }
+
+  async function addToGoogleWallet() {
+    try {
+      const response = await fetch(`/api/wallet/google?slug=${encodeURIComponent(slug)}`);
+      const body = (await response.json()) as { url?: string; error?: string };
+      if (!response.ok || !body.url) {
+        setMessage(
+          body.error === "google-wallet-not-configured"
+            ? "Google Wallet is not configured on this server. Use link, QR, or vCard."
+            : "Could not build the Google Wallet link.",
+        );
+        return;
+      }
+      await track("wallet");
+      window.location.assign(body.url);
+    } catch {
+      setMessage("Could not build the Google Wallet link.");
+    }
+  }
+
+  async function checkAppleWallet() {
+    try {
+      const response = await fetch(`/api/wallet/apple?slug=${encodeURIComponent(slug)}`);
+      if (!response.ok) {
+        setMessage("Apple Wallet needs a Pass Type ID certificate on the server. Use link, QR, or vCard.");
+        return;
+      }
+      await track("wallet");
+      setMessage("Apple pass is staged (unsigned preview). Add certificates to enable .pkpass download.");
+    } catch {
+      setMessage("Apple Wallet is not available yet.");
+    }
+  }
   async function writeTag() {
     const Reader = window.NDEFReader;
     if (!Reader) {
@@ -105,6 +147,18 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
           {copied ? <Check aria-hidden="true" /> : <Link2 aria-hidden="true" />}
           Copy link
         </Button>
+        <Button type="button" variant="secondary" className={ghostAction} onClick={() => void addToGoogleWallet()}>
+          <Wallet aria-hidden="true" />
+          Add to Google Wallet
+        </Button>
+        <Button type="button" variant="secondary" className={ghostAction} onClick={() => void checkAppleWallet()}>
+          <Wallet aria-hidden="true" />
+          Apple Wallet
+        </Button>
+        <Button type="button" variant="ghost" className={ghostAction} onClick={() => void downloadVCard()}>
+          <Contact aria-hidden="true" />
+          Save contact (.vcf)
+        </Button>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="ghost" className={ghostAction} disabled={!supported} onClick={() => void writeTag()}>
             <Nfc aria-hidden="true" />
@@ -117,7 +171,8 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
         </div>
       </div>
       <p className="max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
-        {supported ? "NFC writes a tag. It does not pair phones." : "NFC unavailable. Use link or QR."}
+        {supported ? "NFC writes a tag. It does not pair phones." : "NFC unavailable. Use link or QR."} Wallet cards hold
+        a public link only — anyone with the QR can view this card.
       </p>
       {message ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">

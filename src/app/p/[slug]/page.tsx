@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { goalLabel } from "@/domain/catalog";
 import { service } from "@/lib/http";
+import { ScanConnect } from "@/components/share/scan-connect";
 import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 
@@ -79,11 +80,15 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       ) : null}
 
       <div className="w-full border-t border-border pt-8">
+        <ScanConnect slug={profile.slug} profileId={profile.id} />
+      </div>
+
+      <div className="w-full border-t border-border pt-8">
         <ShareTools slug={profile.slug} name={profile.displayName} />
       </div>
 
       <p className="mx-auto max-w-[48ch] text-center text-sm leading-relaxed text-muted-foreground">
-        Authorized identity only. Connection still needs acceptance.
+        Public link — anyone with this QR can view this card. Authorized identity only. Connection still needs acceptance.
       </p>
     </main>
   );
