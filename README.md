@@ -45,6 +45,8 @@ Persistence is **Supabase only**. Apply the SQL in `supabase/APPLY.md` (migratio
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key. Required |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server only. Required for reads/writes |
 
+The full product journey (join → field → explanation → connection → intelligence) is in [docs/FLOW.md](docs/FLOW.md).
+
 ## Try the flow
 
 1. Create your identity. Pick catalog interests (`models`, `product`…) to overlap the demo community.
@@ -85,7 +87,7 @@ npm run verify:meta
 | `src/server` | The loop, one file per step: `session`, `presence`, `discover`, `explain`, `connect`, `learn` |
 | `src/domain` | Pure rules. `matching` scores. `embedding` places the graph |
 | `src/lib` | Session, theme, store, Supabase, and Meta client |
-| `docs` | Architecture, design, privacy, and product |
+| `docs` | Journey (`FLOW.md`), architecture, design, privacy, and product |
 | `supabase/migrations` | Schema for when a project exists |
 | `scripts` | Meta checks and the demo seed |
 

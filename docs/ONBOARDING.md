@@ -1,5 +1,7 @@
 # Onboarding — event first
 
+The full journey is in [`FLOW.md`](FLOW.md). This file is the event-first identity steps only.
+
 Professional identity is created once. Each event adds a distinct intent.
 
 ```mermaid

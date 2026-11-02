@@ -1,5 +1,7 @@
 # Event context
 
+Where this sits in the journey: [`FLOW.md`](FLOW.md) §2.
+
 Global identity and event context stay separate.
 
 | Global, reusable | Per participation |

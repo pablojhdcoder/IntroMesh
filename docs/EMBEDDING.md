@@ -1,5 +1,7 @@
 # Embeddings
 
+Where this sits in the journey: [`FLOW.md`](FLOW.md) §3. The field’s visible layout still uses local feature hashing; this file is the E5 queue and pgvector path.
+
 Both profiles use the `query: ` prefix. It is not mixed with `passage: `, because person-to-person comparison is symmetric.
 
 ```mermaid

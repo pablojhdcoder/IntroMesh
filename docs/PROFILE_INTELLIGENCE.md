@@ -1,5 +1,7 @@
 # Profile intelligence
 
+Where this sits in the journey: [`FLOW.md`](FLOW.md) §2.
+
 Muse Spark (`muse-spark-1.3`, Responses API, `text.format`) turns free-form description into a Zod identity. The prompt lives in `NORMALIZE_PROMPT`.
 
 It is called only if there is no generation with the same SHA-256, or if the person asks to regenerate. Entering the app or another event does not call the model.

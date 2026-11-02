@@ -13,7 +13,7 @@ Fuente vigente: [overview](https://dev.meta.ai/docs/overview), [quickstart](http
 ## Contrato de este repositorio
 
 - Base URL: `https://api.meta.ai/v1` (`META_MODEL_BASE_URL` opcional).
-- Modelo: `muse-spark-1.3` (`META_MODEL_ID` opcional). Standard mode; el contenido no se usa para entrenar. No uses el id `contributor`.
+- Modelo: `muse-spark-1.3` (`META_MODEL_ID` opcional). Standard mode; el contenido no se usa para entrenar. La app en producción sigue usando `muse-spark-1.3` salvo que se decida otra cosa. Los modelos contributor (`muse-spark-1.3-contributor`) se permiten para herramientas de desarrollo y agentes de código, para ahorrar créditos; Meta puede entrenar con lo que reciben, así que nunca les envíes secretos, datos reales de usuarios ni perfiles privados.
 - Clave: `MODEL_API_KEY`. El SDK no la lee solo. Pásala como `apiKey`.
 - Cliente: importa `@/lib/meta/server` desde el servidor. Ese módulo lleva `server-only`. La implementación está en `src/lib/meta/client.ts`.
 - Superficie: Responses API. Salida estructurada con `text.format` (`type: "json_schema"`, `strict: true`). No envíes `response_format` a Responses.

@@ -1,6 +1,6 @@
 # Architecture — IntroMesh
 
-Single loop: **Discover → Understand → Connect → Learn.**
+Single loop: **Discover → Understand → Connect → Learn.** The step-by-step journey is in [`FLOW.md`](FLOW.md). This file is layers and boundaries.
 
 This document sets the hackathon boundaries. The journey is already in the app. Meta only explains a recommendation that was already chosen.
 

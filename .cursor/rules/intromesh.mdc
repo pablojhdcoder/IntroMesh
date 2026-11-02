@@ -13,4 +13,4 @@ alwaysApply: true
 - Do not compare every profile to every other. Deterministic candidates first; the model only explains recommendations already chosen.
 - Product-facing copy is English for the Meta hackathon.
 - Before closing a task, run `npm test` and `npm run lint` when the change affects them. Without a key, do not claim Meta responds.
-- Product detail: `docs/ARCHITECTURE.md`, `docs/PRIVACY.md`, `docs/PRODUCT.md`, `AGENTS.md`.
+- Product journey: `docs/FLOW.md`. Detail: `docs/ARCHITECTURE.md`, `docs/PRIVACY.md`, `docs/PRODUCT.md`, `AGENTS.md`.

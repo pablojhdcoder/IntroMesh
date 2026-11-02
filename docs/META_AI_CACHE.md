@@ -1,5 +1,7 @@
 # Meta explanation cache
 
+Where this sits in the journey: [`FLOW.md`](FLOW.md) §4.
+
 Opening a connection does not call Muse Spark if the evidence has not changed.
 
 ```mermaid

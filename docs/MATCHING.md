@@ -1,5 +1,7 @@
 # Matching
 
+How Discover picks neighbors lives in [`FLOW.md`](FLOW.md). This file is the hybrid score and persistence.
+
 1. Visible attendees at the same event, with consent.
 2. Global and event-context embeddings when ready.
 3. Retrieve at most 24 by global embedding similarity (`1 - (embedding <=> query)` in pgvector; dot product if the vector is already normalized).
