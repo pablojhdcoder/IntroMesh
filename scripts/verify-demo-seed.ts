@@ -22,11 +22,13 @@ function loadEnvFile(file: string): void {
   }
 }
 
-loadEnvFile(resolve(".env.local"));
 loadEnvFile(resolve(".env"));
 
-const expectedIds = Array.from({ length: 28 }, (_, index) => `demo-${String(index + 1).padStart(3, "0")}`);
-const expectedAnalytics = 57;
+const expectedIds = [
+  ...Array.from({ length: 28 }, (_, index) => `demo-${String(index + 1).padStart(3, "0")}`),
+  ...Array.from({ length: 12 }, (_, index) => `demo-f${String(index + 1).padStart(2, "0")}`),
+];
+const expectedAnalytics = 80;
 
 function envPresent(key: string): boolean {
   return Boolean(process.env[key]?.trim());

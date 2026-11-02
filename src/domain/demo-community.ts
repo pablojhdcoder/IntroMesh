@@ -93,7 +93,8 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
     });
   }
 
-  const visible = profiles.slice(0, 28);
+  const founders = FOUNDERS.map((entry, index) => founderProfile(entry, index, now));
+  const visible = [...profiles.slice(0, 28), ...founders];
   const presence: PresenceRecord[] = visible.map((profile, index) => ({
     profileId: profile.id,
     eventId: DEMO_EVENT_ID,
@@ -150,7 +151,166 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
     }
   });
 
-  return { profiles, presence, analytics };
+  return { profiles: [...profiles, ...founders], presence, analytics };
+}
+
+const FOUNDERS: Array<{
+  displayName: string;
+  role: string;
+  goal: GoalId;
+  interests: string[];
+  skills: string[];
+  projects: string[];
+  offers: string;
+  seeking: string;
+}> = [
+  {
+    displayName: "Nadia Ferrer",
+    role: "SaaS founder, seed stage",
+    goal: "cofounder",
+    interests: ["product", "models", "data"],
+    skills: ["prototyping", "frontend"],
+    projects: ["signal map"],
+    offers: "Can help with prototyping.",
+    seeking: "Looking for backend and data to scale the prototype.",
+  },
+  {
+    displayName: "Marco Vidal",
+    role: "Fintech founder",
+    goal: "collaborate",
+    interests: ["product", "data", "privacy"],
+    skills: ["backend", "analysis"],
+    projects: ["matching table"],
+    offers: "Can help with backend.",
+    seeking: "Looking for frontend and design for onboarding.",
+  },
+  {
+    displayName: "Elena Sanz",
+    role: "Climate founder",
+    goal: "cofounder",
+    interests: ["climate", "data", "hardware"],
+    skills: ["research", "hardware"],
+    projects: ["open sensor"],
+    offers: "Can help with research.",
+    seeking: "Looking for backend and prototyping for sensor data.",
+  },
+  {
+    displayName: "David Okafor",
+    role: "AI infra founder",
+    goal: "discipline",
+    interests: ["models", "data", "product"],
+    skills: ["backend", "research"],
+    projects: ["matching table"],
+    offers: "Can help with research.",
+    seeking: "Looking for frontend and facilitation for evals.",
+  },
+  {
+    displayName: "Sofia Marin",
+    role: "Health founder",
+    goal: "hackathon",
+    interests: ["health", "data", "privacy"],
+    skills: ["analysis", "writing"],
+    projects: ["clinical log"],
+    offers: "Can help with analysis.",
+    seeking: "Looking for backend and hardware for a pilot.",
+  },
+  {
+    displayName: "Pau Ros",
+    role: "Marketplace founder",
+    goal: "collaborate",
+    interests: ["community", "product", "data"],
+    skills: ["frontend", "facilitation"],
+    projects: ["craft tutor"],
+    offers: "Can help with frontend.",
+    seeking: "Looking for backend and analysis for matching.",
+  },
+  {
+    displayName: "Laia Font",
+    role: "Edtech founder",
+    goal: "cofounder",
+    interests: ["education", "models", "community"],
+    skills: ["writing", "facilitation"],
+    projects: ["craft tutor"],
+    offers: "Can help with writing.",
+    seeking: "Looking for frontend and prototyping for a pilot.",
+  },
+  {
+    displayName: "Joan Casas",
+    role: "Hardware founder",
+    goal: "hackathon",
+    interests: ["hardware", "climate", "product"],
+    skills: ["hardware", "prototyping"],
+    projects: ["open sensor"],
+    offers: "Can help with hardware.",
+    seeking: "Looking for analysis and backend for field data.",
+  },
+  {
+    displayName: "Mireia Sole",
+    role: "Data founder",
+    goal: "discipline",
+    interests: ["data", "privacy", "models"],
+    skills: ["analysis", "backend"],
+    projects: ["climate archive"],
+    offers: "Can help with analysis.",
+    seeking: "Looking for writing and frontend for reports.",
+  },
+  {
+    displayName: "Oriol Batlle",
+    role: "Devtools founder",
+    goal: "collaborate",
+    interests: ["product", "models", "community"],
+    skills: ["frontend", "backend"],
+    projects: ["signal map"],
+    offers: "Can help with frontend.",
+    seeking: "Looking for research and design for docs.",
+  },
+  {
+    displayName: "Carla Mora",
+    role: "Civic tech founder",
+    goal: "cofounder",
+    interests: ["community", "climate", "education"],
+    skills: ["facilitation", "research"],
+    projects: ["climate archive"],
+    offers: "Can help with facilitation.",
+    seeking: "Looking for prototyping and frontend for a pilot.",
+  },
+  {
+    displayName: "Nil Baro",
+    role: "Privacy infra founder",
+    goal: "discipline",
+    interests: ["privacy", "models", "health"],
+    skills: ["backend", "writing"],
+    projects: ["signal map"],
+    offers: "Can help with backend.",
+    seeking: "Looking for analysis and research for audits.",
+  },
+];
+
+function founderProfile(entry: (typeof FOUNDERS)[number], index: number, now: number): StoredProfile {
+  const id = `demo-f${String(index + 1).padStart(2, "0")}`;
+  const presentation: Presentation = {
+    source: "demo",
+    headline: `${entry.displayName.split(" ")[0]} · ${goalLabelSafe(entry.goal)}`,
+    summary: `Founder working on ${entry.projects[0]} focused on ${entry.interests.slice(0, 2).join(" and ")}.`,
+    opener: `Which part of ${entry.projects[0]} are you scaling here?`,
+  };
+  return {
+    id,
+    slug: `${slugify(entry.displayName)}-${id}`,
+    displayName: entry.displayName,
+    role: entry.role,
+    bio: "",
+    interests: [...entry.interests],
+    skills: [...entry.skills],
+    projects: [...entry.projects],
+    links: [],
+    offers: entry.offers,
+    seeking: entry.seeking,
+    goal: entry.goal,
+    demo: true,
+    presentation,
+    createdAt: new Date(now - (180 + index) * 60_000).toISOString(),
+  };
 }
 
 function goalLabelSafe(id: GoalId): string {
