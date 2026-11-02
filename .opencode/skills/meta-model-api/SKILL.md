@@ -45,6 +45,6 @@ Esquemas recursivos devuelven 400. Aplana la estructura. `additionalProperties: 
 
 ## Demostración frente a modelo
 
-`INTROMESH_DATA_MODE=demo` solo autoriza perfiles sintéticos etiquetados. Una explicación de afinidad es real únicamente si salió de `createStructuredResponse` y pasó Zod. Si no hay clave, dilo y deja el paso manual: panel de [Meta Model API](https://dev.meta.ai) → API keys → Create API key → `MODEL_API_KEY` en `.env.local`.
+`INTROMESH_DATA_MODE=demo` solo autoriza perfiles sintéticos etiquetados. Una explicación de afinidad es real únicamente si salió de `createStructuredResponse` y pasó Zod. Si no hay clave, dilo y deja el paso manual: panel de [Meta Model API](https://dev.meta.ai) → API keys → Create API key → `MODEL_API_KEY` en `.env`.
 
 Verificación: `npm run verify:meta`. Sin clave termina con código 2 y no llama a la red.
