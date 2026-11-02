@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
@@ -76,6 +77,9 @@ export function SignalApp() {
   const [explainPending, setExplainPending] = useState(false);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [presencePending, setPresencePending] = useState(false);
+  const presenceSeq = useRef(0);
+  const reduceMotion = useReducedMotion();
 
   const load = useCallback(async () => {
     const sessionResponse = await fetch("/api/session");
@@ -115,14 +119,28 @@ export function SignalApp() {
     return () => window.clearInterval(timer);
   }, [presence, session?.event]);
 
-  async function changePresence(enabled: boolean, seeking: boolean) {
-    if (!session?.event) return;
-    await fetch("/api/presence", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ eventId: session.event.id, enabled, seeking }),
-    });
-    await load();
+  async function changePresence(option: (typeof PRESENCE_OPTIONS)[number]) {
+    if (!session?.event || option.id === presence) return;
+    const previous = presence;
+    const seq = ++presenceSeq.current;
+    setPresence(option.id);
+    setPresencePending(true);
+    try {
+      const response = await fetch("/api/presence", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ eventId: session.event.id, enabled: option.enabled, seeking: option.seeking }),
+      });
+      if (!response.ok) throw new Error("presence");
+      await load();
+    } catch {
+      if (presenceSeq.current === seq) {
+        setPresence(previous);
+        setLoadError("Could not update presence. Try again.");
+      }
+    } finally {
+      if (presenceSeq.current === seq) setPresencePending(false);
+    }
   }
 
   async function openPerson(id: string | null, regenerate = false) {
@@ -241,7 +259,12 @@ export function SignalApp() {
         <div className="flex flex-col gap-2 min-[720px]:items-end">
           <ThemeSwitch className="absolute top-0 right-0 min-[720px]:static" />
           <div className="flex items-center justify-between gap-4 min-[720px]:justify-end">
-            <div role="group" aria-label="Presence" className="flex items-center rounded-full border border-border bg-surface p-1 shadow-sm">
+            <div
+              role="group"
+              aria-label="Presence"
+              aria-busy={presencePending}
+              className="flex items-center rounded-full border border-border bg-surface p-1 shadow-[var(--shadow-raise)]"
+            >
               {PRESENCE_OPTIONS.map((option) => {
                 const active = presence === option.id;
                 return (
@@ -249,20 +272,38 @@ export function SignalApp() {
                     key={option.id}
                     type="button"
                     aria-pressed={active}
-                    onClick={() => void changePresence(option.enabled, option.seeking)}
+                    onClick={() => void changePresence(option)}
                     className={cn(
-                      "inline-flex h-11 items-center gap-1.5 rounded-full px-3.5 text-sm transition-[background-color,color,box-shadow] duration-200 ease-out select-none min-[720px]:h-9",
+                      "group relative inline-flex h-11 items-center rounded-full px-3.5 text-sm select-none min-[720px]:h-9",
+                      "transition-[color,transform] duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
                       focusRing,
-                      active ? "bg-foreground text-background shadow" : "text-muted-foreground hover:text-foreground",
+                      active ? "text-background" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {active ? (
+                      <motion.span
+                        aria-hidden="true"
+                        layoutId="presence-pill"
+                        transition={reduceMotion ? { duration: 0 } : { type: "spring", duration: 0.4, bounce: 0.12 }}
+                        className="absolute inset-0 rounded-full bg-foreground shadow-[0_1px_2px_rgb(22_24_15/0.2)]"
+                      />
+                    ) : (
                       <span
                         aria-hidden="true"
-                        className={cn("size-1.5 shrink-0 rounded-full", option.id === "invisible" ? "bg-current opacity-50" : "bg-signal")}
+                        className="absolute inset-0 rounded-full transition-colors duration-200 ease-[var(--ease-out)] group-hover:bg-surface-raised"
                       />
-                    ) : null}
-                    {option.label}
+                    )}
+                    <span className="relative z-10 inline-flex items-center gap-1.5">
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full transition-[background-color,opacity,transform] duration-200 ease-[var(--ease-out)]",
+                          active && option.id !== "invisible" ? "scale-100 bg-signal" : active ? "scale-100 bg-current opacity-50" : "scale-75 bg-current opacity-0",
+                          presencePending && active && "animate-pulse",
+                        )}
+                      />
+                      {option.label}
+                    </span>
                   </button>
                 );
               })}
