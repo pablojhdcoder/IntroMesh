@@ -71,7 +71,10 @@ export function SignalField({
     >
       <SignalGalaxy people={shown} selectedId={selectedId} onSelect={onSelect} reducedMotion={reducedMotion} />
       {empty ? (
-        <p role="status" className="pointer-events-none absolute bottom-4 left-0 font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">
+        <p
+          role="status"
+          className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-border bg-surface/80 px-3 py-1.5 font-mono text-xs tracking-[0.08em] whitespace-nowrap text-muted-foreground uppercase shadow-sm"
+        >
           Nobody visible
         </p>
       ) : null}

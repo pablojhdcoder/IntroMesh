@@ -30,7 +30,7 @@ export function ThemeProvider({ theme, children }: { theme: Theme; children: Rea
 
 export function ThemeSwitch({ className }: { className?: string }) {
   const context = useContext(ThemeContext);
-  if (!context) throw new Error("ThemeSwitch necesita ThemeProvider");
+  if (!context) throw new Error("ThemeSwitch requires ThemeProvider");
   const { theme, toggleTheme } = context;
   const dark = theme === "dark";
 
@@ -39,7 +39,7 @@ export function ThemeSwitch({ className }: { className?: string }) {
       type="button"
       role="switch"
       aria-checked={dark}
-      aria-label={dark ? "Tema oscuro. Cambiar a modo claro." : "Tema claro. Cambiar a modo oscuro."}
+      aria-label={dark ? "Dark theme. Switch to light mode." : "Light theme. Switch to dark mode."}
       onClick={toggleTheme}
       className={cn(
         "group relative inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-full",
@@ -47,12 +47,12 @@ export function ThemeSwitch({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="relative flex h-7 w-[50px] items-center rounded-full border border-border bg-[var(--switch-track)] p-0.5 transition-[background-color,border-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none">
+      <span className="relative flex h-7 w-[50px] items-center rounded-full border border-border bg-[var(--switch-track)] shadow-[inset_0_1px_2px_rgb(22_24_15/0.08)] p-0.5 transition-[background-color,border-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:shadow-[inset_0_1px_2px_rgb(0_0_0/0.35)]">
         <span
           aria-hidden
           className="absolute top-0.5 left-0.5 size-[22px] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none dark:translate-x-[22px]"
         >
-          <span className="block size-full rounded-full bg-[var(--switch-thumb)] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] group-active:scale-[0.92] motion-reduce:transition-none" />
+          <span className="block size-full rounded-full bg-[var(--switch-thumb)] shadow-[0_1px_2px_rgb(22_24_15/0.18),0_1px_3px_rgb(22_24_15/0.12)] ring-1 ring-border/60 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] group-active:scale-[0.92] motion-reduce:transition-none dark:shadow-[0_1px_2px_rgb(0_0_0/0.45)]" />
         </span>
         <span className="relative z-10 grid size-[22px] place-items-center">
           <Sun

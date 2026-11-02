@@ -60,20 +60,20 @@ type Palette = {
 const PALETTE: Record<"light" | "dark", Palette> = {
   light: {
     root: 0x4c6610,
-    hot: 0x6d8c1c,
-    cold: 0x737373,
-    label: "#111111",
-    linkHot: "rgba(76, 102, 16, 0.72)",
-    linkCold: "rgba(10, 10, 10, 0.22)",
+    hot: 0x5c7a12,
+    cold: 0x8a877c,
+    label: "#16180f",
+    linkHot: "rgba(92, 122, 18, 0.8)",
+    linkCold: "rgba(96, 90, 72, 0.26)",
     particle: "#4c6610",
   },
   dark: {
     root: 0xd6ff4a,
-    hot: 0xd6ff4a,
-    cold: 0x9a958c,
+    hot: 0x9ede2a,
+    cold: 0x8f8c94,
     label: "rgba(244, 241, 234, 0.95)",
-    linkHot: "rgba(214, 255, 74, 0.55)",
-    linkCold: "rgba(244, 241, 234, 0.2)",
+    linkHot: "rgba(158, 222, 42, 0.62)",
+    linkCold: "rgba(244, 241, 234, 0.18)",
     particle: "#f4f1ea",
   },
 };
@@ -93,9 +93,9 @@ function glass(color: number, selected: boolean, kind: Kind): MeshPhysicalMateri
   return new MeshPhysicalMaterial({
     color: new Color(color),
     emissive: new Color(color),
-    emissiveIntensity: selected ? 1.35 : kind === "root" ? 0.9 : hot ? 0.45 : 0.12,
+    emissiveIntensity: selected ? 1.5 : kind === "root" ? 0.9 : hot ? 0.45 : 0.12,
     transparent: true,
-    opacity: kind === "cold" && !selected ? 0.62 : 0.86,
+    opacity: kind === "cold" && !selected ? 0.55 : 0.86,
     roughness: selected ? 0.05 : 0.12,
     metalness: 0.08,
     transmission: kind === "root" ? 0.72 : 0.82,
@@ -119,6 +119,7 @@ export function SignalGalaxy({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(undefined);
   const dressed = useRef(false);
+  const keyLight = useRef<DirectionalLight | null>(null);
   const focusedId = useRef<string | null>(null);
   const focusTimer = useRef<number | null>(null);
   const overviewFrame = useRef<number | null>(null);
@@ -198,17 +199,19 @@ export function SignalGalaxy({
     charge?.strength?.(-420);
     const link = graph.d3Force("link") as { distance?: (value: number) => void } | undefined;
     link?.distance?.(110);
+    const renderer = graph.renderer() as WebGLRenderer;
+    renderer.toneMappingExposure = theme === "dark" ? 1.2 : 1.05;
+    if (keyLight.current) keyLight.current.intensity = theme === "dark" ? 2.35 : 1.6;
     if (!dressed.current) {
       dressed.current = true;
-      const renderer = graph.renderer() as WebGLRenderer;
       renderer.outputColorSpace = SRGBColorSpace;
       renderer.toneMapping = ACESFilmicToneMapping;
-      renderer.toneMappingExposure = theme === "dark" ? 1.15 : 1;
       const pmrem = new PMREMGenerator(renderer);
       graph.scene().environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
       pmrem.dispose();
-      const key = new DirectionalLight(0xfff6e8, theme === "dark" ? 2.2 : 1.6);
+      const key = new DirectionalLight(0xfff6e8, theme === "dark" ? 2.35 : 1.6);
       key.position.set(40, 60, 80);
+      keyLight.current = key;
       graph.scene().add(key);
     }
     const controls = graph.controls() as OrbitControls;
@@ -334,7 +337,7 @@ export function SignalGalaxy({
             onSelect(node.id);
           }}
           linkColor={(link) => (link.hot ? palette.linkHot : palette.linkCold)}
-          linkWidth={(link) => (link.hot ? 1.4 : 0.45)}
+          linkWidth={(link) => (link.hot ? 1.6 : 0.45)}
           linkOpacity={0.9}
           linkResolution={8}
           linkDirectionalParticles={reducedMotion ? 0 : 3}

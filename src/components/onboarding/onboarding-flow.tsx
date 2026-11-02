@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Crossfade } from "@/components/ui/crossfade";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -41,10 +42,19 @@ export type OnboardingDraft = {
 
 type Step = "event" | "identity" | "intent" | "review";
 
-const field = "flex flex-col gap-2 text-sm text-muted-foreground";
-const input = "h-11 rounded-lg border border-border bg-transparent px-3 text-foreground";
-const textarea = "min-h-36 rounded-lg border border-border bg-transparent px-3 py-2 text-foreground";
-const badge = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
+const field =
+  "flex flex-col gap-2 font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
+const input =
+  "h-11 rounded-[12px] border border-border bg-surface px-3.5 font-sans text-[0.9375rem] normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
+const textarea =
+  "min-h-36 rounded-[12px] border border-border bg-surface px-3.5 py-3 font-sans text-[0.9375rem] leading-relaxed normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
+const badge = "font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase";
+const stepMeta: Record<Step, { number: string; label: string; progress: string }> = {
+  event: { number: "01", label: "Event", progress: "25%" },
+  identity: { number: "02", label: "Identity", progress: "50%" },
+  review: { number: "03", label: "Review", progress: "75%" },
+  intent: { number: "04", label: "Intent", progress: "100%" },
+};
 
 function blankIdentity(name: string): Identity {
   return {
@@ -264,14 +274,18 @@ function OnboardingBody({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
+          <p className="mb-4 flex items-center gap-2 font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--signal-strong)] dark:bg-signal" />
+            IntroMesh — {stepMeta[step].label}
+          </p>
           <Crossfade id={step} className="flex flex-col gap-3">
-            <h1 className="font-heading text-[2rem] leading-none tracking-[-0.03em] text-balance min-[720px]:text-[2.75rem]">
+            <h1 className="font-heading text-[2rem] leading-none tracking-[-0.03em] text-balance min-[720px]:text-[3.25rem]">
               {step === "event" ? "Where are you going?" : null}
               {step === "identity" ? "Let's get to know you." : null}
               {step === "intent" ? "What brings you here?" : null}
               {step === "review" ? "Your identity" : null}
             </h1>
-            <p className="max-w-[42ch] text-sm text-muted-foreground">
+            <p className="max-w-[42ch] text-[0.9375rem] leading-relaxed text-muted-foreground">
               {step === "event" ? "Choose an event." : null}
               {step === "identity" ? "One description." : null}
               {step === "intent" ? "What would make this event useful." : null}
@@ -280,6 +294,25 @@ function OnboardingBody({
           </Crossfade>
         </div>
         <ThemeSwitch />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <p className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+          {stepMeta[step].number} — {stepMeta[step].label}
+        </p>
+        <div
+          className="h-px bg-border"
+          role="progressbar"
+          aria-label={`Step ${stepMeta[step].number}: ${stepMeta[step].label}`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Number.parseInt(stepMeta[step].progress, 10)}
+        >
+          <div
+            className="h-px bg-[var(--signal-strong)] transition-[width] duration-300 dark:bg-signal"
+            style={{ width: stepMeta[step].progress }}
+          />
+        </div>
       </div>
 
       <Crossfade id={step} className="flex flex-col gap-6">
@@ -292,41 +325,76 @@ function OnboardingBody({
           <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" onClick={() => void loadEvents()}>
             Search events
           </Button>
-          <ul className="flex flex-col gap-4">
-            {events.map((event) => (
-              <li key={event.id}>
-                <button
-                  type="button"
-                  className="flex w-full flex-col gap-1 rounded-lg border border-border px-3 py-3 text-left hover:bg-surface-raised"
-                  onClick={() => {
-                    setSelected(event);
-                    setStep(identityConfirmed ? "intent" : "identity");
-                  }}
-                >
-                  <span className="text-foreground">{event.name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {[event.category, event.startsAt?.slice(0, 10), event.status].filter(Boolean).join(" · ")}
-                    {event.demo ? " · Demo" : ` · ${event.attendees} registered`}
-                  </span>
-                  {event.description ? <span className="text-sm text-muted-foreground">{event.description}</span> : null}
-                </button>
-              </li>
-            ))}
+          <ul className="flex flex-col gap-3">
+            {events.map((event) => {
+              const isSelected = selected?.id === event.id;
+              return (
+                <li key={event.id}>
+                  <button
+                    type="button"
+                    aria-pressed={isSelected}
+                    className={`flex w-full flex-col gap-2 rounded-[20px] border border-border bg-surface px-4 py-4 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-foreground/30 hover:shadow-[var(--shadow-raise)] ${
+                      isSelected ? "border-foreground/40 bg-surface-raised ring-1 ring-foreground/20" : ""
+                    }`}
+                    onClick={() => {
+                      setSelected(event);
+                      setStep(identityConfirmed ? "intent" : "identity");
+                    }}
+                  >
+                    <span className="flex w-full items-start justify-between gap-3">
+                      <span className="font-heading text-xl leading-tight text-foreground">{event.name}</span>
+                      <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
+                        {event.status === "live" ? (
+                          <span className="flex items-center gap-1.5 font-mono text-[0.65rem] font-medium tracking-[0.08em] text-foreground uppercase">
+                            <span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--signal-strong)] dark:bg-signal" />
+                            Live
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[0.65rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+                            {event.status}
+                          </span>
+                        )}
+                        {event.demo ? (
+                          <span className="rounded-full border border-border px-2 py-0.5 font-mono text-[0.65rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+                            Demo
+                          </span>
+                        ) : null}
+                      </span>
+                    </span>
+                    <span className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase">
+                      {[event.category, event.startsAt?.slice(0, 10)].filter(Boolean).join(" · ")}
+                      {event.demo ? "" : ` · ${event.attendees} registered`}
+                    </span>
+                    {event.description ? (
+                      <span className="text-sm leading-relaxed text-muted-foreground">{event.description}</span>
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
-          <label className={field}>
-            Code or link
-            <input className={input} value={code} onChange={(event) => setCode(event.target.value)} placeholder="event code" />
-          </label>
-          <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || code.trim().length === 0} onClick={() => void chooseCode()}>
-            Join with code
-          </Button>
+          <div className="flex flex-col gap-4 border-t border-border pt-6">
+            <label className={field}>
+              Code or link
+              <input className={input} value={code} onChange={(event) => setCode(event.target.value)} placeholder="event code" />
+            </label>
+            <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || code.trim().length === 0} onClick={() => void chooseCode()}>
+              Join with code
+            </Button>
+          </div>
           {canCreateEvent ? (
-            <button type="button" className="text-left text-sm text-muted-foreground underline-offset-4 hover:underline" onClick={() => setCreating((value) => !value)}>
-              Create an event
-            </button>
-          ) : null}
-          {canCreateEvent && creating ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 border-t border-border pt-6">
+              <button
+                type="button"
+                aria-expanded={creating}
+                className="flex min-h-11 items-center gap-2 self-start text-sm text-foreground underline-offset-4 transition-colors hover:text-muted-foreground min-[720px]:min-h-9"
+                onClick={() => setCreating((value) => !value)}
+              >
+                <Plus aria-hidden="true" className="size-4" />
+                Create an event
+              </button>
+              {creating ? (
+                <div className="flex flex-col gap-4">
               <label className={field}>
                 Name
                 <input className={input} value={eventDraft.name} onChange={(event) => setEventDraft({ ...eventDraft, name: event.target.value })} required />
@@ -343,9 +411,11 @@ function OnboardingBody({
                 Date
                 <input className={input} type="date" value={eventDraft.startsAt} onChange={(event) => setEventDraft({ ...eventDraft, startsAt: event.target.value })} />
               </label>
-              <Button type="button" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending} onClick={() => void createEvent()}>
-                Create event
-              </Button>
+                  <Button type="button" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending} onClick={() => void createEvent()}>
+                    Create event
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -353,7 +423,9 @@ function OnboardingBody({
 
       {step === "identity" ? (
         <div className="flex flex-col gap-4">
-          {selected ? <p className="text-sm text-muted-foreground">{selected.name}</p> : null}
+          {selected ? (
+            <p className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">{selected.name}</p>
+          ) : null}
           <label className={field}>
             Name
             <input className={input} value={name} onChange={(event) => setName(event.target.value)} required />
@@ -395,7 +467,9 @@ function OnboardingBody({
 
       {step === "intent" ? (
         <div className="flex flex-col gap-4">
-          {selected ? <p className="text-sm text-muted-foreground">{selected.name}</p> : null}
+          {selected ? (
+            <p className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">{selected.name}</p>
+          ) : null}
           <label className={field}>
             This event
             <textarea
@@ -405,9 +479,14 @@ function OnboardingBody({
               placeholder="I'm looking to meet potential co-founders, discover interesting AI projects, find people to collaborate with and explore new opportunities."
             />
           </label>
-          <label className="flex items-start gap-3 text-sm text-muted-foreground">
-            <input type="checkbox" className="mt-1" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-            Appear in discovery. Unchecked stays invisible.
+          <label className="flex items-start gap-3 rounded-[12px] border border-border bg-surface px-4 py-3 text-sm leading-relaxed text-foreground transition-colors hover:border-foreground/25">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 accent-[var(--signal-strong)]"
+              checked={consent}
+              onChange={(event) => setConsent(event.target.checked)}
+            />
+            <span>Appear in discovery. Unchecked stays invisible.</span>
           </label>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || !selected}>
             {pending ? "Joining" : "Join the event"}
@@ -417,7 +496,11 @@ function OnboardingBody({
       ) : null}
       </Crossfade>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="rounded-[8px] bg-destructive/10 px-3 py-2 text-sm leading-relaxed text-destructive">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -442,14 +525,14 @@ function IdentityPreview({
     { label: "Conversation topics", key: "conversation_topics" },
   ];
   return (
-    <dl className="flex flex-col gap-4">
+    <dl className="flex flex-col divide-y divide-border">
       {rows.map((row) => {
         const value = identity[row.key];
         const text = Array.isArray(value) ? value.join(", ") : (value ?? "");
         if (!editing && text.trim().length === 0) return null;
         return (
-          <div key={row.key} className="flex flex-col gap-1">
-            <dt className="text-sm text-muted-foreground">{row.label}</dt>
+          <div key={row.key} className="flex flex-col gap-1.5 py-4 first:pt-0 last:pb-0">
+            <dt className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">{row.label}</dt>
             {editing ? (
               <input
                 className={input}
@@ -463,7 +546,7 @@ function IdentityPreview({
                 }}
               />
             ) : (
-              <dd className="text-foreground">{text}</dd>
+              <dd className="text-[0.9375rem] leading-relaxed text-foreground">{text}</dd>
             )}
           </div>
         );

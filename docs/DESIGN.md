@@ -7,7 +7,7 @@ Quality references: Linear’s precision, Vercel’s clarity, Apple’s care. Th
 ## Principles
 
 1. Information leads. Motion explains state; it does not decorate.
-2. Two themes designed separately. Light is cold white; dark stays cinematic. Contrast is intentional in both.
+2. Two themes designed separately. Light is warm paper; dark stays cinematic. Contrast is intentional in both.
 3. One luminous accent: the signal.
 4. Every recommendation shows a concrete reason. Never an orphan percentage.
 5. Synthetic data is labeled as demo. Model-generated text is distinguished from domain data.
@@ -39,18 +39,18 @@ Semantic names (`--background`, `--foreground`, `--surface`, `--border`, `--sign
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--background` | `#ffffff` | Canvas, true white |
-| `--surface` | `#ffffff` | Panels and form fields |
-| `--surface-raised` | `#f4f4f5` | Hover and selected block |
-| `--foreground` | `#111111` | Primary text |
-| `--muted` | `#525252` | Secondary text. Lives in CSS as `--muted-foreground` |
-| `--line` | `rgb(10 10 10 / 0.12)` | Borders. Lives in CSS as `--border` |
+| `--background` | `#f6f4ef` | Canvas, warm paper |
+| `--surface` | `#fffefa` | Panels and form fields, warm white |
+| `--surface-raised` | `#edeade` | Hover and selected block |
+| `--foreground` | `#16180f` | Primary text, warm ink |
+| `--muted` | `#55534a` | Secondary text. Lives in CSS as `--muted-foreground`. ≥4.5:1 on `#f6f4ef` |
+| `--line` | `rgb(22 24 15 / 0.12)` | Borders. Lives in CSS as `--border`; inputs use `rgb(22 24 15 / 0.20)` |
 | `--signal` | `#d6ff4a` | Primary action, with text `#14160c` |
-| `--signal-strong` | `#4c6610` | Brand, focus, active node and active edge on white |
+| `--signal-strong` | `#4c6610` | Brand, focus (`--ring`), active node and active edge on warm paper |
 | `--signal-dim` | `rgb(76 102 16 / 0.12)` | Soft path hint |
 | `--danger` | `#b42318` | Error. Lives in CSS as `--destructive` |
 | `--success` | `#1f7a4a` | Success |
-| `--shadow-raise` | `0 10px 28px rgb(10 10 10 / 0.06)` | Reserved. The field sits on white, no frame or shadow |
+| `--shadow-raise` | `0 1px 2px rgb(22 24 15 / 0.05), 0 12px 32px rgb(22 24 15 / 0.07)` | Soft warm lift for panels (`.surface-panel`). The field sits on the canvas, no frame or shadow |
 
 ### Dark
 
@@ -67,9 +67,9 @@ Semantic names (`--background`, `--foreground`, `--surface`, `--border`, `--sign
 | `--signal-dim` | `rgb(214 255 74 / 0.16)` | Halo or path hint |
 | `--danger` | `#ff6b5a` | Error. Lives in CSS as `--destructive` |
 | `--success` | `#8ee0b0` | Success and accepted connection |
-| `--shadow-raise` | `0 16px 40px rgb(0 0 0 / 0.35)` | Reserved. The dark field sits on the canvas, no frame |
+| `--shadow-raise` | `0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px rgb(0 0 0 / 0.35)` | Reserved. The dark field sits on the canvas, no frame |
 
-The accent does not tint large backgrounds. It marks the active signal, focus, and primary action. In light, lime `#d6ff4a` is reserved for the primary button: on white it lacks contrast, and field marks use `--signal-strong`.
+The accent does not tint large backgrounds. It marks the active signal, focus, and primary action. In light, lime `#d6ff4a` is reserved for the primary button: on warm paper it lacks contrast as text, and field marks use `--signal-strong`.
 
 On theme change, color, background, border, stroke, and shadow transition in `220ms` with `--ease-out`. The `theme-ready` class is added after first paint so that transition does not run during load.
 
@@ -104,8 +104,9 @@ Borders are 1px with `--line`. The field has no frame, surface, or shadow: it si
 | `--duration-fast` | `160ms` |
 | `--duration-base` | `280ms` |
 | `--ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` |
+| `--ease-in-out` | `cubic-bezier(0.77, 0, 0.175, 1)` |
 
-Entries and state changes use ease-out. Do not use ease-in to appear. Animatable properties: `transform` and `opacity`.
+Entries and state changes use ease-out; on-screen movement/morphs use `--ease-in-out`. Do not use ease-in to appear. Animatable properties: `transform` and `opacity` (a 2px `filter: blur()` may bridge crossfades only).
 
 `prefers-reduced-motion: reduce` removes translations and leaves instant opacity or state changes.
 
@@ -125,7 +126,7 @@ shadcn/ui is the base. Restyle it with these tokens. Do not mix other component 
 
 ## Accessibility
 
-- Primary text contrast on canvas above 7:1. Accent `#d6ff4a` on `#14160c` exceeds 4.5:1 for controls. In light, focus and secondary text use inks readable on `#ffffff` (legacy canvas `#f6f4ef` no longer ships). `#525252` is used instead of `#737373` so secondary text stays above 4.5:1 on white.
+- Primary text contrast on canvas above 7:1 (`#16180f` on `#f6f4ef`). Accent `#d6ff4a` on `#14160c` exceeds 4.5:1 for controls. In light, focus uses `--signal-strong` (`#4c6610`) and secondary text uses `#55534a`, chosen to stay above 4.5:1 on warm paper `#f6f4ef`.
 - Visible focus with a 2px `--ring` (`--signal-strong`) and 2px offset.
 - Every action works with the keyboard. The network has a list alternative.
 - Lucide icons accompany text, except when `aria-label` names the action.

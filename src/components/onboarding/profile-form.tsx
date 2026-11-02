@@ -19,11 +19,16 @@ const empty: ProfileInput = {
   goal: "hackathon",
 };
 
-const field = "flex flex-col gap-2 text-sm text-muted-foreground";
-const input = "h-11 rounded-lg border border-border bg-transparent px-3";
-const textarea = "min-h-20 rounded-lg border border-border bg-transparent px-3 py-2";
-const chip = "h-11 px-3 min-[720px]:h-9";
-const meta = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
+const field =
+  "flex flex-col gap-2 font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
+const input =
+  "h-11 rounded-[12px] border border-border bg-surface px-3.5 font-sans text-[0.9375rem] normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
+const textarea =
+  "min-h-20 rounded-[12px] border border-border bg-surface px-3.5 py-3 font-sans text-[0.9375rem] leading-relaxed normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
+const chip = "h-11 rounded-full px-3.5 transition-colors min-[720px]:h-9";
+const chipSelected = "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background";
+const meta = "font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
+const legendClass = "mb-3 font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
 
 export function ProfileForm({
   metaConfigured,
@@ -89,8 +94,8 @@ export function ProfileForm({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] min-[720px]:text-[2.5rem]">Your identity</h1>
-          <p className="max-w-[40ch] text-sm text-muted-foreground">One profile for every event. Edit the presentation before you share it.</p>
+          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] text-balance min-[720px]:text-[3.25rem]">Your identity</h1>
+          <p className="max-w-[40ch] text-[0.9375rem] leading-relaxed text-muted-foreground">One profile for every event. Edit the presentation before you share it.</p>
         </div>
         <ThemeSwitch />
       </div>
@@ -107,7 +112,7 @@ export function ProfileForm({
       </div>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-3 text-sm text-muted-foreground">Goal at this event</legend>
+        <legend className={legendClass}>Goal at this event</legend>
         <div className="flex flex-wrap gap-2">
           {GOALS.map((goal) => {
             const selected = draft.goal === goal.id;
@@ -115,8 +120,8 @@ export function ProfileForm({
               <Button
                 key={goal.id}
                 type="button"
-                variant={selected ? "secondary" : "outline"}
-                className={selected ? `${chip} border-foreground` : chip}
+                variant="outline"
+                className={selected ? `${chip} ${chipSelected}` : chip}
                 aria-pressed={selected}
                 onClick={() => setDraft({ ...draft, goal: goal.id })}
               >
@@ -159,7 +164,11 @@ export function ProfileForm({
             ? "Drafting uses Meta AI. You can edit it before saving."
             : "Demo. MODEL_API_KEY is missing: the draft is built from your fields only and is not a model response."}
         </p>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="rounded-[8px] bg-destructive/10 px-3 py-2 text-sm leading-relaxed text-destructive">
+            {error}
+          </p>
+        ) : null}
       </div>
 
       {presentation ? (
@@ -198,7 +207,7 @@ function ChipSet({
 }) {
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="mb-3 text-sm text-muted-foreground">{legend}</legend>
+      <legend className={legendClass}>{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
           const active = selected.includes(option);
@@ -206,8 +215,8 @@ function ChipSet({
             <Button
               key={option}
               type="button"
-              variant={active ? "secondary" : "outline"}
-              className={active ? `${chip} border-foreground` : chip}
+              variant="outline"
+              className={active ? `${chip} ${chipSelected}` : chip}
               aria-pressed={active}
               onClick={() => onToggle(option)}
             >
