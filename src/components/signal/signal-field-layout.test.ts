@@ -6,6 +6,7 @@ import {
   easeOut,
   fieldWidth,
   hashUnit,
+  initialNodePosition,
   mixRgba,
   parseCssColor,
   placePeople,
@@ -74,6 +75,31 @@ describe("coordenadas de mundo", () => {
     expect(fieldWidth(1)).toBe(4.5);
     expect(fieldWidth(4)).toBe(8);
     expect(fieldWidth(Number.NaN)).toBe(6);
+  });
+});
+
+describe("initialNodePosition", () => {
+  it("respeta las coordenadas del servidor en x/y", () => {
+    expect(initialNodePosition({ id: "a", x: 0, y: 0, score: null })).toMatchObject({ x: -3, y: 2.25 });
+    expect(initialNodePosition({ id: "a", x: 100, y: 100, score: null })).toMatchObject({ x: 3, y: -2.25 });
+    expect(initialNodePosition({ id: "a", x: 50, y: 50, score: 5 })).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it("es determinista: mismo id, misma posición inicial", () => {
+    const point = { id: "hot-high", x: 50, y: 24, score: 11 as const };
+    expect(initialNodePosition(point)).toEqual(initialNodePosition({ ...point }));
+    const cold: { id: string; x: number; y: number; score: null } = { id: "cold-a", x: 30, y: 70, score: null };
+    expect(initialNodePosition(cold)).toEqual(initialNodePosition({ ...cold }));
+  });
+
+  it("coloca recomendados delante y el resto detrás sin coplanarios", () => {
+    const hot = initialNodePosition({ id: "hot-high", x: 50, y: 24, score: 11 });
+    expect(hot.z).toBeGreaterThan(0);
+    const a = initialNodePosition({ id: "cold-a", x: 30, y: 70, score: null });
+    const b = initialNodePosition({ id: "cold-b", x: 60, y: 76, score: null });
+    expect(a.z).toBeLessThan(0);
+    expect(b.z).toBeLessThan(0);
+    expect(a.z).not.toBe(b.z);
   });
 });
 

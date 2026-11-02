@@ -18,6 +18,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import SpriteText from "three-spritetext";
 import { FIELD_SELF_ID, type FieldPerson } from "@/components/signal/signal-field";
+import { initialNodePosition } from "@/components/signal/signal-field-layout";
 
 const ORIGIN = FIELD_SELF_ID;
 
@@ -32,6 +33,14 @@ type GraphNode = {
   fx?: number;
   fy?: number;
   fz?: number;
+  // Runtime fields written by the force simulation; kept so a reused node
+  // object resumes from its last position instead of restarting the layout.
+  x?: number;
+  y?: number;
+  z?: number;
+  vx?: number;
+  vy?: number;
+  vz?: number;
 };
 
 type GraphLink = {
@@ -110,15 +119,19 @@ export function SignalGalaxy({
   selectedId,
   onSelect,
   reducedMotion,
+  ready,
 }: {
   people: FieldPerson[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   reducedMotion: boolean;
+  /** False while the roster is still initial/loading: mount nothing until data is final. */
+  ready: boolean;
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(undefined);
   const dressed = useRef(false);
+  const fittedSig = useRef<string | null>(null);
   const keyLight = useRef<DirectionalLight | null>(null);
   const focusedId = useRef<string | null>(null);
   const focusTimer = useRef<number | null>(null);
@@ -130,7 +143,12 @@ export function SignalGalaxy({
   useEffect(() => {
     const element = wrapRef.current;
     if (!element) return;
-    const measure = () => setSize({ width: element.clientWidth, height: element.clientHeight });
+    const measure = () => {
+      const width = Math.round(element.clientWidth);
+      const height = Math.round(element.clientHeight);
+      if (width === 0 || height === 0) return;
+      setSize((previous) => (previous.width === width && previous.height === height ? previous : { width, height }));
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -149,30 +167,89 @@ export function SignalGalaxy({
 
   const rosterKey = people.map((person) => `${person.id}:${person.recommendation ? 1 : 0}`).join("|");
 
+  // Reuse node objects across roster changes (invisible <-> active) so the
+  // simulation resumes from stored positions instead of restarting cold.
+  // Lazy-initialized stable cache; entries are mutated, never re-set.
+  const [nodeCache] = useState(() => new Map<string, GraphNode>());
+  // Reuse Three objects across selection/theme rebuilds so a selection does
+  // not recreate every physical material and label texture in the field.
+  const objectCache = useRef(new Map<string, Group>());
+
+  useEffect(() => {
+    const cache = objectCache.current;
+    return () => {
+      for (const group of cache.values()) {
+        group.traverse((child) => {
+          const mesh = child as Mesh;
+          if (!mesh.isMesh) return;
+          const material = mesh.material as MeshPhysicalMaterial & { map?: { dispose: () => void } };
+          material.map?.dispose();
+          material.dispose();
+        });
+      }
+      cache.clear();
+    };
+  }, []);
+
   const graphData = useMemo(() => {
-    const nodes: GraphNode[] = [{ id: ORIGIN, name: "You", kind: "root", val: 18 }];
+    const reuse = (id: string, init: GraphNode): GraphNode => {
+      const cached = nodeCache.get(id);
+      if (cached) {
+        cached.name = init.name;
+        cached.kind = init.kind;
+        cached.val = init.val;
+        cached.demo = init.demo;
+        cached.fx = init.fx;
+        cached.fy = init.fy;
+        cached.fz = init.fz;
+        return cached;
+      }
+      nodeCache.set(id, init);
+      return init;
+    };
+    const nodes: GraphNode[] = [reuse(ORIGIN, { id: ORIGIN, name: "You", kind: "root", val: 18, fx: 0, fy: 0, fz: 0 })];
     const links: GraphLink[] = [];
     for (const person of people) {
       const hot = person.recommendation !== null;
-      nodes.push({
+      // Deterministic seed from server coordinates: a brand-new node starts
+      // where the data says it belongs, so the sim resumes instead of jumping
+      // from a random position. Returning nodes keep their runtime x/y/z.
+      const seed = initialNodePosition({
         id: person.id,
-        name: person.demo ? `${person.displayName} · demo` : person.displayName,
-        kind: hot ? "hot" : "cold",
-        val: hot ? 10 : 6,
-        demo: person.demo,
+        x: person.x,
+        y: person.y,
+        score: person.recommendation?.score ?? null,
       });
+      nodes.push(
+        reuse(person.id, {
+          id: person.id,
+          name: person.demo ? `${person.displayName} · demo` : person.displayName,
+          kind: hot ? "hot" : "cold",
+          val: hot ? 10 : 6,
+          demo: person.demo,
+          x: seed.x,
+          y: seed.y,
+          z: seed.z,
+        }),
+      );
       links.push({ source: ORIGIN, target: person.id, hot });
     }
-    nodes[0] = { ...nodes[0], fx: 0, fy: 0, fz: 0 };
     return { nodes, links };
     // La selección crea un array nuevo con la misma gente. Rehacer los nodos reinicia la cámara.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rosterKey]);
 
+  // Sorted node identity: the camera fits once per genuine roster, never on
+  // theme/size/selection churn, and never for the origin-only placeholder.
+  const rosterSig = useMemo(() => graphData.nodes.map((node) => node.id).sort().join("|"), [graphData]);
+
   const nodeObject = useCallback(
     (node: GraphNode) => {
-      const group = new Group();
       const selected = node.id === selectedId;
+      const cacheKey = `${theme}|${node.id}|${node.kind}|${node.val}|${selected ? 1 : 0}`;
+      const cached = objectCache.current.get(cacheKey);
+      if (cached) return cached;
+      const group = new Group();
       const color = node.kind === "root" ? palette.root : node.kind === "hot" ? palette.hot : palette.cold;
       const mesh = new Mesh(sphere(node.val), glass(color, selected, node.kind));
       group.add(mesh);
@@ -187,14 +264,18 @@ export function SignalGalaxy({
         label.material.depthTest = false;
         group.add(label);
       }
+      if (objectCache.current.size > 120) objectCache.current.clear();
+      objectCache.current.set(cacheKey, group);
       return group;
     },
-    [palette, selectedId],
+    [palette, selectedId, theme],
   );
 
+  // Styling + forces only: re-applies on theme/motion/data change but never
+  // moves the camera, so theme toggles and roster refreshes don't jump.
   useEffect(() => {
     const graph = graphRef.current;
-    if (!graph || size.width === 0) return;
+    if (!graph || !ready || size.width === 0 || size.height === 0) return;
     const charge = graph.d3Force("charge") as { strength?: (value: number) => void } | undefined;
     charge?.strength?.(-420);
     const link = graph.d3Force("link") as { distance?: (value: number) => void } | undefined;
@@ -219,6 +300,19 @@ export function SignalGalaxy({
     controls.autoRotateSpeed = 0.55;
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
+  }, [graphData, ready, reducedMotion, size.height, size.width, theme]);
+
+  // One-shot overview fit per genuine roster. Guarded by rosterSig (not by
+  // graphData identity, size jitter, or theme), skipped for the origin-only
+  // placeholder, and skipped when the roster matches the last fitted one —
+  // so invisible → visible with a cached roster never re-runs layout/camera.
+  useEffect(() => {
+    if (!ready || size.width === 0 || size.height === 0) return;
+    if (graphData.nodes.length <= 1) return;
+    if (fittedSig.current === rosterSig) return;
+    fittedSig.current = rosterSig;
+    const graph = graphRef.current;
+    if (!graph) return;
     const frame = window.setTimeout(() => {
       if (focusedId.current) return;
       graph.zoomToFit(0, 8);
@@ -228,7 +322,7 @@ export function SignalGalaxy({
       graph.cameraPosition(pose, { x: 0, y: 0, z: 0 }, reducedMotion ? 0 : 800);
     }, 700);
     return () => window.clearTimeout(frame);
-  }, [graphData, reducedMotion, size.height, size.width, theme]);
+  }, [graphData, ready, reducedMotion, rosterSig, size.height, size.width]);
 
   const stopOverview = useCallback(() => {
     if (overviewFrame.current === null) return;
@@ -311,9 +405,30 @@ export function SignalGalaxy({
     [reducedMotion, stopOverview],
   );
 
+  const nodeVal = useCallback((node: GraphNode) => node.val, []);
+  const nodeLabel = useCallback(() => "", []);
+  const linkColor = useCallback((link: GraphLink) => (link.hot ? palette.linkHot : palette.linkCold), [palette]);
+  const linkWidth = useCallback((link: GraphLink) => (link.hot ? 1.6 : 0.45), []);
+  const particleColor = useCallback(() => palette.particle, [palette]);
+  const onNodeClick = useCallback(
+    (node: GraphNode) => {
+      if (!node.id) return;
+      if (node.id === selectedId) {
+        showOverview();
+        onSelect(null);
+        return;
+      }
+      focusNode(node);
+      onSelect(node.id);
+    },
+    [focusNode, onSelect, selectedId, showOverview],
+  );
+
+  const mounted = ready && size.width > 0 && size.height > 0;
+
   return (
     <div ref={wrapRef} className="absolute inset-0">
-      {size.width > 0 && size.height > 0 ? (
+      {mounted ? (
         <ForceGraph3D
           ref={graphRef}
           width={size.width}
@@ -322,32 +437,37 @@ export function SignalGalaxy({
           backgroundColor="rgba(0,0,0,0)"
           showNavInfo={false}
           nodeRelSize={1}
-          nodeVal={(node) => node.val}
+          nodeVal={nodeVal}
           nodeThreeObject={nodeObject}
           nodeThreeObjectExtend={false}
-          nodeLabel={() => ""}
-          onNodeClick={(node) => {
-            if (!node.id) return;
-            if (node.id === selectedId) {
-              showOverview();
-              onSelect(null);
-              return;
-            }
-            focusNode(node);
-            onSelect(node.id);
-          }}
-          linkColor={(link) => (link.hot ? palette.linkHot : palette.linkCold)}
-          linkWidth={(link) => (link.hot ? 1.6 : 0.45)}
+          nodeLabel={nodeLabel}
+          onNodeClick={onNodeClick}
+          linkColor={linkColor}
+          linkWidth={linkWidth}
           linkOpacity={0.9}
           linkResolution={8}
           linkDirectionalParticles={reducedMotion ? 0 : 3}
           linkDirectionalParticleWidth={1.8}
           linkDirectionalParticleSpeed={0.006}
-          linkDirectionalParticleColor={() => palette.particle}
+          linkDirectionalParticleColor={particleColor}
           warmupTicks={reducedMotion ? 90 : 40}
           cooldownTime={reducedMotion ? 0 : 6000}
         />
-      ) : null}
+      ) : (
+        <div aria-hidden="true" className="absolute inset-0 grid place-items-center">
+          <div className="flex items-center gap-1.5">
+            <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60" />
+            <span
+              className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
+              style={{ animationDelay: "150ms" }}
+            />
+            <span
+              className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
+              style={{ animationDelay: "300ms" }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

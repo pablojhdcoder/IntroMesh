@@ -47,10 +47,12 @@ export function SignalField({
   people,
   selectedId,
   onSelect,
+  loading = false,
 }: {
   people: FieldPerson[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  loading?: boolean;
 }) {
   const compact = useSyncExternalStore(subscribeCompact, readCompact, readServer);
   const reducedMotion = useSyncExternalStore(subscribeMotion, readMotion, readServer);
@@ -67,15 +69,16 @@ export function SignalField({
     <div
       role="group"
       aria-label="Attendee field"
+      aria-busy={loading}
       className="relative h-[28rem] w-full min-h-0 touch-manipulation min-[720px]:h-full"
     >
-      <SignalGalaxy people={shown} selectedId={selectedId} onSelect={onSelect} reducedMotion={reducedMotion} />
+      <SignalGalaxy people={shown} selectedId={selectedId} onSelect={onSelect} reducedMotion={reducedMotion} ready={!loading} />
       {empty ? (
         <p
           role="status"
           className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-border bg-surface/80 px-3 py-1.5 font-mono text-xs tracking-[0.08em] whitespace-nowrap text-muted-foreground uppercase shadow-sm"
         >
-          Nobody visible
+          {loading ? "Loading the room" : "Nobody visible"}
         </p>
       ) : null}
       <ul className="sr-only">

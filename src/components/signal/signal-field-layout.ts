@@ -96,6 +96,25 @@ export function placePeople(people: readonly FieldPoint[]): PlacedPoint[] {
 }
 
 /**
+ * Posición inicial determinista para un nodo nuevo del grafo 3D.
+ * Deriva x/y de las coordenadas 0–100 del servidor y z del dato
+ * (score + hash del id), nunca del azar: dos montajes con los mismos
+ * datos colocan cada nodo en el mismo sitio y la simulación arranca
+ * convergida en lugar de saltar desde posiciones aleatorias.
+ */
+export function initialNodePosition(
+  point: { id: string; x: number; y: number; score: number | null },
+  width = FIELD_WIDTH,
+): { x: number; y: number; z: number } {
+  const jitter = (hashUnit(`${point.id}:pos`) - 0.5) * 0.3;
+  const z =
+    point.score === null
+      ? depthFor(point, { min: 0, max: 0 })
+      : depthFor({ id: point.id, score: point.score }, { min: point.score, max: point.score }) + jitter;
+  return { x: worldX(point.x, width), y: worldY(point.y), z: Math.round(z * 1000) / 1000 };
+}
+
+/**
  * Recorte móvil: las recomendaciones de mayor score y, si no está entre
  * ellas, la seleccionada. Nunca añade a nadie que no venga en `people`.
  */
