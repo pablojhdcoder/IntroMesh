@@ -312,7 +312,7 @@ async function replaceTable(
   );
   const toDelete = (existing.data ?? [])
     .map((row) => {
-      const record = row as Record<string, unknown>;
+      const record = row as unknown as Record<string, unknown>;
       return typeof key === "string" ? String(record[key]) : key.map((part) => String(record[part])).join("::");
     })
     .filter((item) => !nextKeys.has(item));
