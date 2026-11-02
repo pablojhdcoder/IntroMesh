@@ -1,0 +1,17 @@
+---
+description: Strict TypeScript conventions for IntroMesh
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+
+# TypeScript
+
+- Strict mode. No `any`. Use `unknown` and narrow with type guards or Zod.
+- Validate at every boundary with Zod: route handlers, Server Actions, Supabase rows, Meta API responses.
+- No floating promises. `await`, `return`, or `void` every promise. Handle errors explicitly.
+- Keep module boundaries tight per `AGENTS.md`: UI in `src/app` + `src/components`, use cases in `src/server`, domain in `src/domain`, persistence in `src/lib/store` + `src/lib/supabase`, Meta in `src/lib/meta`, session in `src/lib/session`.
+- Never import server-only modules (`src/lib/meta`, `src/lib/supabase` service role, session secrets) from client code.
+- Prefer small pure functions in `src/domain`. Side effects live in `src/server` or `src/lib`.
+- Fail fast with clear errors. Never swallow exceptions. Never invent rows, matches, or model text.
+- Secrets only on the server: `MODEL_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. No `NEXT_PUBLIC_` for secrets.
+- Verify with `npx tsc --noEmit` and `npm run lint` before closing a task.

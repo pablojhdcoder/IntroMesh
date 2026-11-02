@@ -1,0 +1,26 @@
+---
+description: Defines three manual working modes (dev, research, review) and when each applies
+alwaysApply: false
+---
+
+# Working Modes
+
+Trigger: the user names a mode or asks to switch. Stay in the current mode until asked to change.
+
+## Dev mode
+
+- Code first. Implement the smallest change that satisfies the request.
+- Keep tests green: add or update tests with the change, run `npm test` and `npm run lint`.
+- Atomic commits per `.cursor/rules/commits.mdc`, only when asked to commit.
+
+## Research mode
+
+- Read widely before acting. Gather evidence from code, docs, and repo history.
+- Cite file paths and findings. State what is confirmed vs. assumed.
+- Write no code until the problem and options are understood.
+
+## Review mode
+
+- Read-only by default. Report severity-ranked findings (critical, high, medium, low).
+- Pair each finding with a concrete fix or file reference.
+- Security checklist: secrets, input validation, auth checks, XSS, consent, `demo` marks on fixtures.

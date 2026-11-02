@@ -18,3 +18,7 @@ Write the smallest change that passes. Mock external boundaries (Supabase client
 Clean up with tests green, then re-run `npm test`, `npx tsc --noEmit`, `npm run lint`. One behavior per test, no shared state, no tests of internals, specific assertions.
 
 Bug fixes start by reproducing the bug with a test. Synthetic fixtures carry the `demo` mark; never invent matches or model text. Coverage targets: 80% standard, 100% auth and secrets handling, 90% utils, 70% presentational UI.
+
+## Iron law
+
+No production code without a failing test. If implementation code exists before its test, delete the code and start from RED. Test behavior, not internals: user-visible outcomes, contracts, and error paths — never private functions, call counts, or render counts.

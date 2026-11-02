@@ -24,8 +24,8 @@ The always-on rule is in `.cursor/rules/intromesh.mdc`. These documents are the 
 
 - App Router, strict TypeScript, Tailwind 4, shadcn/ui, Motion, Lucide, Zod, Supabase, OpenAI SDK against `https://api.meta.ai/v1`.
 - UI in `src/app` and `src/components` (`onboarding/`, `signal/`, `share/`, `ui/`). Use cases in `src/server`. Domain in `src/domain`. Persistence in `src/lib/store` and `src/lib/supabase`. Meta in `src/lib/meta`. Session cookies in `src/lib/session`.
-- The lead agent defines contracts and order. Delegate UI to `ui-design-engineer`, matching and Meta to `meta-ai-matching-engineer`, and review to `qa-privacy-reviewer` (read-only). Do not assign the same file to two agents at once.
-- Project skills: `impeccable`, `emil-design-eng`, `ui-quality-review`, `meta-model-api`, `demo-pitch`, `tdd-workflow`, `verification-loop`, `typescript-patterns`, `react-patterns`, `react-testing`, `nextjs-turbopack`, `motion-patterns`, `security-review`, `strategic-compact`.
+- The lead agent defines contracts and order. Delegate UI to `ui-design-engineer`, matching and Meta to `meta-ai-matching-engineer`, and review to `qa-privacy-reviewer` (read-only). For high-level UI direction and design critique, use `vision-ui-director` (on demand). Run independent tasks as parallel subagents with small isolated briefs, then merge. Do not assign the same file to two agents at once.
+- Project skills: `impeccable`, `emil-design-eng`, `ui-quality-review`, `meta-model-api`, `demo-pitch`, `tdd-workflow`, `verification-loop`, `typescript-patterns`, `react-patterns`, `react-testing`, `nextjs-turbopack`, `motion-patterns`, `security-review`, `strategic-compact`, `brainstorming`, `systematic-debugging`, `writing-plans`, `executing-plans`, `receiving-code-review`, `writing-skills`, `ui-styling`, `design-system`, `brand`, `archify`.
 - Product-facing copy is English for the Meta hackathon.
 
 ## Checks
@@ -34,9 +34,9 @@ The always-on rule is in `.cursor/rules/intromesh.mdc`. These documents are the 
 
 ## OpenCode
 
-OpenCode reads this file plus `.cursor/rules/*.mdc` (via `opencode.json` `instructions`). It does not read `.cursor/agents` or `.cursor/skills`, so `.opencode/` holds thin wrappers that point back to them. The Cursor files stay the source of truth.
+OpenCode reads this file plus `.cursor/rules/*.mdc` (via `opencode.json` `instructions`). `.opencode/` and `.cursor/` each hold full, identical copies of agents, skills, and commands so either tool works standalone; keep both sides in sync when changing one.
 
-- Subagents: `ui-design-engineer`, `meta-ai-matching-engineer`, `qa-privacy-reviewer` (read-only), `react-reviewer` (read-only), `supabase-reviewer` (read-only), `build-fixer` (minimal diffs), `tdd-guide` (RED-GREEN-REFACTOR), `planner` (read-only), `pitch` (only `docs/` and `README.md`).
+- Subagents: `ui-design-engineer`, `vision-ui-director` (on demand), `meta-ai-matching-engineer`, `qa-privacy-reviewer` (read-only), `react-reviewer` (read-only), `supabase-reviewer` (read-only), `build-fixer` (minimal diffs), `tdd-guide` (RED-GREEN-REFACTOR), `planner` (read-only), `pitch` (only `docs/` and `README.md`).
 - Commands: `/code-review`, `/build-fix`, `/checkpoint`, `/tdd`, `/plan`, `/verify`, `/test-coverage`, `/update-docs`.
 - Plan before changes that touch more than two files. If the same error survives three attempts, stop and ask.
 - Commits follow `.cursor/rules/commits.mdc`. Never push.

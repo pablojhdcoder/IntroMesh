@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".cursor/**",
     ".agents/**",
+    // Vendored third-party skill assets (Archify CLI, UI-UX-Pro-Max scripts).
+    ".opencode/skills/**/bin/**",
+    ".opencode/skills/**/scripts/**",
   ]),
 ]);
 

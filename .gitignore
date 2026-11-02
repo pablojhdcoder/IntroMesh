@@ -49,3 +49,6 @@ supabase/.temp/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Archify work folders (share-worthy artifacts live in docs/diagrams/)
+/.archify/

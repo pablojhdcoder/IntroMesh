@@ -1,0 +1,18 @@
+---
+description: Vitest testing conventions for IntroMesh
+globs: ["**/*.test.ts", "**/*.test.tsx"]
+alwaysApply: false
+---
+
+# Testing
+
+- Runner is Vitest via `npm test`. Colocate tests as `*.test.ts` next to the source.
+- RED first: write the failing test, watch it fail, then implement the minimum to go green.
+- One behavior per test. Descriptive names: `returns empty array when no profiles match`.
+- No shared mutable state between tests. Arrange-Act-Assert. No `setTimeout` assertions.
+- Cover edge cases: empty input, invalid input, missing key, boundary values, error paths.
+- Mock at boundaries: Supabase clients and Meta API calls. Never hit real services in unit tests.
+- Use `demo`-marked fixtures for synthetic data. Never invent real-looking rows or model text.
+- Test user-visible behavior (roles, labels, text) over internals. No snapshot tests for components.
+- Targets: 80% standard, 100% auth and secrets handling, 90% pure utils, 70% UI containers.
+- Fix the implementation, not the test, unless the test itself is wrong.

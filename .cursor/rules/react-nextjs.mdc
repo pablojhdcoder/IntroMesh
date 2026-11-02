@@ -1,0 +1,19 @@
+---
+description: React and Next.js App Router conventions for IntroMesh
+globs: ["src/app/**", "src/components/**", "**/*.tsx"]
+alwaysApply: false
+---
+
+# React / Next.js
+
+- App Router only. Server Components by default; add `"use client"` only when interactivity requires it.
+- Never import server-only code (DB clients, `src/lib/meta`, secrets) from `"use client"` files. Never pass secrets through props.
+- Never call the Meta API from client components. All model calls go through server use cases.
+- Hooks at top level only, in the same order every render. Keep `react-hooks/rules-of-hooks` clean and justify any `exhaustive-deps` suppression.
+- Derive state during render. Reserve `useEffect` for external systems (subscriptions, listeners) with cleanup.
+- Pair every `Suspense` boundary with an error boundary. Place boundaries close to the data.
+- Every async surface needs loading, empty, error, and success states.
+- Style with Tailwind 4 + shadcn/ui + Motion + Lucide, using `docs/DESIGN.md` tokens. No new visual library.
+- A11y basics: semantic roles, labels on inputs, keyboard-reachable controls, visible focus, `alt` text.
+- Sessions use httpOnly cookies in `src/lib/session`. Never store sessions in `localStorage`.
+- Sanitize any raw HTML. Validate `href` schemes. Add `rel="noopener noreferrer"` to `target="_blank"`.

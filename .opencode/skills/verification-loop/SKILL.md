@@ -13,3 +13,7 @@ Run the gates in order; stop the loop on a build or type failure.
 6. Diff: review `git diff --stat` plus the changed files for unintended edits, missing error handling, and faked Meta/backend results.
 
 Emit one verdict line per gate plus blockers only, ending with READY or NOT READY. Quote real command output; never claim a gate passed without running it.
+
+## Evidence gate
+
+No success claims without fresh command output. Re-run every gate after each fix; stale output from before the fix does not count. A gate passes only when its command ran green in the current state of the working tree.
