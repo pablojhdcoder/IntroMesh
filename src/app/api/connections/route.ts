@@ -3,11 +3,18 @@ import { fail, json, service, viewerId } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
+function timed(body: unknown, started: number) {
+  const response = json(body);
+  response.headers.set("Server-Timing", `app;dur=${Math.max(0, performance.now() - started).toFixed(1)}`);
+  return response;
+}
+
 export async function GET(request: Request) {
+  const started = performance.now();
   const id = await viewerId();
   if (!id) return json({ error: "profile" }, 401);
   const eventId = new URL(request.url).searchParams.get("eventId") ?? undefined;
-  return json({ connections: await service().connections(id, eventId) });
+  return timed({ connections: await service().connections(id, eventId) }, started);
 }
 
 const createSchema = z.object({

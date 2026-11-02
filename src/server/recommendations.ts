@@ -10,21 +10,80 @@ import {
   semanticCompatibility,
   type HybridProfile,
 } from "@/domain/matching/hybrid";
-import { isPresenceLive } from "@/domain/presence";
-import type { Database, RecommendationRecord } from "@/lib/store";
+import { isPresenceLive, type PresenceRecord } from "@/domain/presence";
+import type { Database, EventRecord, GlobalIdentityRecord, ParticipationRecord, RecommendationRecord } from "@/lib/store";
 import type { StoredProfile } from "@/domain/profile";
 
-function globalHash(database: Database, userId: string): { hash: string; revision: number; vector: number[] | null } {
-  const identity = database.identities.find((item) => item.userId === userId && item.status === "confirmed");
-  const text = identity?.confirmed ? canonicalGlobalText(identity.confirmed) : "";
-  const row = database.embeddings.find((item) => item.kind === "global" && item.userId === userId && item.status === "completed");
-  return { hash: text ? sha256(text) : "", revision: identity?.revision ?? 0, vector: row?.vector ?? null };
+type RecommendationIndex = {
+  identityByUser: Map<string, GlobalIdentityRecord>;
+  participationByUserEvent: Map<string, ParticipationRecord>;
+  globalVectorByUser: Map<string, number[]>;
+  eventVectorByUserEvent: Map<string, number[]>;
+  presenceByProfileEvent: Map<string, PresenceRecord>;
+  eventById: Map<string, EventRecord>;
+};
+
+function setFirst<K, V>(map: Map<K, V>, key: K, value: V): void {
+  if (!map.has(key)) map.set(key, value);
 }
 
-function contextHash(database: Database, userId: string, eventId: string): { hash: string; revision: number; vector: number[] | null } {
-  const participation = database.participations.find((item) => item.userId === userId && item.eventId === eventId && item.status === "joined");
-  const identity = database.identities.find((item) => item.userId === userId);
-  const event = database.events.find((item) => item.id === eventId);
+// PK-backed tables are unique per key, so first-match maps are exactly equivalent
+// to the previous .find() scans, at O(1) per lookup instead of O(n).
+function buildRecommendationIndex(database: Database): RecommendationIndex {
+  const identityByUser = new Map<string, GlobalIdentityRecord>();
+  for (const item of database.identities) setFirst(identityByUser, item.userId, item);
+  const participationByUserEvent = new Map<string, ParticipationRecord>();
+  for (const item of database.participations) {
+    setFirst(participationByUserEvent, `${item.userId}::${item.eventId}`, item);
+  }
+  const globalVectorByUser = new Map<string, number[]>();
+  const eventVectorByUserEvent = new Map<string, number[]>();
+  for (const item of database.embeddings) {
+    if (item.status !== "completed" || !item.vector) continue;
+    if (item.kind === "global") setFirst(globalVectorByUser, item.userId, item.vector);
+    else if (item.eventId) setFirst(eventVectorByUserEvent, `${item.userId}::${item.eventId}`, item.vector);
+  }
+  const presenceByProfileEvent = new Map<string, PresenceRecord>();
+  for (const item of database.presence) {
+    setFirst(presenceByProfileEvent, `${item.profileId}::${item.eventId}`, item);
+  }
+  const eventById = new Map<string, EventRecord>();
+  for (const item of database.events) setFirst(eventById, item.id, item);
+  return {
+    identityByUser,
+    participationByUserEvent,
+    globalVectorByUser,
+    eventVectorByUserEvent,
+    presenceByProfileEvent,
+    eventById,
+  };
+}
+
+function globalHashIndexed(
+  index: RecommendationIndex,
+  userId: string,
+): { hash: string; revision: number; vector: number[] | null } {
+  const identity = index.identityByUser.get(userId);
+  const confirmed = identity?.status === "confirmed" ? identity : null;
+  const text = confirmed?.confirmed ? canonicalGlobalText(confirmed.confirmed) : "";
+  return {
+    hash: text ? sha256(text) : "",
+    revision: confirmed?.revision ?? 0,
+    vector: index.globalVectorByUser.get(userId) ?? null,
+  };
+}
+
+function contextHashIndexed(
+  index: RecommendationIndex,
+  userId: string,
+  eventId: string,
+): { hash: string; revision: number; vector: number[] | null } {
+  const key = `${userId}::${eventId}`;
+  const stored = index.participationByUserEvent.get(key);
+  // Parity: the hash/revision path only sees joined participations; the vector lookup does not filter by status.
+  const participation = stored?.status === "joined" ? stored : undefined;
+  const identity = index.identityByUser.get(userId);
+  const event = index.eventById.get(eventId);
   const text =
     participation && event
       ? canonicalContextText({
@@ -36,15 +95,20 @@ function contextHash(database: Database, userId: string, eventId: string): { has
           eventDescription: event.description,
         })
       : "";
-  const row = database.embeddings.find(
-    (item) => item.kind === "event" && item.userId === userId && item.eventId === eventId && item.status === "completed",
-  );
-  return { hash: text ? sha256(text) : participation?.inputHash ?? "", revision: participation?.revision ?? 0, vector: row?.vector ?? null };
+  return {
+    hash: text ? sha256(text) : (participation?.inputHash ?? ""),
+    revision: participation?.revision ?? 0,
+    vector: index.eventVectorByUserEvent.get(key) ?? null,
+  };
 }
 
-function hybridProfile(database: Database, profile: StoredProfile, eventId: string): HybridProfile {
-  const identity = database.identities.find((item) => item.userId === profile.id)?.confirmed;
-  const participation = database.participations.find((item) => item.userId === profile.id && item.eventId === eventId);
+function hybridProfileIndexed(
+  index: RecommendationIndex,
+  profile: StoredProfile,
+  eventId: string,
+): HybridProfile {
+  const identity = index.identityByUser.get(profile.id)?.confirmed;
+  const participation = index.participationByUserEvent.get(`${profile.id}::${eventId}`);
   return {
     id: profile.id,
     interests: identity?.interests ?? profile.interests,
@@ -57,11 +121,16 @@ function hybridProfile(database: Database, profile: StoredProfile, eventId: stri
   };
 }
 
-function visible(database: Database, profile: StoredProfile, eventId: string, now: number): boolean {
-  const presence = database.presence.find((item) => item.profileId === profile.id && item.eventId === eventId);
+function visibleIndexed(
+  index: RecommendationIndex,
+  profile: StoredProfile,
+  eventId: string,
+  now: number,
+): boolean {
+  const presence = index.presenceByProfileEvent.get(`${profile.id}::${eventId}`);
   if (!presence || (presence.source !== "demo" && !isPresenceLive(presence, now))) return false;
   if (profile.demo) return true;
-  const participation = database.participations.find((item) => item.userId === profile.id && item.eventId === eventId);
+  const participation = index.participationByUserEvent.get(`${profile.id}::${eventId}`);
   if (!participation) return true;
   return participation.status === "joined" && participation.consent && participation.visibility === "discoverable";
 }
@@ -90,28 +159,29 @@ export function scheduleEmbedding(
 
 /** Recomendaciones de un visor contra el evento. No recorre parejas ajenas. */
 export function refreshViewerRecommendations(database: Database, viewerId: string, eventId: string, now = Date.now()): void {
-  const event = database.events.find((item) => item.id === eventId);
+  const index = buildRecommendationIndex(database);
+  const event = index.eventById.get(eventId);
   const viewer = database.profiles.find((item) => item.id === viewerId);
   if (!event || !viewer) return;
-  const viewerGlobal = globalHash(database, viewerId);
-  const viewerContext = contextHash(database, viewerId, eventId);
-  const pool = database.profiles.filter((item) => item.id !== viewerId && visible(database, item, eventId, now));
+  const viewerGlobal = globalHashIndexed(index, viewerId);
+  const viewerContext = contextHashIndexed(index, viewerId, eventId);
+  const pool = database.profiles.filter((item) => item.id !== viewerId && visibleIndexed(index, item, eventId, now));
   const retrieved = retrieveBySimilarity(
     viewerGlobal.vector,
-    pool.map((item) => ({ item, vector: globalHash(database, item.id).vector })),
+    pool.map((item) => ({ item, vector: globalHashIndexed(index, item.id).vector })),
   );
   database.metrics.vectorSearches += 1;
   const ranked = retrieved
     .map((entry) => {
-      const candidateGlobal = globalHash(database, entry.item.id);
-      const candidateContext = contextHash(database, entry.item.id, eventId);
+      const candidateGlobal = globalHashIndexed(index, entry.item.id);
+      const candidateContext = contextHashIndexed(index, entry.item.id, eventId);
       const identity =
         viewerGlobal.vector && candidateGlobal.vector ? cosineSimilarityUnit(viewerGlobal.vector, candidateGlobal.vector) : null;
       const context =
         viewerContext.vector && candidateContext.vector
           ? cosineSimilarityUnit(viewerContext.vector, candidateContext.vector)
           : null;
-      const scored = scorePair(hybridProfile(database, viewer, eventId), hybridProfile(database, entry.item, eventId), event, {
+      const scored = scorePair(hybridProfileIndexed(index, viewer, eventId), hybridProfileIndexed(index, entry.item, eventId), event, {
         identity,
         context,
       });

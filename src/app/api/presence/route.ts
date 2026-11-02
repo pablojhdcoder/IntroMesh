@@ -10,13 +10,16 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const started = performance.now();
   const id = await viewerId();
   if (!id) return json({ error: "profile" }, 401);
   try {
     const body = bodySchema.parse(await request.json());
     const result = await service().setPresence(id, body.eventId, body.enabled, body.seeking);
     if ("error" in result) return json(result, 404);
-    return json(result);
+    const response = json(result);
+    response.headers.set("Server-Timing", `app;dur=${Math.max(0, performance.now() - started).toFixed(1)}`);
+    return response;
   } catch (error) {
     return fail(error);
   }

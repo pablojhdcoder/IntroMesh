@@ -1,12 +1,23 @@
 import { profileInputSchema, toPublicProfile, toSharedCard, type Presentation, type ProfileInput, type StoredProfile } from "@/domain/profile";
 import { modelConfigured, newId } from "@/lib/meta/explain";
-import { persistenceMode, type Store } from "@/lib/store";
+import { persistenceMode, type Database, type Store } from "@/lib/store";
+
+type SessionFastStore = Store & {
+  readSessionSnapshot?: (profileId: string | null) => Promise<Database>;
+  readProfileCardSnapshot?: (slug: string) => Promise<Database>;
+};
+
+async function readForSession(store: Store, profileId: string | null): Promise<Database> {
+  const fast = store as SessionFastStore;
+  if (typeof fast.readSessionSnapshot === "function") return fast.readSessionSnapshot(profileId);
+  return store.read();
+}
 import { slugify } from "@/server/match-profile";
 
 export function sessionActions(store: Store) {
   return {
     async session(profileId: string | null) {
-      const database = await store.read();
+      const database = await readForSession(store, profileId);
       const profile = database.profiles.find((item) => item.id === profileId) ?? null;
       const identity = profileId ? (database.identities.find((item) => item.userId === profileId) ?? null) : null;
       const legacy = Boolean(profile && !profile.demo && !identity);
@@ -59,7 +70,9 @@ export function sessionActions(store: Store) {
     },
 
     async profileBySlug(slug: string) {
-      const database = await store.read();
+      const fast = store as SessionFastStore;
+      const database =
+        typeof fast.readProfileCardSnapshot === "function" ? await fast.readProfileCardSnapshot(slug) : await store.read();
       const profile = database.profiles.find((item) => item.slug === slug);
       return profile ? toSharedCard(profile) : null;
     },

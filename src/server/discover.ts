@@ -48,6 +48,17 @@ export function discoverActions(store: Store) {
           8,
         );
         const recommended = new Map(ranked.map((item) => [item.profile.id, item]));
+        // Indexed once: per-person .find/.some over full tables became O(n) scans.
+        const persistedByCandidate = new Map(
+          database.recommendations
+            .filter((item) => item.eventId === eventId && item.viewerId === viewer.id)
+            .map((item) => [item.candidateId, item]),
+        );
+        const readyGlobalVectors = new Set(
+          database.embeddings
+            .filter((item) => item.kind === "global" && item.status === "completed" && item.vector)
+            .map((item) => item.userId),
+        );
         const shown = [
           ...embedded.filter((entry) => recommended.has(entry.item.id)),
           ...embedded
@@ -70,16 +81,9 @@ export function discoverActions(store: Store) {
         const people = shown.map((entry) => {
           const match = recommended.get(entry.item.id);
           const point = points.get(entry.item.id) ?? { x: 50, y: 50 };
-          const persisted = database.recommendations.find(
-            (item) => item.eventId === eventId && item.viewerId === viewer.id && item.candidateId === entry.item.id,
-          );
-          const viewerVectorReady = database.embeddings.some(
-            (item) => item.kind === "global" && item.userId === viewer.id && item.status === "completed" && item.vector,
-          );
-          const candidateVectorReady = database.embeddings.some(
-            (item) => item.kind === "global" && item.userId === entry.item.id && item.status === "completed" && item.vector,
-          );
-          const hybrid = viewerVectorReady && candidateVectorReady && persisted ? persisted : null;
+          const persisted = persistedByCandidate.get(entry.item.id) ?? null;
+          const vectorReady = readyGlobalVectors.has(viewer.id) && readyGlobalVectors.has(entry.item.id);
+          const hybrid = vectorReady && persisted ? persisted : null;
           return {
             ...toSharedCard(entry.item),
             x: point.x,

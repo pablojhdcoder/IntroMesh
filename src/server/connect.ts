@@ -1,17 +1,26 @@
 import { DEMO_EVENT_ID } from "@/domain/catalog";
 import { toSharedCard } from "@/domain/profile";
 import { newId } from "@/lib/meta/explain";
-import type { Store } from "@/lib/store";
+import type { Database, Store } from "@/lib/store";
+
+type ConnectionsFastStore = Store & {
+  readConnectionsSnapshot?: (profileId: string, eventId: string) => Promise<Database>;
+};
 
 export function connectActions(store: Store) {
   return {
     async connections(profileId: string, eventId = DEMO_EVENT_ID) {
-      const database = await store.read();
+      const fast = store as ConnectionsFastStore;
+      const database =
+        typeof fast.readConnectionsSnapshot === "function"
+          ? await fast.readConnectionsSnapshot(profileId, eventId)
+          : await store.read();
+      const byId = new Map(database.profiles.map((profile) => [profile.id, profile]));
       return database.connections
         .filter((item) => item.eventId === eventId && (item.fromId === profileId || item.toId === profileId))
         .flatMap((item) => {
           const otherId = item.fromId === profileId ? item.toId : item.fromId;
-          const other = database.profiles.find((profile) => profile.id === otherId);
+          const other = byId.get(otherId);
           if (!other) return [];
           return [{ ...item, other: toSharedCard(other) }];
         });
