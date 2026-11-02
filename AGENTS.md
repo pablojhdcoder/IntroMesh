@@ -30,7 +30,7 @@ The always-on rule is in `.cursor/rules/intromesh.mdc`. These documents are the 
 
 ## Checks
 
-`npm test`, `npm run lint`, and, only with `MODEL_API_KEY` in `.env.local`, `npm run verify:meta`. An unverified call is not declared successful.
+`npm test`, `npm run lint`, and, only with `MODEL_API_KEY` in `.env`, `npm run verify:meta`. An unverified call is not declared successful.
 
 ## OpenCode
 

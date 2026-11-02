@@ -13,7 +13,7 @@ Or from a shell with the [Supabase CLI](https://supabase.com/docs/guides/cli) li
 supabase db push
 ```
 
-Then set in `.env.local` (never commit secrets):
+Then set in `.env` (never commit secrets):
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co

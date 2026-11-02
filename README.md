@@ -26,7 +26,7 @@ Without `MODEL_API_KEY` the UI says so and uses a **demo** draft built only from
 
 ```bash
 npm install
-cp .env.example .env.local
+cp .env.example .env
 npm run dev
 ```
 

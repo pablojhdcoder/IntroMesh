@@ -6,7 +6,7 @@ Thanks for helping improve the Discover → Understand → Connect → Learn loo
 
 ```bash
 npm install
-cp .env.example .env.local
+cp .env.example .env
 npm run dev
 ```
 
@@ -19,7 +19,7 @@ npm test
 npm run lint
 ```
 
-Run `npm run build` when the change touches routes, config, or the graph. Run `npm run verify:meta` only if `MODEL_API_KEY` is in `.env.local`. An unverified call is not declared successful.
+Run `npm run build` when the change touches routes, config, or the graph. Run `npm run verify:meta` only if `MODEL_API_KEY` is in `.env`. An unverified call is not declared successful.
 
 ## Branches
 

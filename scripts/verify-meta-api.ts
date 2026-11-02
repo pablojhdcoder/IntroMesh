@@ -25,14 +25,13 @@ function loadEnvFile(file: string): void {
   }
 }
 
-loadEnvFile(resolve(".env.local"));
 loadEnvFile(resolve(".env"));
 
 if (!process.env.MODEL_API_KEY) {
   console.log("MODEL_API_KEY no está configurada. No se ha llamado a la API.");
   console.log("1. Entra en https://dev.meta.ai");
   console.log("2. Abre API keys y pulsa Create API key.");
-  console.log("3. Guárdala en .env.local como MODEL_API_KEY=...");
+  console.log("3. Guárdala en .env como MODEL_API_KEY=...");
   console.log("4. Vuelve a ejecutar npm run verify:meta");
   process.exit(2);
 }
