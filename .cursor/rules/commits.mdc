@@ -13,6 +13,8 @@ The message has a type, is written in English, and does not mention AI tools.
 type(module): what changed and why
 ```
 
+Subject: short, imperative, max 72 chars (aim under 50). One theme and one responsibility per commit: never mix features, fixes, refactors, docs, or tooling in a single commit. If the tree holds several ideas, stack several small commits instead of one big one. Split by idea, not by file.
+
 Module (product area): `onboarding`, `discovery`, `affinity`, `connect`, `learn`, `backend`. If the change spans several areas, omit the parentheses.
 
 | Type | When |

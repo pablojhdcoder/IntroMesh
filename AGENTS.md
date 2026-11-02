@@ -37,6 +37,6 @@ The always-on rule is in `.cursor/rules/intromesh.mdc`. These documents are the 
 OpenCode reads this file plus `.cursor/rules/*.mdc` (via `opencode.json` `instructions`). `.opencode/` and `.cursor/` each hold full, identical copies of agents, skills, and commands so either tool works standalone; keep both sides in sync when changing one.
 
 - Subagents: `ui-design-engineer`, `vision-ui-director` (on demand), `meta-ai-matching-engineer`, `qa-privacy-reviewer` (read-only), `react-reviewer` (read-only), `supabase-reviewer` (read-only), `build-fixer` (minimal diffs), `tdd-guide` (RED-GREEN-REFACTOR), `planner` (read-only), `pitch` (only `docs/` and `README.md`).
-- Commands: `/code-review`, `/build-fix`, `/checkpoint`, `/tdd`, `/plan`, `/verify`, `/test-coverage`, `/update-docs`.
+- Commands: `/code-review`, `/build-fix`, `/checkpoint`, `/commit-push`, `/tdd`, `/plan`, `/verify`, `/test-coverage`, `/update-docs`.
 - Plan before changes that touch more than two files. If the same error survives three attempts, stop and ask.
-- Commits follow `.cursor/rules/commits.mdc`. Never push.
+- Commits follow `.cursor/rules/commits.mdc`. Push only when explicitly asked or via `/commit-push`.
