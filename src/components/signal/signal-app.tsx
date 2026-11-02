@@ -11,7 +11,7 @@ import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding/on
 import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal/signal-field";
 import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { ArrowUpRight, Check, ChevronRight, EyeOff, RefreshCw } from "lucide-react";
+import { ArrowUpRight, Check, ChevronRight, Copy, EyeOff, RefreshCw } from "lucide-react";
 import {
   fetchJsonDeduped,
   getCachedRoom,
@@ -81,6 +81,20 @@ export function SignalApp() {
   const [explainError, setExplainError] = useState<string | null>(null);
   const [explainErrorKind, setExplainErrorKind] = useState<"match" | "presence" | "meta" | null>(null);
   const [explainPending, setExplainPending] = useState(false);
+  const [openerDraft, setOpenerDraft] = useState("");
+  const [copiedIntro, setCopiedIntro] = useState(false);
+  const [openerKey, setOpenerKey] = useState<string | null>(null);
+  const [requestPending, setRequestPending] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const nextOpenerKey = explanation ? `${selectedId ?? ""}:${explanation.summary}:${explanation.opener}` : null;
+  useEffect(() => {
+    if (nextOpenerKey !== openerKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync draft when selection/explanation changes
+      setOpenerKey(nextOpenerKey);
+      setOpenerDraft(explanation?.opener ?? "");
+      setCopiedIntro(false);
+    }
+  }, [nextOpenerKey, openerKey, explanation]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [presencePending, setPresencePending] = useState(false);
@@ -265,13 +279,26 @@ export function SignalApp() {
   }
 
   async function requestIntro() {
-    if (!selectedId || !explanation) return;
-    await fetch("/api/connections", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ profileId: selectedId, intro: explanation.opener, introSource: explanation.source }),
-    });
-    await load();
+    if (!selectedId || !explanation || requestPending) return;
+    const trimmed = openerDraft.trim();
+    if (!trimmed) return;
+    const edited = trimmed !== explanation.opener.trim();
+    setRequestPending(true);
+    setRequestError(null);
+    try {
+      const response = await fetch("/api/connections", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ profileId: selectedId, intro: trimmed, introSource: edited ? "user" : explanation.source }),
+      });
+      if (!response.ok) throw new Error("request");
+      setRequestError(null);
+      await load();
+    } catch {
+      setRequestError("Could not send request. Try again.");
+    } finally {
+      setRequestPending(false);
+    }
   }
 
   async function resolve(connection: Connection, action: "accept" | "decline") {
@@ -329,6 +356,31 @@ export function SignalApp() {
   const others = detail ? recommendations.filter((person) => person.id !== detail.person.id) : recommendations;
   const roomState = resolveRoomState({ visible, loading: roomLoading, error: loadError, count: others.length });
   const activeOption = PRESENCE_OPTIONS.find((option) => option.id === "active") ?? PRESENCE_OPTIONS[0];
+  const traceChips = explanation
+    ? [
+        ...explanation.citedGoals.slice(0, 2).map((value) => ({ label: `Cited · goal: ${value}`, key: `goal-${value}` })),
+        ...explanation.citedInterests.slice(0, 2).map((value) => ({ label: `Cited · interest: ${value}`, key: `interest-${value}` })),
+        ...explanation.citedSkills.slice(0, 2).map((value) => ({ label: `Cited · skill: ${value}`, key: `skill-${value}` })),
+        ...explanation.complement.slice(0, 2).map((value) => ({ label: `Complements: ${value}`, key: `complement-${value}` })),
+      ].slice(0, 6)
+    : [];
+  const talkPoints = explanation
+    ? [...explanation.citedGoals, ...explanation.citedInterests, ...explanation.citedSkills, ...explanation.complement].slice(0, 3)
+    : detail
+      ? evidenceOf(detail.recommendation).map((item) => item.value).slice(0, 3)
+      : [];
+  const meetIntro = relation?.intro ?? explanation?.opener ?? openerDraft.trim();
+  const requestDisabled = !explanation || explainPending || !!explainError || openerDraft.trim().length === 0 || requestPending;
+
+  async function copyIntro(text: string) {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIntro(true);
+    } catch {
+      setCopiedIntro(false);
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-8 min-[720px]:h-svh min-[720px]:gap-6 min-[720px]:overflow-hidden">
@@ -541,7 +593,37 @@ export function SignalApp() {
                 {explanation ? (
                   <div className="flex flex-col gap-3 border-l-2 border-[var(--signal-strong)] pl-4 dark:border-signal">
                     <p className="max-w-[52ch] text-[0.9375rem] leading-normal">{explanation.summary}</p>
-                    <p className="max-w-[52ch] font-heading text-lg leading-snug italic">{explanation.opener}</p>
+                    {traceChips.length > 0 ? (
+                      <ul aria-label="Evidence trace" className="flex flex-wrap gap-1.5">
+                        {traceChips.map((chip, index) => (
+                          <li
+                            key={`${chip.key}-${index}`}
+                            className="inline-flex rounded-full border border-border px-2 py-0.5 font-mono text-[0.65rem] tracking-[0.08em] text-muted-foreground uppercase"
+                          >
+                            {chip.label}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="opener-edit" className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase">
+                        Opener
+                      </label>
+                      <textarea
+                        id="opener-edit"
+                        value={openerDraft}
+                        onChange={(event) => setOpenerDraft(event.target.value)}
+                        maxLength={220}
+                        rows={3}
+                        className={cn(
+                          "w-full rounded-[8px] border border-border bg-surface px-3 py-2 text-[0.9375rem] leading-normal text-foreground",
+                          focusRing,
+                        )}
+                      />
+                      <p className="font-mono text-[0.65rem] tracking-[0.08em] text-muted-foreground uppercase">
+                        {openerDraft.length}/220
+                      </p>
+                    </div>
                     <p>
                       <span className="inline-flex rounded-full border border-border px-2 py-0.5 font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase">
                         {explanation.source === "model" ? "Meta AI" : "Demo"}
@@ -561,7 +643,7 @@ export function SignalApp() {
                 ) : null}
                 <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
                   {!relation ? (
-                    <Button type="button" className={actionSize} disabled={!explanation} onClick={() => void requestIntro()}>
+                    <Button type="button" className={actionSize} disabled={requestDisabled} onClick={() => void requestIntro()}>
                       Request connection
                     </Button>
                   ) : null}
@@ -575,17 +657,53 @@ export function SignalApp() {
                     Regenerate
                   </Button>
                 </div>
+                {requestError ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {requestError}
+                  </p>
+                ) : null}
               </div>
 
-              {relation?.status === "accepted" ? (
-                <p className="flex max-w-[52ch] items-start gap-2 text-sm">
-                  <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--signal-strong)] dark:text-signal" />
-                  <span>Connection accepted{relation.intro ? `. ${relation.intro}` : "."}</span>
-                </p>
-              ) : null}
               {relation?.status === "accepted" && session.profile ? (
                 <Crossfade id="share" initial className="flex flex-col">
-                  <ShareTools slug={session.profile.slug} name={session.profile.displayName} />
+                  <div className="flex flex-col gap-3 rounded-[12px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
+                    <h3 className="font-heading text-xl leading-none tracking-[-0.02em]">Meet now</h3>
+                    <p className="flex max-w-[52ch] items-start gap-2 text-sm">
+                      <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--signal-strong)] dark:text-signal" />
+                      <span>Connection accepted{relation.intro ? `. ${relation.intro}` : "."}</span>
+                    </p>
+                    {meetIntro ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="max-w-[52ch] font-heading text-lg leading-snug italic">{meetIntro}</p>
+                        <div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className={cn(actionSize, "w-auto")}
+                            onClick={() => void copyIntro(meetIntro)}
+                            aria-label="Copy intro"
+                          >
+                            {copiedIntro ? <Check aria-hidden="true" className="size-4" /> : <Copy aria-hidden="true" className="size-4" />}
+                            {copiedIntro ? "Copied" : "Copy"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                    {talkPoints.length > 0 ? (
+                      <ul aria-label="Talking points" className="flex flex-wrap gap-1.5">
+                        {talkPoints.map((point, index) => (
+                          <li
+                            key={`${point}-${index}`}
+                            className="inline-flex rounded-full border border-border px-2 py-0.5 font-mono text-[0.65rem] tracking-[0.08em] text-muted-foreground uppercase"
+                          >
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <p className="max-w-[52ch] text-sm text-muted-foreground">Share your card so they can find you in the room.</p>
+                    <ShareTools slug={session.profile.slug} name={session.profile.displayName} />
+                  </div>
                 </Crossfade>
               ) : null}
             </article>
