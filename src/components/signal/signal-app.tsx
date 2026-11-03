@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,51 @@ function reasonOf(person: FieldPerson) {
   return person.recommendation?.shared.interests[0] ?? person.recommendation?.shared.skills[0] ?? person.recommendation?.complement[0] ?? "shared goal";
 }
 
+function PresenterChecklist({
+  metaConfigured,
+  pairCached,
+  presenceOn,
+  acceptedCount,
+  onDismiss,
+}: {
+  metaConfigured: boolean;
+  pairCached: boolean;
+  presenceOn: boolean;
+  acceptedCount: number;
+  onDismiss: () => void;
+}) {
+  const params = useSearchParams();
+  if (params.get("present") !== "1") return null;
+  const rows: { label: string; ok: boolean; hint: string }[] = [
+    { label: "Meta", ok: metaConfigured, hint: metaConfigured ? "configured" : "demo" },
+    { label: "Pair cache", ok: pairCached, hint: pairCached ? "cached" : "open a real match to warm cache" },
+    { label: "Presence", ok: presenceOn, hint: presenceOn ? "on" : "off" },
+    { label: "Accepted", ok: acceptedCount > 0, hint: acceptedCount > 0 ? `${acceptedCount} accepted` : "none yet" },
+  ];
+  return (
+    <section aria-label="Demo checklist" className="flex shrink-0 flex-col gap-2 rounded-[12px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="font-heading text-lg leading-none tracking-[-0.02em]">Demo checklist</h2>
+        <Button type="button" variant="ghost" className="h-9 w-auto px-3" onClick={onDismiss}>
+          Dismiss
+        </Button>
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {rows.map((row) => (
+          <li key={row.label} className="flex items-center gap-2 text-sm">
+            <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">{row.label}</span>
+            <span aria-hidden="true" className={row.ok ? "text-[var(--signal-strong)] dark:text-signal" : "text-muted-foreground"}>
+              {row.ok ? "✓" : "·"}
+            </span>
+            <span className="sr-only">{row.ok ? "ready" : "pending"}</span>
+            <span className="text-xs text-muted-foreground">{row.hint}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function SignalApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [presence, setPresence] = useState<Presence>("invisible");
@@ -83,6 +129,8 @@ export function SignalApp() {
   const [explainPending, setExplainPending] = useState(false);
   const [openerDraft, setOpenerDraft] = useState("");
   const [copiedIntro, setCopiedIntro] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [checklistDismissed, setChecklistDismissed] = useState(false);
   const [openerKey, setOpenerKey] = useState<string | null>(null);
   const [requestPending, setRequestPending] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -93,8 +141,14 @@ export function SignalApp() {
       setOpenerKey(nextOpenerKey);
       setOpenerDraft(explanation?.opener ?? "");
       setCopiedIntro(false);
+      setCopyError(null);
     }
   }, [nextOpenerKey, openerKey, explanation]);
+  useEffect(() => {
+    if (!copiedIntro) return;
+    const timer = window.setTimeout(() => setCopiedIntro(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copiedIntro]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [presencePending, setPresencePending] = useState(false);
@@ -371,14 +425,18 @@ export function SignalApp() {
       : [];
   const meetIntro = relation?.intro ?? explanation?.opener ?? openerDraft.trim();
   const requestDisabled = !explanation || explainPending || !!explainError || openerDraft.trim().length === 0 || requestPending;
+  const pairCached = !!explanation && !explainPending;
+  const acceptedCount = connections.filter((item) => item.status === "accepted").length;
 
   async function copyIntro(text: string) {
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
+      setCopyError(null);
       setCopiedIntro(true);
     } catch {
       setCopiedIntro(false);
+      setCopyError("Copy failed — select the text manually.");
     }
   }
 
@@ -462,9 +520,23 @@ export function SignalApp() {
               <ArrowUpRight aria-hidden="true" className="size-4" />
             </Link>
           </div>
+          <p className="text-xs text-muted-foreground min-[720px]:max-w-[40ch] min-[720px]:truncate min-[720px]:text-right">
+            Active: visible. Seeking: visible + open to intros. Invisible: hidden.
+          </p>
         </div>
       </header>
 
+      {!checklistDismissed ? (
+        <Suspense fallback={null}>
+          <PresenterChecklist
+            metaConfigured={session.metaConfigured}
+            pairCached={pairCached}
+            presenceOn={visible}
+            acceptedCount={acceptedCount}
+            onDismiss={() => setChecklistDismissed(true)}
+          />
+        </Suspense>
+      ) : null}
       {!session.metaConfigured ? (
         <p className={cn(meta, "flex shrink-0 items-center gap-2")}>
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--signal-strong)] dark:bg-signal" />
@@ -588,6 +660,17 @@ export function SignalApp() {
                       </p>
                     ) : null}
                     {explainErrorKind === "match" ? <p className="text-destructive/80">Pick a highlighted person.</p> : null}
+                    {explainErrorKind === "meta" ? (
+                      <p>
+                        <button
+                          type="button"
+                          onClick={() => void openPerson(selectedId, true)}
+                          className={cn("rounded-md px-2 py-1 font-medium underline underline-offset-4", focusRing)}
+                        >
+                          Try again
+                        </button>
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 {explanation ? (
@@ -681,12 +764,17 @@ export function SignalApp() {
                             variant="ghost"
                             className={cn(actionSize, "w-auto")}
                             onClick={() => void copyIntro(meetIntro)}
-                            aria-label="Copy intro"
+                            aria-label={copiedIntro ? "Copied" : "Copy"}
                           >
                             {copiedIntro ? <Check aria-hidden="true" className="size-4" /> : <Copy aria-hidden="true" className="size-4" />}
                             {copiedIntro ? "Copied" : "Copy"}
                           </Button>
                         </div>
+                        {copyError ? (
+                          <p role="status" className="text-sm text-muted-foreground">
+                            {copyError}
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
                     {talkPoints.length > 0 ? (
@@ -729,7 +817,10 @@ export function SignalApp() {
                   {detail ? "No more signals." : "Nobody visible yet."}
                 </p>
               ) : null}
-              {roomState === "success" ? (
+              {roomState === "error" && others.length === 0 ? (
+                <p className="max-w-[40ch] text-sm text-muted-foreground">Could not refresh. Try again above.</p>
+              ) : null}
+              {roomState === "success" || (roomState === "error" && others.length > 0) ? (
                 <ul className="flex flex-col divide-y divide-border">
                   {others.map((person) => (
                     <li key={person.id}>
