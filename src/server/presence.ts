@@ -1,9 +1,19 @@
 import { nextExpiry, type PresenceStatus } from "@/domain/presence";
 import type { Store } from "@/lib/store";
 
+type TouchPresence = (
+  profileId: string,
+  eventId: string,
+  enabled: boolean,
+  seeking: boolean,
+) => Promise<{ status: PresenceStatus | "invisible" } | { error: "profile" }>;
+
 export function presenceActions(store: Store) {
   return {
     async setPresence(profileId: string, eventId: string, enabled: boolean, seeking: boolean) {
+      // Hot path (keepalive + toggles): a scoped row write with no snapshot.
+      const fast = (store as Store & { touchPresence?: TouchPresence }).touchPresence;
+      if (fast) return fast(profileId, eventId, enabled, seeking);
       const now = Date.now();
       return store.update((database) => {
         const profile = database.profiles.find((item) => item.id === profileId && !item.demo);

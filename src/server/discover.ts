@@ -1,126 +1,107 @@
-import { DEMO_EVENT_ID, goalLabel } from "@/domain/catalog";
-import { mapSignalGraph } from "@/domain/embedding/graph-map";
-import { cosineSimilarity, embedProfile, rankBySimilarity } from "@/domain/embedding/vector";
-import { selectCandidates } from "@/domain/matching/select-candidates";
+import { DEMO_EVENT_ID } from "@/domain/catalog";
 import { toSharedCard } from "@/domain/profile";
-import { isPresenceLive, nextExpiry } from "@/domain/presence";
-import type { Store } from "@/lib/store";
-import { asMatch } from "@/server/match-profile";
-import { confidenceOf, refreshViewerRecommendations } from "@/server/recommendations";
+import { isPresenceLive } from "@/domain/presence";
+import type { Database, Store } from "@/lib/store";
+import { confidenceOf } from "@/server/recommendations";
+
+/** Other live attendees surfaced without scores. Bounded payload, bounded layout. */
+const DIRECTORY_CAP = 100;
+
+type DiscoveryFastStore = Store & {
+  readDiscoverySnapshot?: (profileId: string, eventId: string) => Promise<Database>;
+};
+
+/**
+ * Deterministic room position from the viewer/candidate pair hash. Stable
+ * across renders and processes, no vectors on the read path.
+ */
+export function pointForPair(viewerId: string, candidateId: string): { x: number; y: number } {
+  let hash = 5381;
+  const input = `${viewerId}:${candidateId}`;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 33 + input.charCodeAt(index)) | 0;
+  }
+  const angle = ((Math.abs(hash) % 360) * Math.PI) / 180;
+  const radius = 38;
+  const round = (value: number): number => Math.round(value * 100) / 100;
+  return { x: round(50 + radius * Math.cos(angle)), y: round(50 + radius * Math.sin(angle)) };
+}
 
 export function discoverActions(store: Store) {
   return {
     async discover(profileId: string, eventId = DEMO_EVENT_ID) {
       const now = Date.now();
-      return store.update((database) => {
-        for (const record of database.presence) {
-          if (record.source !== "demo") continue;
-          record.updatedAt = new Date(now).toISOString();
-          record.expiresAt = nextExpiry(now, 1000 * 60 * 60 * 6);
-        }
-        database.presence = database.presence.filter(
-          (record) => record.source === "demo" || isPresenceLive(record, now),
-        );
-        const viewer = database.profiles.find((item) => item.id === profileId);
-        if (!viewer) return { error: "profile" as const };
-        refreshViewerRecommendations(database, profileId, eventId, now);
-        const live = new Map(
-          database.presence.filter((record) => record.eventId === eventId).map((record) => [record.profileId, record]),
-        );
-        const pool = database.profiles.filter((item) => live.has(item.id));
-        const viewerMatch = asMatch(viewer);
-        const viewerVector = embedProfile(viewerMatch);
-        const others = pool.filter((item) => item.id !== viewer.id);
-        const embedded = others.map((item) => {
-          const match = asMatch(item);
-          return { item, match, vector: embedProfile(match) };
-        });
-        const neighborhood = new Set(
-          rankBySimilarity(
-            viewerVector,
-            embedded.map((entry) => ({ item: entry.item, vector: entry.vector })),
-            { limit: 18 },
-          ).map((entry) => entry.item.id),
-        );
-        const ranked = selectCandidates(
-          viewerMatch,
-          embedded.map((entry) => entry.match),
-          8,
-        );
-        const recommended = new Map(ranked.map((item) => [item.profile.id, item]));
-        // Indexed once: per-person .find/.some over full tables became O(n) scans.
-        const persistedByCandidate = new Map(
-          database.recommendations
-            .filter((item) => item.eventId === eventId && item.viewerId === viewer.id)
-            .map((item) => [item.candidateId, item]),
-        );
-        const readyGlobalVectors = new Set(
-          database.embeddings
-            .filter((item) => item.kind === "global" && item.status === "completed" && item.vector)
-            .map((item) => item.userId),
-        );
-        const shown = [
-          ...embedded.filter((entry) => recommended.has(entry.item.id)),
-          ...embedded
-            .filter((entry) => !recommended.has(entry.item.id) && neighborhood.has(entry.item.id))
-            .sort(
-              (a, b) =>
-                cosineSimilarity(viewerVector, b.vector) - cosineSimilarity(viewerVector, a.vector) ||
-                a.item.id.localeCompare(b.item.id),
-            ),
-        ].slice(0, 18);
-        const points = new Map(
-          mapSignalGraph(
-            shown.map((entry) => ({
-              id: entry.item.id,
-              vector: entry.vector,
-              similarity: cosineSimilarity(viewerVector, entry.vector),
-            })),
-          ).map((point) => [point.id, point]),
-        );
-        const people = shown.map((entry) => {
-          const match = recommended.get(entry.item.id);
-          const point = points.get(entry.item.id) ?? { x: 50, y: 50 };
-          const persisted = persistedByCandidate.get(entry.item.id) ?? null;
-          const vectorReady = readyGlobalVectors.has(viewer.id) && readyGlobalVectors.has(entry.item.id);
-          const hybrid = vectorReady && persisted ? persisted : null;
-          return {
-            ...toSharedCard(entry.item),
+      // The only write on this path: drop expired presence. Every source
+      // expires equally; nothing here recomputes or scores.
+      await store.update((database) => {
+        database.presence = database.presence.filter((record) => isPresenceLive(record, now));
+      });
+      const fast = store as DiscoveryFastStore;
+      const database =
+        typeof fast.readDiscoverySnapshot === "function"
+          ? await fast.readDiscoverySnapshot(profileId, eventId)
+          : await store.read();
+      const viewer = database.profiles.find((item) => item.id === profileId);
+      if (!viewer) return { error: "profile" as const };
+      const event = database.events.find((item) => item.id === eventId) ?? null;
+      const live = new Map(
+        database.presence
+          .filter((record) => record.eventId === eventId && isPresenceLive(record, now))
+          .map((record) => [record.profileId, record]),
+      );
+      const self = live.get(viewer.id);
+      const rows = database.recommendations
+        .filter((item) => item.eventId === eventId && item.viewerId === viewer.id)
+        .sort((a, b) => b.finalScore - a.finalScore || a.candidateId.localeCompare(b.candidateId))
+        .slice(0, 8);
+      // Pending comes from the embedding job when one exists (pending or
+      // claimed/processing means the vector is not ready yet); completed
+      // rows or persisted recommendations mean ready.
+      const viewerJob = database.embeddings.find(
+        (item) => item.kind === "global" && item.userId === viewer.id,
+      );
+      const viewerReady = rows.length > 0 || viewerJob?.status === "completed";
+      const viewerEmbeddingStatus = viewerReady ? ("ready" as const) : ("pending" as const);
+      if (!self) {
+        return { event, presence: "invisible" as const, viewerEmbeddingStatus, people: [], directory: [] };
+      }
+      const byId = new Map(database.profiles.map((profile) => [profile.id, profile]));
+      const recommendedIds = new Set<string>();
+      const people = rows.flatMap((row) => {
+        const candidate = byId.get(row.candidateId);
+        const presence = live.get(row.candidateId);
+        if (!candidate || !presence) return [];
+        recommendedIds.add(row.candidateId);
+        const point = pointForPair(viewer.id, row.candidateId);
+        return [
+          {
+            ...toSharedCard(candidate),
             x: point.x,
             y: point.y,
-            presence: live.get(entry.item.id)?.status ?? "active",
-            recommendation: hybrid
-              ? {
-                  score: hybrid.finalScore,
-                  confidence: confidenceOf(hybrid),
-                  shared: {
-                    goals: match?.shared.goals.map(goalLabel) ?? [],
-                    interests: match?.shared.interests ?? [],
-                    skills: match?.shared.skills ?? [],
-                  },
-                  complement: match?.complement ?? [],
-                }
-              : match
-              ? {
-                  score: match.score,
-                  confidence: match.confidence,
-                  shared: {
-                    goals: match.shared.goals.map(goalLabel),
-                    interests: match.shared.interests,
-                    skills: match.shared.skills,
-                  },
-                  complement: match.complement,
-                }
-              : null,
-          };
-        });
-        const self = live.get(viewer.id);
-        return {
-          event: database.events.find((item) => item.id === eventId) ?? null,
-          presence: self?.status ?? "invisible",
-          people: self ? people : [],
-        };
+            presence: presence.status,
+            recommendation: {
+              score: row.finalScore,
+              confidence: confidenceOf(row),
+              shared: {
+                goals: [...row.sharedGoalLabels],
+                interests: [...row.sharedInterestLabels],
+                skills: [...row.sharedSkillLabels],
+              },
+              complement: [...row.complementLabels],
+            },
+          },
+        ];
       });
+      const directory = [...live.entries()]
+        .filter(([id]) => id !== viewer.id && !recommendedIds.has(id))
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(0, DIRECTORY_CAP)
+        .flatMap(([id, record]) => {
+          const profile = byId.get(id);
+          if (!profile) return [];
+          return [{ ...toSharedCard(profile), presence: record.status }];
+        });
+      return { event, presence: self.status, viewerEmbeddingStatus, people, directory };
     },
   };
 }

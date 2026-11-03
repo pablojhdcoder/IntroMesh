@@ -6,7 +6,7 @@ import type { EmbeddingRecord } from "@/domain/embedding/jobs";
 import type { GroundedExplanation } from "@/domain/ground";
 import type { StructuredIdentity } from "@/domain/identity/schema";
 import type { Presentation, StoredProfile } from "@/domain/profile";
-import type { PresenceRecord } from "@/domain/presence";
+import { nextExpiry, type PresenceRecord, type PresenceStatus } from "@/domain/presence";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   hydrateDatabase,
@@ -38,6 +38,37 @@ function getAdmin(): Admin {
   return cachedAdmin;
 }
 
+/**
+ * Short-TTL snapshot cache with version invalidation. Page load fires
+ * session → discovery → connections → affinity within milliseconds, and each
+ * of those used to transfer the whole database (including every embedding
+ * vector) again. Writes bump the version, so readers only ever skip loads
+ * that cannot have changed in this process. External writers (SQL editor,
+ * backfill script runs) are bounded by the TTL instead — 2.5 s of
+ * staleness max on presence-grade data. Single-instance assumption: with
+ * several server instances each keeps its own cache and TTL is the coherency
+ * bound. Cloned on the way out: mutators own what they receive.
+ */
+const SNAPSHOT_TTL_MS = 2500;
+
+let snapshotCache: { at: number; version: number; database: Database } | null = null;
+let snapshotVersion = 0;
+
+function invalidateSnapshot(): void {
+  snapshotVersion += 1;
+}
+
+async function loadSnapshotCached(admin: Admin): Promise<Database> {
+  const now = Date.now();
+  const hit = snapshotCache;
+  if (hit && hit.version === snapshotVersion && now - hit.at < SNAPSHOT_TTL_MS) {
+    return structuredClone(hit.database);
+  }
+  const database = await loadSnapshot(admin);
+  snapshotCache = { at: Date.now(), version: snapshotVersion, database: structuredClone(database) };
+  return database;
+}
+
 // Explicit column lists replace select("*"). Same data the mappers consume, so no
 // behavior change — except match_explanations, which drops derived text columns
 // (match_reason, shared_signals, ...) that are rebuilt from `structured` on write
@@ -56,6 +87,10 @@ const PARTICIPATION_COLUMNS =
   "user_id,event_id,intent_text,looking_for,collaboration_interests,revision,input_hash,consent,visibility,status,updated_at";
 const GLOBAL_EMBEDDING_COLUMNS =
   "user_id,embedding,model_id,model_revision,input_hash,profile_revision,status,attempts,lease_until,error,created_at,updated_at";
+// Status-only variant for read paths: discovery/affinity need to know whether
+// a global vector is ready, but must not transfer 1536-dim vectors per request.
+const GLOBAL_EMBEDDING_STATUS_COLUMNS =
+  "user_id,model_id,model_revision,input_hash,profile_revision,status,attempts,lease_until,error,created_at,updated_at";
 const EVENT_EMBEDDING_COLUMNS =
   "user_id,event_id,embedding,model_id,model_revision,input_hash,profile_revision,status,attempts,lease_until,error,created_at,updated_at";
 const RECOMMENDATION_COLUMNS =
@@ -249,6 +284,26 @@ function mapRecommendationRow(row: Record<string, unknown>): RecommendationRecor
     candidateContextHash: String(row.candidate_context_hash),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+  };
+}
+
+function mapGlobalEmbeddingStatusRow(row: Record<string, unknown>): EmbeddingRecord {
+  return {
+    id: `global:${row.user_id}:global`,
+    kind: "global",
+    userId: String(row.user_id),
+    eventId: null,
+    vector: null,
+    modelId: String(row.model_id),
+    modelRevision: String(row.model_revision),
+    inputHash: String(row.input_hash),
+    profileRevision: Number(row.profile_revision ?? 0),
+    status: row.status as EmbeddingRecord["status"],
+    attempts: Number(row.attempts ?? 0),
+    leaseUntil: row.lease_until ? String(row.lease_until) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    error: row.error ? String(row.error) : null,
   };
 }
 
@@ -761,8 +816,7 @@ function emptyRows() {
   return Promise.resolve({ data: [] as Record<string, unknown>[], error: null });
 }
 
-/**
- * Scoped read-only loaders for hot read paths. They return a full Database shape
+/** Scoped read-only loaders for hot read paths. They return a full Database shape
  * (unused collections stay empty via hydrateDatabase) so action logic is unchanged,
  * but skip the heavy tables entirely: no embedding vectors, no explanation
  * structured payloads, no analytics history, no full-table scans.
@@ -869,28 +923,247 @@ async function readConnectionsSnapshot(profileId: string, eventId: string): Prom
   });
 }
 
+/**
+ * Discovery read path: one event, its live presence, the viewer's persisted
+ * top-8, profiles by id, and the viewer's embedding readiness (status only,
+ * never the vector). No scoring inputs beyond the stored rows.
+ */
+async function readDiscoverySnapshot(profileId: string, eventId: string): Promise<Database> {
+  const admin = getAdmin();
+  if (!SAFE_ID.test(profileId) || !SAFE_ID.test(eventId)) return loadSnapshot(admin);
+  const [eventRes, presenceRes, recommendationsRes, embeddingRes] = await Promise.all([
+    admin.from("events").select(EVENT_COLUMNS).eq("id", eventId).limit(1),
+    admin.from("presence").select(PRESENCE_COLUMNS).eq("event_id", eventId),
+    admin
+      .from("event_match_recommendations")
+      .select(RECOMMENDATION_COLUMNS)
+      .eq("event_id", eventId)
+      .eq("viewer_id", profileId)
+      .order("final_score", { ascending: false })
+      .limit(8),
+    admin.from("profile_embeddings").select(GLOBAL_EMBEDDING_STATUS_COLUMNS).eq("user_id", profileId).limit(1),
+  ]);
+  throwOnErrors(
+    [eventRes.error, presenceRes.error, recommendationsRes.error, embeddingRes.error].filter(Boolean) as {
+      message: string;
+    }[],
+  );
+  const recommendations = ((recommendationsRes.data ?? []) as Record<string, unknown>[]).map(mapRecommendationRow);
+  const liveIds = new Set<string>([profileId]);
+  for (const row of (presenceRes.data ?? []) as Record<string, unknown>[]) {
+    liveIds.add(String(row.profile_id));
+  }
+  for (const row of recommendations) liveIds.add(row.candidateId);
+  const ids = [...liveIds].slice(0, 500);
+  const [profilesRes, linksRes] = await Promise.all([
+    admin.from("profiles").select(PROFILE_COLUMNS).in("id", ids),
+    admin.from("profile_links").select(LINK_COLUMNS).in("profile_id", ids),
+  ]);
+  throwOnErrors([profilesRes.error, linksRes.error].filter(Boolean) as { message: string }[]);
+  const linksByProfile = new Map<string, { label: string; url: string }[]>();
+  for (const row of (linksRes.data ?? []) as Record<string, unknown>[]) {
+    const list = linksByProfile.get(String(row.profile_id)) ?? [];
+    list.push({ label: String(row.label), url: String(row.url) });
+    linksByProfile.set(String(row.profile_id), list);
+  }
+  return hydrateDatabase({
+    events: ((eventRes.data ?? []) as Record<string, unknown>[]).map(mapEvent),
+    profiles: ((profilesRes.data ?? []) as Record<string, unknown>[]).map((row) =>
+      mapProfile(row, linksByProfile.get(String(row.id)) ?? []),
+    ),
+    presence: ((presenceRes.data ?? []) as Record<string, unknown>[]).map(mapPresenceRow),
+    recommendations,
+    embeddings: ((embeddingRes.data ?? []) as Record<string, unknown>[]).map(mapGlobalEmbeddingStatusRow),
+  });
+}
+
+/**
+ * Affinity read path: both profiles, live presence in the event, the
+ * persisted viewer/candidate row, both identities and participations, and
+ * prior explanations for the triple. No vectors, no analytics.
+ */
+async function readAffinitySnapshot(profileId: string, otherId: string, eventId: string): Promise<Database> {
+  const admin = getAdmin();
+  if (!SAFE_ID.test(profileId) || !SAFE_ID.test(otherId) || !SAFE_ID.test(eventId)) {
+    return loadSnapshot(admin);
+  }
+  const ids = [profileId, otherId];
+  const [profilesRes, linksRes, presenceRes, recommendationsRes, identitiesRes, participationsRes, explanationsRes] =
+    await Promise.all([
+      admin.from("profiles").select(PROFILE_COLUMNS).in("id", ids),
+      admin.from("profile_links").select(LINK_COLUMNS).in("profile_id", ids),
+      admin.from("presence").select(PRESENCE_COLUMNS).eq("event_id", eventId).in("profile_id", ids),
+      admin
+        .from("event_match_recommendations")
+        .select(RECOMMENDATION_COLUMNS)
+        .eq("event_id", eventId)
+        .eq("viewer_id", profileId)
+        .eq("candidate_id", otherId)
+        .limit(1),
+      admin.from("global_identities").select(IDENTITY_COLUMNS).in("user_id", ids),
+      admin
+        .from("event_participations")
+        .select(PARTICIPATION_COLUMNS)
+        .eq("event_id", eventId)
+        .in("user_id", ids),
+      admin
+        .from("match_explanations")
+        .select(EXPLANATION_COLUMNS)
+        .eq("event_id", eventId)
+        .eq("viewer_id", profileId)
+        .eq("candidate_id", otherId),
+    ]);
+  throwOnErrors(
+    [
+      profilesRes.error,
+      linksRes.error,
+      presenceRes.error,
+      recommendationsRes.error,
+      identitiesRes.error,
+      participationsRes.error,
+      explanationsRes.error,
+    ].filter(Boolean) as { message: string }[],
+  );
+  const linksByProfile = new Map<string, { label: string; url: string }[]>();
+  for (const row of (linksRes.data ?? []) as Record<string, unknown>[]) {
+    const list = linksByProfile.get(String(row.profile_id)) ?? [];
+    list.push({ label: String(row.label), url: String(row.url) });
+    linksByProfile.set(String(row.profile_id), list);
+  }
+  return hydrateDatabase({
+    profiles: ((profilesRes.data ?? []) as Record<string, unknown>[]).map((row) =>
+      mapProfile(row, linksByProfile.get(String(row.id)) ?? []),
+    ),
+    presence: ((presenceRes.data ?? []) as Record<string, unknown>[]).map(mapPresenceRow),
+    recommendations: ((recommendationsRes.data ?? []) as Record<string, unknown>[]).map(mapRecommendationRow),
+    identities: ((identitiesRes.data ?? []) as Record<string, unknown>[]).map(mapIdentityRow),
+    participations: ((participationsRes.data ?? []) as Record<string, unknown>[]).map(mapParticipationRow),
+    explanations: ((explanationsRes.data ?? []) as Record<string, unknown>[]).map(mapExplanationRow),
+  });
+}
+
 /** Scoped read-only loaders exposed alongside the Store (structural, optional). */
 export type SupabaseFastReads = {
   readSessionSnapshot: (profileId: string | null) => Promise<Database>;
   readProfileCardSnapshot: (slug: string) => Promise<Database>;
   readConnectionsSnapshot: (profileId: string, eventId: string) => Promise<Database>;
+  readDiscoverySnapshot: (profileId: string, eventId: string) => Promise<Database>;
+  readAffinitySnapshot: (profileId: string, otherId: string, eventId: string) => Promise<Database>;
 };
 
-export function createSupabaseStore(): Store & SupabaseFastReads {
+/** Scoped write exposed alongside the Store (structural, optional). */
+export type SupabaseFastWrites = {
+  touchPresence: (
+    profileId: string,
+    eventId: string,
+    enabled: boolean,
+    seeking: boolean,
+  ) => Promise<{ status: PresenceStatus | "invisible" } | { error: "profile" }>;
+};
+
+export function createSupabaseStore(): Store & SupabaseFastReads & SupabaseFastWrites {
   let chain: Promise<unknown> = Promise.resolve();
 
   async function read(): Promise<Database> {
-    return loadSnapshot(getAdmin());
+    return loadSnapshotCached(getAdmin());
   }
 
   function update<T>(mutator: (database: Database) => T | Promise<T>): Promise<T> {
     const run = chain.then(async () => {
       const client = getAdmin();
-      const database = await loadSnapshot(client);
+      const database = await loadSnapshotCached(client);
       const before = snapshotSignatures(database);
       const result = await mutator(database);
-      await persistSnapshot(client, database, dirtyCollections(before, database));
+      const dirty = dirtyCollections(before, database);
+      // Zero-write updates (steady discovery, affinity hits) keep the cache:
+      // nothing changed, so the next reader in the burst still hits it.
+      if (dirty.size > 0) {
+        try {
+          await persistSnapshot(client, database, dirty);
+        } finally {
+          invalidateSnapshot();
+        }
+      }
       return result;
+    });
+    chain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  /**
+   * Heartbeat-sized presence write: one profile check plus scoped row writes,
+   * serialized on the same chain but with no 13-table snapshot, no full
+   * persist and no vector payloads. The 20s keepalive used to cost a full
+   * loadSnapshot+persistSnapshot each tick and queue everything behind it.
+   */
+  function touchPresence(
+    profileId: string,
+    eventId: string,
+    enabled: boolean,
+    seeking: boolean,
+  ): Promise<{ status: PresenceStatus | "invisible" } | { error: "profile" }> {
+    const run = chain.then(async () => {
+      if (!SAFE_ID.test(profileId) || !SAFE_ID.test(eventId)) return { error: "profile" as const };
+      const admin = getAdmin();
+      const now = Date.now();
+      const profileRes = await admin.from("profiles").select("id,demo").eq("id", profileId).limit(1);
+      if (profileRes.error) throw new Error(profileRes.error.message);
+      const row = (profileRes.data ?? [])[0] as { id?: unknown; demo?: unknown } | undefined;
+      if (!row || row.demo) return { error: "profile" as const };
+      // No advisory lock: every statement below is a single atomic row write,
+      // so there is nothing to hold across calls. A concurrent full persist
+      // may overwrite these timestamps with a seconds-old snapshot; the next
+      // 20s keepalive (or user toggle) repairs it. Participation updates are
+      // unconditional: zero matched rows is a silent no-op, no pre-select.
+      try {
+        if (!enabled) {
+          const deleted = await admin
+            .from("presence")
+            .delete()
+            .eq("profile_id", profileId)
+            .eq("event_id", eventId)
+            .eq("source", "session");
+          if (deleted.error) throw new Error(deleted.error.message);
+          const updated = await admin
+            .from("event_participations")
+            .update({ consent: false, visibility: "hidden", updated_at: new Date(now).toISOString() })
+            .eq("user_id", profileId)
+            .eq("event_id", eventId)
+            .select("user_id");
+          if (updated.error) throw new Error(updated.error.message);
+          if ((updated.data ?? []).length === 0) return { error: "profile" as const };
+          return { status: "invisible" as const };
+        }
+        const status: PresenceStatus = seeking ? "seeking" : "active";
+        const updated = await admin
+          .from("event_participations")
+          .update({
+            consent: true,
+            visibility: "discoverable",
+            status: "joined",
+            updated_at: new Date(now).toISOString(),
+          })
+          .eq("user_id", profileId)
+          .eq("event_id", eventId)
+          .select("user_id");
+        if (updated.error) throw new Error(updated.error.message);
+        if ((updated.data ?? []).length === 0) return { error: "profile" as const };
+        const upserted = await admin.from("presence").upsert({
+          profile_id: profileId,
+          event_id: eventId,
+          status,
+          source: "session",
+          updated_at: new Date(now).toISOString(),
+          expires_at: nextExpiry(now),
+        });
+        if (upserted.error) throw new Error(upserted.error.message);
+        return { status };
+      } finally {
+        invalidateSnapshot();
+      }
     });
     chain = run.then(
       () => undefined,
@@ -903,17 +1176,11 @@ export function createSupabaseStore(): Store & SupabaseFastReads {
     file: "supabase",
     read,
     update,
-    refreshDemoPresence(now = Date.now()) {
-      return update((database) => {
-        for (const record of database.presence) {
-          if (record.source !== "demo") continue;
-          record.updatedAt = new Date(now).toISOString();
-          record.expiresAt = new Date(now + 1000 * 60 * 60 * 6).toISOString();
-        }
-      });
-    },
+    touchPresence,
     readSessionSnapshot,
     readProfileCardSnapshot,
     readConnectionsSnapshot,
+    readDiscoverySnapshot,
+    readAffinitySnapshot,
   };
 }

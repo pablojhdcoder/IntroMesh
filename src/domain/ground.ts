@@ -3,7 +3,7 @@ import { INTERESTS, SKILLS } from "./catalog";
 const catalogTerms = [...INTERESTS, ...SKILLS];
 
 export type GroundedExplanation = {
-  source: "model" | "demo";
+  source: "model";
   summary: string;
   opener: string;
   citedGoals: string[];
@@ -44,41 +44,4 @@ export function assertGrounded(
   const extra = unsupportedTerms(prose, allowedTerms);
   if (extra.length > 0) return "unsupported-term";
   return null;
-}
-
-export function demoExplanation(input: {
-  otherName: string;
-  shared: { goals: string[]; interests: string[]; skills: string[] };
-  complement: string[];
-  confidence: "low" | "medium" | "high";
-  goalLabels: string[];
-}): GroundedExplanation {
-  const interest = input.shared.interests[0];
-  const skill = input.shared.skills[0];
-  const complement = input.complement[0];
-  const bits = [
-    interest ? `you both marked ${interest}` : null,
-    skill ? `you share ${skill}` : null,
-    complement ? `${input.otherName} brings ${complement}, which fits what you are looking for` : null,
-  ].filter(Boolean);
-  const raw =
-    bits.length > 0
-      ? `${bits.join("; ")}.`
-      : `The signal is thin: only the goal overlaps and there is no other declared evidence.`;
-  const summary = raw.charAt(0).toUpperCase() + raw.slice(1);
-  const opener = complement
-    ? `Where does ${complement} show up in your work?`
-    : interest
-      ? `What are you doing with ${interest} right now?`
-      : `What are you hoping to find at this event?`;
-  return {
-    source: "demo",
-    summary,
-    opener,
-    citedGoals: input.goalLabels,
-    citedInterests: input.shared.interests,
-    citedSkills: input.shared.skills,
-    complement: input.complement,
-    confidence: input.confidence,
-  };
 }

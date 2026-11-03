@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { goalLabel } from "@/domain/catalog";
-import { assertGrounded, demoExplanation, unsupportedTerms, type GroundedExplanation } from "@/domain/ground";
+import { assertGrounded, unsupportedTerms, type GroundedExplanation } from "@/domain/ground";
 import { presentationSchema, type Presentation, type ProfileInput, type StoredProfile } from "@/domain/profile";
 import { MetaApiError, MetaConfigError } from "./errors";
 import { createStructuredResponse } from "./client";
@@ -26,17 +26,9 @@ function hasModelKey(): boolean {
   return Boolean(process.env.MODEL_API_KEY);
 }
 
+/** Whether the Meta Model API is reachable. Affinity has no demo path: no key means no explanation. */
 export function modelConfigured(): boolean {
   return hasModelKey();
-}
-
-/** Meta solo explica personas reales. Lo sintético se arma con datos declarados. */
-export function shouldCallMetaForAffinity(input: {
-  viewerDemo: boolean;
-  otherDemo: boolean;
-  modelConfigured: boolean;
-}): boolean {
-  return input.modelConfigured && !input.viewerDemo && !input.otherDemo;
 }
 
 export async function explainAffinity(input: {
@@ -47,20 +39,8 @@ export async function explainAffinity(input: {
   confidence: "low" | "medium" | "high";
 }): Promise<GroundedExplanation> {
   const goalLabels = input.shared.goals.map(goalLabel);
-  if (
-    !shouldCallMetaForAffinity({
-      viewerDemo: input.viewer.demo,
-      otherDemo: input.other.demo,
-      modelConfigured: hasModelKey(),
-    })
-  ) {
-    return demoExplanation({
-      otherName: input.other.displayName,
-      shared: input.shared,
-      complement: input.complement,
-      confidence: input.confidence,
-      goalLabels,
-    });
+  if (!hasModelKey()) {
+    throw new MetaConfigError("MODEL_API_KEY is not set");
   }
 
   const allowed = { ...input.shared, goals: goalLabels, complement: input.complement };
@@ -103,13 +83,7 @@ export async function explainAffinity(input: {
 
 export async function contextualizeProfile(input: ProfileInput): Promise<Presentation> {
   if (!hasModelKey()) {
-    const interest = input.interests[0] ?? "this event";
-    return presentationSchema.parse({
-      source: "demo",
-      headline: `${input.displayName.split(" ")[0]} wants to ${goalLabel(input.goal).toLowerCase()}`,
-      summary: `${input.role}. ${input.seeking} Declares ${input.interests.slice(0, 3).join(", ")}.`,
-      opener: `I am looking for conversations about ${interest}.`,
-    });
+    throw new MetaConfigError("MODEL_API_KEY is not set");
   }
 
   const parsed = await createStructuredResponse({

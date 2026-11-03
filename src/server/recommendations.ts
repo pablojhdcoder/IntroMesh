@@ -1,4 +1,6 @@
-import { E5_MODEL_ID, E5_REVISION, cosineSimilarityUnit } from "@/domain/embedding/e5";
+import { goalLabel } from "@/domain/catalog";
+import { AZURE_EMBEDDING_MODEL_ID, AZURE_EMBEDDING_REVISION, EMBEDDING_DIM, cosineSimilarityUnit } from "@/domain/embedding/azure";
+import { isModelCurrent } from "@/domain/embedding/jobs";
 import { canonicalContextText, canonicalGlobalText, sha256, RANKING_VERSION } from "@/domain/identity/canonical";
 import { upsertEmbeddingJob } from "@/domain/embedding/jobs";
 import {
@@ -14,7 +16,7 @@ import { isPresenceLive, type PresenceRecord } from "@/domain/presence";
 import type { Database, EventRecord, GlobalIdentityRecord, ParticipationRecord, RecommendationRecord } from "@/lib/store";
 import type { StoredProfile } from "@/domain/profile";
 
-type RecommendationIndex = {
+export type RecommendationIndex = {
   identityByUser: Map<string, GlobalIdentityRecord>;
   participationByUserEvent: Map<string, ParticipationRecord>;
   globalVectorByUser: Map<string, number[]>;
@@ -29,7 +31,7 @@ function setFirst<K, V>(map: Map<K, V>, key: K, value: V): void {
 
 // PK-backed tables are unique per key, so first-match maps are exactly equivalent
 // to the previous .find() scans, at O(1) per lookup instead of O(n).
-function buildRecommendationIndex(database: Database): RecommendationIndex {
+export function buildRecommendationIndex(database: Database): RecommendationIndex {
   const identityByUser = new Map<string, GlobalIdentityRecord>();
   for (const item of database.identities) setFirst(identityByUser, item.userId, item);
   const participationByUserEvent = new Map<string, ParticipationRecord>();
@@ -40,6 +42,10 @@ function buildRecommendationIndex(database: Database): RecommendationIndex {
   const eventVectorByUserEvent = new Map<string, number[]>();
   for (const item of database.embeddings) {
     if (item.status !== "completed" || !item.vector) continue;
+    // Stale-provider vectors must never score: legacy model id/revision or
+    // wrong dims (e.g. pre-Azure 384-dim rows) are skipped, never ranked.
+    if (!isModelCurrent(item)) continue;
+    if (item.vector.length !== EMBEDDING_DIM) continue;
     if (item.kind === "global") setFirst(globalVectorByUser, item.userId, item.vector);
     else if (item.eventId) setFirst(eventVectorByUserEvent, `${item.userId}::${item.eventId}`, item.vector);
   }
@@ -121,17 +127,13 @@ function hybridProfileIndexed(
   };
 }
 
-function visibleIndexed(
-  index: RecommendationIndex,
-  profile: StoredProfile,
-  eventId: string,
-  now: number,
-): boolean {
-  const presence = index.presenceByProfileEvent.get(`${profile.id}::${eventId}`);
-  if (!presence || (presence.source !== "demo" && !isPresenceLive(presence, now))) return false;
-  if (profile.demo) return true;
-  const participation = index.participationByUserEvent.get(`${profile.id}::${eventId}`);
-  if (!participation) return true;
+function visibleIndexed(index: RecommendationIndex, profileId: string, eventId: string, now: number): boolean {
+  // Every candidate earns visibility the same way: live presence plus a
+  // joined, consented, discoverable participation. Fixtures carry no bypass.
+  const presence = index.presenceByProfileEvent.get(`${profileId}::${eventId}`);
+  if (!presence || !isPresenceLive(presence, now)) return false;
+  const participation = index.participationByUserEvent.get(`${profileId}::${eventId}`);
+  if (!participation) return false;
   return participation.status === "joined" && participation.consent && participation.visibility === "discoverable";
 }
 
@@ -148,8 +150,8 @@ export function scheduleEmbedding(
       eventId: draft.eventId,
       inputHash: sha256(draft.text),
       profileRevision: draft.revision,
-      modelId: E5_MODEL_ID,
-      modelRevision: E5_REVISION,
+      modelId: AZURE_EMBEDDING_MODEL_ID,
+      modelRevision: AZURE_EMBEDDING_REVISION,
     },
     now,
   );
@@ -158,74 +160,23 @@ export function scheduleEmbedding(
 }
 
 /** Recomendaciones de un visor contra el evento. No recorre parejas ajenas. */
-export function refreshViewerRecommendations(database: Database, viewerId: string, eventId: string, now = Date.now()): void {
-  const index = buildRecommendationIndex(database);
-  const event = index.eventById.get(eventId);
-  const viewer = database.profiles.find((item) => item.id === viewerId);
-  if (!event || !viewer) return;
-  const viewerGlobal = globalHashIndexed(index, viewerId);
-  const viewerContext = contextHashIndexed(index, viewerId, eventId);
-  const pool = database.profiles.filter((item) => item.id !== viewerId && visibleIndexed(index, item, eventId, now));
-  const retrieved = retrieveBySimilarity(
-    viewerGlobal.vector,
-    pool.map((item) => ({ item, vector: globalHashIndexed(index, item.id).vector })),
-  );
-  database.metrics.vectorSearches += 1;
-  const ranked = retrieved
-    .map((entry) => {
-      const candidateGlobal = globalHashIndexed(index, entry.item.id);
-      const candidateContext = contextHashIndexed(index, entry.item.id, eventId);
-      const identity =
-        viewerGlobal.vector && candidateGlobal.vector ? cosineSimilarityUnit(viewerGlobal.vector, candidateGlobal.vector) : null;
-      const context =
-        viewerContext.vector && candidateContext.vector
-          ? cosineSimilarityUnit(viewerContext.vector, candidateContext.vector)
-          : null;
-      const scored = scorePair(hybridProfileIndexed(index, viewer, eventId), hybridProfileIndexed(index, entry.item, eventId), event, {
-        identity,
-        context,
-      });
-      const record: RecommendationRecord = {
-        eventId,
-        viewerId,
-        candidateId: entry.item.id,
-        identitySimilarity: scored.identitySimilarity,
-        contextSimilarity: scored.contextSimilarity,
-        cosineDistance: scored.cosineDistance,
-        goalCompatibility: scored.goalCompatibility,
-        skillComplementarity: scored.skillComplementarity,
-        sharedInterests: scored.sharedInterests,
-        eventRelevance: scored.eventRelevance,
-        finalScore: scored.finalScore,
-        confidence: confidenceForScore({
-          semantic: semanticCompatibility(scored.identitySimilarity, scored.contextSimilarity),
-          goal: scored.goalCompatibility,
-          skill: scored.skillComplementarity,
-          interest: scored.sharedInterests,
-          event: scored.eventRelevance,
-        }),
-        sharedGoalLabels: [],
-        sharedInterestLabels: [],
-        sharedSkillLabels: [],
-        complementLabels: [],
-        rankingVersion: RANKING_VERSION,
-        viewerHash: viewerGlobal.hash,
-        candidateHash: candidateGlobal.hash,
-        viewerContextHash: viewerContext.hash,
-        candidateContextHash: candidateContext.hash,
-        createdAt: new Date(now).toISOString(),
-        updatedAt: new Date(now).toISOString(),
-      };
-      return record;
-    })
-    .filter((item) => item.finalScore >= MIN_FINAL_SCORE)
-    .sort((a, b) => b.finalScore - a.finalScore || a.candidateId.localeCompare(b.candidateId))
-    .slice(0, RECOMMENDATION_LIMIT);
+export function refreshViewerRecommendations(
+  database: Database,
+  viewerId: string,
+  eventId: string,
+  now = Date.now(),
+): boolean {
+  const ranked = rankViewerCandidates(database, viewerId, eventId, now);
+  if (!ranked) return false;
+  const existing = database.recommendations.filter((item) => item.eventId === eventId && item.viewerId === viewerId);
+  // Steady room: same pool, same inputs → same ranking. Skip the rewrite so a
+  // plain discovery stays a zero-write update (no persist, no lock).
+  if (sameRecommendations(existing, ranked.records)) return false;
   database.recommendations = database.recommendations
     .filter((item) => !(item.eventId === eventId && item.viewerId === viewerId))
-    .concat(ranked);
-  database.metrics.recommendationsCalculated += ranked.length;
-  for (const item of ranked) {
+    .concat(ranked.records);
+  database.metrics.recommendationsCalculated += ranked.records.length;
+  for (const item of ranked.records) {
     const id = `gen:${item.eventId}:${item.viewerId}:${item.candidateId}`;
     if (database.analytics.some((event) => event.id === id)) continue;
     database.analytics.push({
@@ -236,6 +187,164 @@ export function refreshViewerRecommendations(database: Database, viewerId: strin
       topic: null,
     });
   }
+  return true;
+}
+
+/** Case-insensitive exact overlap, preserving the viewer's own labels. */
+function overlapLabels(left: readonly string[], right: readonly string[]): string[] {
+  const wanted = new Set(right.map((item) => item.toLowerCase()));
+  const seen = new Set<string>();
+  const shared: string[] = [];
+  for (const item of left) {
+    const key = item.toLowerCase();
+    if (!wanted.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    shared.push(item);
+  }
+  return shared;
+}
+
+/**
+ * Human-readable evidence for one scored pair. Same goal id on both sides
+ * becomes its catalog label; interests/skills intersect exactly; complement
+ * is what the viewer is looking for that the candidate offers, minus what
+ * they already share.
+ */
+export function evidenceLabels(
+  viewer: HybridProfile,
+  candidate: HybridProfile,
+  viewerGoal: string,
+  candidateGoal: string,
+): {
+  sharedGoalLabels: string[];
+  sharedInterestLabels: string[];
+  sharedSkillLabels: string[];
+  complementLabels: string[];
+} {
+  const sharedInterestLabels = overlapLabels(viewer.interests, candidate.interests);
+  const sharedSkillLabels = overlapLabels(viewer.skills, candidate.skills);
+  const sharedGoalLabels = viewerGoal && viewerGoal === candidateGoal ? [goalLabel(viewerGoal)] : [];
+  const sharedSkillKeys = new Set(sharedSkillLabels.map((item) => item.toLowerCase()));
+  const complementLabels = overlapLabels(viewer.lookingFor, candidate.skills).filter(
+    (item) => !sharedSkillKeys.has(item.toLowerCase()),
+  );
+  return { sharedGoalLabels, sharedInterestLabels, sharedSkillLabels, complementLabels };
+}
+
+/** Score one viewer/candidate pair with the hybrid formula. Never invents text. */
+export function scoreCandidateRecord(
+  index: RecommendationIndex,
+  event: EventRecord,
+  viewer: StoredProfile,
+  candidate: StoredProfile,
+  now: number,
+): RecommendationRecord {
+  const viewerGlobal = globalHashIndexed(index, viewer.id);
+  const candidateGlobal = globalHashIndexed(index, candidate.id);
+  const viewerContext = contextHashIndexed(index, viewer.id, event.id);
+  const candidateContext = contextHashIndexed(index, candidate.id, event.id);
+  const viewerHybrid = hybridProfileIndexed(index, viewer, event.id);
+  const candidateHybrid = hybridProfileIndexed(index, candidate, event.id);
+  const identity =
+    viewerGlobal.vector && candidateGlobal.vector
+      ? cosineSimilarityUnit(viewerGlobal.vector, candidateGlobal.vector)
+      : null;
+  const context =
+    viewerContext.vector && candidateContext.vector
+      ? cosineSimilarityUnit(viewerContext.vector, candidateContext.vector)
+      : null;
+  const scored = scorePair(viewerHybrid, candidateHybrid, event, { identity, context });
+  const labels = evidenceLabels(viewerHybrid, candidateHybrid, viewer.goal, candidate.goal);
+  return {
+    eventId: event.id,
+    viewerId: viewer.id,
+    candidateId: candidate.id,
+    identitySimilarity: scored.identitySimilarity,
+    contextSimilarity: scored.contextSimilarity,
+    cosineDistance: scored.cosineDistance,
+    goalCompatibility: scored.goalCompatibility,
+    skillComplementarity: scored.skillComplementarity,
+    sharedInterests: scored.sharedInterests,
+    eventRelevance: scored.eventRelevance,
+    finalScore: scored.finalScore,
+    confidence: confidenceForScore({
+      semantic: semanticCompatibility(scored.identitySimilarity, scored.contextSimilarity),
+      goal: scored.goalCompatibility,
+      skill: scored.skillComplementarity,
+      interest: scored.sharedInterests,
+      event: scored.eventRelevance,
+    }),
+    sharedGoalLabels: labels.sharedGoalLabels,
+    sharedInterestLabels: labels.sharedInterestLabels,
+    sharedSkillLabels: labels.sharedSkillLabels,
+    complementLabels: labels.complementLabels,
+    rankingVersion: RANKING_VERSION,
+    viewerHash: viewerGlobal.hash,
+    candidateHash: candidateGlobal.hash,
+    viewerContextHash: viewerContext.hash,
+    candidateContextHash: candidateContext.hash,
+    createdAt: new Date(now).toISOString(),
+    updatedAt: new Date(now).toISOString(),
+  };
+}
+
+/** Pure ranking for one viewer: pool, hybrid scores, cutoff, order, limit. */
+function rankViewerCandidates(
+  database: Database,
+  viewerId: string,
+  eventId: string,
+  now: number,
+): { records: RecommendationRecord[] } | null {
+  const index = buildRecommendationIndex(database);
+  const event = index.eventById.get(eventId);
+  const viewer = database.profiles.find((item) => item.id === viewerId);
+  if (!event || !viewer) return null;
+  const viewerGlobal = globalHashIndexed(index, viewerId);
+  const pool = database.profiles.filter((item) => item.id !== viewerId && visibleIndexed(index, item.id, eventId, now));
+  const retrieved = retrieveBySimilarity(
+    viewerGlobal.vector,
+    pool.map((item) => ({ item, vector: globalHashIndexed(index, item.id).vector })),
+  );
+  database.metrics.vectorSearches += 1;
+  const records = retrieved
+    .map((entry) => scoreCandidateRecord(index, event, viewer, entry.item, now))
+    .filter((item) => item.finalScore >= MIN_FINAL_SCORE)
+    .sort((a, b) => b.finalScore - a.finalScore || a.candidateId.localeCompare(b.candidateId))
+    .slice(0, RECOMMENDATION_LIMIT);
+  return { records };
+}
+
+/** Same candidates in the same order from the same inputs (timestamps excluded). */
+function sameRecommendations(current: RecommendationRecord[], next: RecommendationRecord[]): boolean {
+  if (current.length !== next.length) return false;
+  return current.every((item, position) => {
+    const other = next[position];
+    return (
+      other !== undefined &&
+      other.candidateId === item.candidateId &&
+      other.rankingVersion === item.rankingVersion &&
+      other.viewerHash === item.viewerHash &&
+      other.candidateHash === item.candidateHash &&
+      other.viewerContextHash === item.viewerContextHash &&
+      other.candidateContextHash === item.candidateContextHash &&
+      other.identitySimilarity === item.identitySimilarity &&
+      other.contextSimilarity === item.contextSimilarity &&
+      other.cosineDistance === item.cosineDistance &&
+      other.goalCompatibility === item.goalCompatibility &&
+      other.skillComplementarity === item.skillComplementarity &&
+      other.sharedInterests === item.sharedInterests &&
+      other.eventRelevance === item.eventRelevance &&
+      other.finalScore === item.finalScore &&
+      joined(other.sharedGoalLabels) === joined(item.sharedGoalLabels) &&
+      joined(other.sharedInterestLabels) === joined(item.sharedInterestLabels) &&
+      joined(other.sharedSkillLabels) === joined(item.sharedSkillLabels) &&
+      joined(other.complementLabels) === joined(item.complementLabels)
+    );
+  });
+}
+
+function joined(values: readonly string[]): string {
+  return [...values].sort().join("\n");
 }
 
 export function recommendationEvidence(record: RecommendationRecord): string {
@@ -247,6 +356,10 @@ export function recommendationEvidence(record: RecommendationRecord): string {
     record.sharedInterests,
     record.finalScore,
     record.rankingVersion,
+    [...record.sharedGoalLabels].sort().join(","),
+    [...record.sharedInterestLabels].sort().join(","),
+    [...record.sharedSkillLabels].sort().join(","),
+    [...record.complementLabels].sort().join(","),
   ].join("|");
 }
 

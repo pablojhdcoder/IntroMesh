@@ -81,7 +81,7 @@ export type ConnectionRecord = {
   toId: string;
   status: "pending" | "accepted" | "declined";
   intro: string | null;
-  introSource: "model" | "demo" | "user" | null;
+  introSource: "model" | "user" | null;
   createdAt: string;
   acceptedAt: string | null;
 };
@@ -110,7 +110,6 @@ export type Store = {
   file: string;
   read: () => Promise<Database>;
   update: <T>(mutator: (database: Database) => T | Promise<T>) => Promise<T>;
-  refreshDemoPresence: (now?: number) => Promise<void>;
 };
 
 function asEvent(event: Partial<EventRecord> & { id: string; name: string }): EventRecord {

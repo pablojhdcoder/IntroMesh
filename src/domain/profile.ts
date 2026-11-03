@@ -27,7 +27,7 @@ export const profileInputSchema = z.object({
 export type ProfileInput = z.infer<typeof profileInputSchema>;
 
 export const presentationSchema = z.object({
-  source: z.enum(["model", "demo", "user"]),
+  source: z.enum(["model", "user"]),
   headline: z.string().trim().min(1).max(90),
   summary: z.string().trim().min(1).max(360),
   opener: z.string().trim().min(1).max(220),

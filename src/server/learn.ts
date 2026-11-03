@@ -36,7 +36,7 @@ export function learnActions(store: Store) {
       const now = Date.now();
       const database = await store.read();
       const visible = database.presence.filter(
-        (record) => record.eventId === eventId && (record.source === "demo" || isPresenceLive(record, now)),
+        (record) => record.eventId === eventId && isPresenceLive(record, now),
       ).length;
       return {
         event: database.events.find((item) => item.id === eventId) ?? null,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { claimExplanation, resolveExplanation } from "@/domain/cache/explanations";
-import { E5_DIM, VECTOR_SEARCH_SQL, cosineDistance } from "@/domain/embedding/e5";
-import { claimEmbedding, sameEmbedding, upsertEmbeddingJob, type EmbeddingRecord } from "@/domain/embedding/jobs";
+import { AZURE_EMBEDDING_MODEL_ID, AZURE_EMBEDDING_REVISION, EMBEDDING_DIM, VECTOR_SEARCH_SQL, cosineDistance } from "@/domain/embedding/azure";
+import { claimEmbedding, claimEmbeddingById, finishEmbedding, sameEmbedding, upsertEmbeddingJob, type EmbeddingRecord } from "@/domain/embedding/jobs";
 import { canonicalContextText, canonicalGlobalText, explanationCacheKey, sha256, shouldNormalize } from "@/domain/identity/canonical";
 import { cleanIdentity, groundIdentity, type StructuredIdentity } from "@/domain/identity/schema";
 import { finalScore, retrieveBySimilarity, scorePair } from "@/domain/matching/hybrid";
@@ -44,7 +44,7 @@ describe("embeddings", () => {
   it("la distancia de coseno es 1 menos el producto de vectores normalizados", () => {
     const left = [1, 0, 0];
     const right = [0, 1, 0];
-    expect(E5_DIM).toBe(384);
+    expect(EMBEDDING_DIM).toBe(1536);
     expect(cosineDistance(left, left)).toBeCloseTo(0);
     expect(cosineDistance(left, right)).toBeCloseTo(1);
     expect(VECTOR_SEARCH_SQL).toContain("<=>");
@@ -60,8 +60,8 @@ describe("embeddings", () => {
         eventId: null,
         inputHash: "h1",
         profileRevision: 1,
-        modelId: "Xenova/multilingual-e5-small",
-        modelRevision: "e5-query-symmetric-v1",
+        modelId: "text-embedding-3-small",
+        modelRevision: "azure-te3small-1536-v1",
       },
       now,
     );
@@ -91,8 +91,8 @@ describe("embeddings", () => {
       eventId: "e",
       inputHash: "h",
       profileRevision: 1,
-      modelId: "Xenova/multilingual-e5-small",
-      modelRevision: "v",
+      modelId: "text-embedding-3-small",
+      modelRevision: "azure-te3small",
     }, now);
     const claimed = claimEmbedding(scheduled.records, now);
     expect(claimed.job?.status).toBe("processing");
@@ -108,6 +108,49 @@ describe("embeddings", () => {
     ], 2);
     expect(ranked).toHaveLength(2);
     expect(ranked[0]?.item.id).toBe("a");
+  });
+
+  it("an old model/revision never reuses, even with the same hash", () => {
+    const now = Date.parse("2026-10-30T12:00:00.000Z");
+    const draft = {
+      kind: "global" as const,
+      userId: "u",
+      eventId: null,
+      inputHash: "h1",
+      profileRevision: 1,
+      modelId: "legacy-local-small",
+      modelRevision: "legacy-revision-v0",
+    };
+    const scheduled = upsertEmbeddingJob([], draft, now);
+    const completed: EmbeddingRecord = { ...scheduled.records[0], status: "completed", vector: [1] };
+    const again = upsertEmbeddingJob([completed], {
+      ...draft,
+      modelId: AZURE_EMBEDDING_MODEL_ID,
+      modelRevision: AZURE_EMBEDDING_REVISION,
+    }, now);
+    expect(again.action).toBe("scheduled");
+    expect(again.records[0]?.status).toBe("pending");
+  });
+
+  it("claims one job by id and refuses completed or leased rows", () => {
+    const now = Date.parse("2026-10-30T12:00:00.000Z");
+    const scheduled = upsertEmbeddingJob([], {
+      kind: "global",
+      userId: "u",
+      eventId: null,
+      inputHash: "h",
+      profileRevision: 1,
+      modelId: AZURE_EMBEDDING_MODEL_ID,
+      modelRevision: AZURE_EMBEDDING_REVISION,
+    }, now);
+    const id = scheduled.records[0]?.id ?? "";
+    const claimed = claimEmbeddingById(scheduled.records, id, now);
+    expect(claimed.job?.status).toBe("processing");
+    const leased = claimEmbeddingById(claimed.records, id, now);
+    expect(leased.job).toBeNull();
+    expect(claimEmbeddingById(scheduled.records, "missing", now).job).toBeNull();
+    const done = finishEmbedding(claimed.records, id, [0.5], null, now);
+    expect(claimEmbeddingById(done, id, now).job).toBeNull();
   });
 });
 
@@ -215,10 +258,15 @@ describe("explanation cache", () => {
 });
 
 describe("pgvector", () => {
-  it("migration creates the cosine index", () => {
-    const sql = readFileSync("supabase/migrations/0003_intelligence.sql", "utf8");
+  it("migration supersedes 384 dims with native 1536 and a matching RPC", () => {
+    const legacy = readFileSync("supabase/migrations/0003_intelligence.sql", "utf8");
+    expect(legacy).toContain("vector(384)");
+    const sql = readFileSync("supabase/migrations/0006_azure_embeddings_1536.sql", "utf8");
+    expect(sql).toContain("vector(1536)");
     expect(sql).toContain("vector_cosine_ops");
-    expect(sql).toContain("<=>");
-    expect(sql).toContain("vector(384)");
+    expect(sql).toContain("match_candidates_by_embedding");
+    expect(sql).toContain("viewer_embedding vector(1536)");
+    expect(sql).toContain(AZURE_EMBEDDING_MODEL_ID);
+    expect(sql).toContain(AZURE_EMBEDDING_REVISION);
   });
 });

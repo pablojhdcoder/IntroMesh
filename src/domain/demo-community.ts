@@ -68,8 +68,10 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
     const skills = pickMany(rand, SKILLS, 2);
     const projects = pickMany(rand, PROJECTS, 1);
     const id = `demo-${String(index + 1).padStart(3, "0")}`;
+    // Synthetic fixture copy: never authored by the model, so it must not
+    // claim the model source. The demo badge rides on profile.demo.
     const presentation: Presentation = {
-      source: "demo",
+      source: "user",
       headline: `${displayName.split(" ")[0]} · ${goalLabelSafe(goal)}`,
       summary: `Works on ${projects[0]} and lists ${interests.slice(0, 2).join(" and ")}.`,
       opener: `Which part of ${projects[0]} are you showing here?`,
@@ -101,7 +103,7 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
     status: index % 3 === 0 ? "seeking" : "active",
     source: "demo",
     updatedAt: new Date(now).toISOString(),
-    expiresAt: nextExpiry(now, 1000 * 60 * 60 * 6),
+    expiresAt: nextExpiry(now),
   }));
 
   const analytics: AnalyticsRecord[] = [];
@@ -288,8 +290,10 @@ const FOUNDERS: Array<{
 
 function founderProfile(entry: (typeof FOUNDERS)[number], index: number, now: number): StoredProfile {
   const id = `demo-f${String(index + 1).padStart(2, "0")}`;
+  // Synthetic fixture copy: never authored by the model, so it must not
+  // claim the model source. The demo badge rides on profile.demo.
   const presentation: Presentation = {
-    source: "demo",
+    source: "user",
     headline: `${entry.displayName.split(" ")[0]} · ${goalLabelSafe(entry.goal)}`,
     summary: `Founder working on ${entry.projects[0]} focused on ${entry.interests.slice(0, 2).join(" and ")}.`,
     opener: `Which part of ${entry.projects[0]} are you scaling here?`,

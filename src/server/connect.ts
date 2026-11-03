@@ -26,8 +26,9 @@ export function connectActions(store: Store) {
         });
     },
 
-    async requestConnection(profileId: string, otherId: string, intro: string, introSource: "model" | "demo" | "user") {
+    async requestConnection(profileId: string, otherId: string, intro: string, introSource: "model" | "user") {
       return store.update((database) => {
+        if (introSource !== "model" && introSource !== "user") return { error: "forbidden" as const };
         const existing = database.connections.find(
           (item) => item.fromId === profileId && item.toId === otherId && item.status !== "declined",
         );
@@ -60,17 +61,17 @@ export function connectActions(store: Store) {
       });
     },
 
-    async resolveConnection(profileId: string, connectionId: string, action: "accept" | "decline", simulateDemo: boolean) {
+    async resolveConnection(profileId: string, connectionId: string, action: "accept" | "decline") {
       return store.update((database) => {
         const connection = database.connections.find((item) => item.id === connectionId);
         if (!connection) return { error: "missing" as const };
-        const target = database.profiles.find((item) => item.id === connection.toId);
-        const allowed = connection.toId === profileId || (simulateDemo && target?.demo && connection.fromId === profileId);
-        if (!allowed) return { error: "forbidden" as const };
+        // Only the real recipient accepts or declines. No demo bypass.
+        if (connection.toId !== profileId) return { error: "forbidden" as const };
         const acceptedAt = action === "accept" ? new Date().toISOString() : null;
         connection.status = action === "accept" ? "accepted" : "declined";
         connection.acceptedAt = acceptedAt;
         if (acceptedAt) {
+          const target = database.profiles.find((item) => item.id === connection.toId);
           database.analytics.push({
             id: `ok-${connection.id}`,
             eventId: connection.eventId,

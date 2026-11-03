@@ -14,9 +14,7 @@ function publicEvent(database: Awaited<ReturnType<Store["read"]>>, eventId: stri
   const now = Date.now();
   return {
     ...event,
-    attendees: database.presence.filter(
-      (item) => item.eventId === event.id && (item.source === "demo" || isPresenceLive(item, now)),
-    ).length,
+    attendees: database.presence.filter((item) => item.eventId === event.id && isPresenceLive(item, now)).length,
   };
 }
 

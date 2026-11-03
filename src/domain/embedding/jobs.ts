@@ -1,3 +1,5 @@
+import { AZURE_EMBEDDING_MODEL_ID, AZURE_EMBEDDING_REVISION } from "@/domain/embedding/azure";
+
 export type EmbeddingStatus = "pending" | "processing" | "completed" | "failed";
 
 export type EmbeddingRecord = {
@@ -21,6 +23,9 @@ export type EmbeddingRecord = {
 const LEASE_MS = 120_000;
 const MAX_ATTEMPTS = 3;
 
+/** Attempts before a failed job stops being claimable. Shared by the queue drain. */
+export const MAX_EMBEDDING_ATTEMPTS = MAX_ATTEMPTS;
+
 export function sameEmbedding(record: EmbeddingRecord, inputHash: string, revision: number): boolean {
   return record.status === "completed" && record.inputHash === inputHash && record.profileRevision === revision && record.vector !== null;
 }
@@ -34,7 +39,11 @@ export function upsertEmbeddingJob(
     (item) => item.kind === draft.kind && item.userId === draft.userId && item.eventId === draft.eventId,
   );
   const current = index >= 0 ? records[index] : null;
-  if (current && sameEmbedding(current, draft.inputHash, draft.profileRevision)) {
+  // A provider swap changes canonical hashes AND model identity. Same text
+  // under an old model id/revision must re-embed, never be reused.
+  const modelStale =
+    current != null && (current.modelId !== draft.modelId || current.modelRevision !== draft.modelRevision);
+  if (current && !modelStale && sameEmbedding(current, draft.inputHash, draft.profileRevision)) {
     return { records: [...records], action: "reused" };
   }
   const next: EmbeddingRecord = {
@@ -48,7 +57,7 @@ export function upsertEmbeddingJob(
     inputHash: draft.inputHash,
     profileRevision: draft.profileRevision,
     status: "pending",
-    attempts: current && current.inputHash === draft.inputHash ? current.attempts : 0,
+    attempts: current && current.inputHash === draft.inputHash && !modelStale ? current.attempts : 0,
     leaseUntil: null,
     createdAt: current?.createdAt ?? new Date(now).toISOString(),
     updatedAt: new Date(now).toISOString(),
@@ -79,6 +88,34 @@ export function claimEmbedding(records: readonly EmbeddingRecord[], now: number)
   };
 }
 
+export function claimEmbeddingById(
+  records: readonly EmbeddingRecord[],
+  jobId: string,
+  now: number,
+): { records: EmbeddingRecord[]; job: EmbeddingRecord | null } {
+  const target = records.find((item) => item.id === jobId);
+  if (!target) return { records: [...records], job: null };
+  if (target.status === "completed") return { records: [...records], job: null };
+  if (target.attempts >= MAX_ATTEMPTS && target.status === "failed") return { records: [...records], job: null };
+  if (target.status === "processing" && target.leaseUntil && Date.parse(target.leaseUntil) > now) {
+    return { records: [...records], job: null };
+  }
+  const claimed: EmbeddingRecord = {
+    ...target,
+    status: "processing",
+    attempts: target.attempts + 1,
+    leaseUntil: new Date(now + LEASE_MS).toISOString(),
+    updatedAt: new Date(now).toISOString(),
+  };
+  return {
+    records: records.map((item) => (item.id === jobId ? claimed : item)),
+    job: claimed,
+  };
+}
+
+export function isModelCurrent(record: Pick<EmbeddingRecord, "modelId" | "modelRevision">): boolean {
+  return record.modelId === AZURE_EMBEDDING_MODEL_ID && record.modelRevision === AZURE_EMBEDDING_REVISION;
+}
 export function finishEmbedding(
   records: readonly EmbeddingRecord[],
   id: string,

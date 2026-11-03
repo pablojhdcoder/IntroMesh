@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { openProfileId, sealProfileId } from "@/lib/session";
 import { toSharedCard, type StoredProfile } from "./profile";
 import { aggregateActivity } from "./analytics";
-import { assertGrounded, demoExplanation, type GroundedExplanation } from "./ground";
+import { assertGrounded, type GroundedExplanation } from "./ground";
 import { isPresenceLive, nextExpiry } from "./presence";
 import { selectCandidates } from "./matching/select-candidates";
 
@@ -42,16 +42,19 @@ describe("grounding", () => {
     );
   });
 
-  it("demo explanation only cites shared evidence", () => {
-    const explanation = demoExplanation({
-      otherName: "Ada",
-      shared: { goals: [], interests: ["models"], skills: [] },
+  it("model explanation only cites shared evidence, never fabricated demo text", () => {
+    const explanation: GroundedExplanation = {
+      source: "model",
+      summary: "You both marked models.",
+      opener: "What are you doing with models right now?",
+      citedGoals: [],
+      citedInterests: ["models"],
+      citedSkills: [],
       complement: [],
       confidence: "low",
-      goalLabels: [],
-    });
+    };
     expect(assertGrounded(explanation, { goals: [], interests: ["models"], skills: [], complement: [] })).toBeNull();
-    expect(explanation.source).toBe("demo");
+    expect(explanation.source).toBe("model");
   });
 });
 

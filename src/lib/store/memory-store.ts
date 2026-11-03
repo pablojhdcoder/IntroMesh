@@ -1,6 +1,5 @@
 import { mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isPresenceLive, nextExpiry } from "@/domain/presence";
 import { hydrateDatabase, type Database, type Store } from "./types";
 
 const LOCK_STALE_MS = 30_000;
@@ -129,17 +128,5 @@ export function createMemoryStore(directory: string): Store {
     file,
     read,
     update,
-    refreshDemoPresence(now = Date.now()) {
-      return update((database) => {
-        for (const record of database.presence) {
-          if (record.source !== "demo") continue;
-          record.updatedAt = new Date(now).toISOString();
-          record.expiresAt = nextExpiry(now, 1000 * 60 * 60 * 6);
-        }
-        database.presence = database.presence.filter(
-          (record) => record.source === "demo" || isPresenceLive(record, now),
-        );
-      });
-    },
   };
 }
