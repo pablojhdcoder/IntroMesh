@@ -156,6 +156,7 @@ export function SignalApp() {
   const presenceSeq = useRef(0);
   const roomRequest = useRef(0);
   const explainSeq = useRef(0);
+  const explanationCache = useRef(new Map<string, Explanation>());
   const reduceMotion = useReducedMotion();
 
   const loadRoom = useCallback(async (eventId: string, opts?: { background?: boolean }) => {
@@ -295,6 +296,19 @@ export function SignalApp() {
       return;
     }
     setSelectedId(id);
+    const cacheKey = `${session?.event?.id ?? ""}:${id}`;
+    if (!regenerate) {
+      const cached = explanationCache.current.get(cacheKey);
+      if (cached) {
+        setExplanation(cached);
+        setExplainError(null);
+        setExplainErrorKind(null);
+        setExplainPending(false);
+        return;
+      }
+    } else {
+      explanationCache.current.delete(cacheKey);
+    }
     setExplainPending(true);
     setExplainError(null);
     setExplainErrorKind(null);
@@ -322,6 +336,7 @@ export function SignalApp() {
       }
       setExplainErrorKind(null);
       setExplanation(body.explanation as Explanation);
+      if (body.explanation) explanationCache.current.set(cacheKey, body.explanation as Explanation);
     } catch {
       if (explainSeq.current !== seq) return;
       setExplanation(null);

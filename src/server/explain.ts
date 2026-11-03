@@ -112,6 +112,142 @@ export function explainActions(store: Store) {
         modelConfigured: Boolean(process.env.MODEL_API_KEY),
       });
 
+      // Fast path demo/sin clave: la explicación es pura y síncrona
+      // (demoExplanation, <1ms). No necesita lease de 30s, ni bucle de
+      // 40 intentos con sleep de 250ms (hasta ~10s), ni 3 snapshots
+      // completos (1 read + 2 updates con 13 tablas y vectores cada uno).
+      // Todo se resuelve en un único store.update().
+      if (!callMeta) {
+        return store.update((database) => {
+          const txNow = Date.now();
+          const txViewer = database.profiles.find((item) => item.id === profileId);
+          const txOther = database.profiles.find((item) => item.id === otherId);
+          if (!txViewer || !txOther) return { error: "profile" as const };
+          const txViewerLive = database.presence.some(
+            (record) =>
+              record.profileId === txViewer.id &&
+              record.eventId === eventId &&
+              (record.source === "demo" || isPresenceLive(record, txNow)),
+          );
+          const txOtherLive = database.presence.some(
+            (record) =>
+              record.profileId === txOther.id &&
+              record.eventId === eventId &&
+              (record.source === "demo" || isPresenceLive(record, txNow)),
+          );
+          if (!txViewerLive || !txOtherLive) return { error: "presence" as const };
+          const [txMatch] = selectCandidates(
+            {
+              id: txViewer.id,
+              displayName: txViewer.displayName,
+              discoverable: true,
+              goals: [txViewer.goal],
+              interests: txViewer.interests,
+              skills: txViewer.skills,
+              seeking: txViewer.seeking,
+            },
+            [
+              {
+                id: txOther.id,
+                displayName: txOther.displayName,
+                discoverable: true,
+                goals: [txOther.goal],
+                interests: txOther.interests,
+                skills: txOther.skills,
+              },
+            ],
+            1,
+          );
+          const txPersisted = database.recommendations.find(
+            (item) => item.eventId === eventId && item.viewerId === txViewer.id && item.candidateId === txOther.id,
+          );
+          if (!txMatch && !txPersisted) return { error: "match" as const };
+          const txViewerIdentity = database.identities.find((item) => item.userId === txViewer.id);
+          const txOtherIdentity = database.identities.find((item) => item.userId === txOther.id);
+          const txViewerContext = database.participations.find(
+            (item) => item.userId === txViewer.id && item.eventId === eventId,
+          );
+          const txOtherContext = database.participations.find(
+            (item) => item.userId === txOther.id && item.eventId === eventId,
+          );
+          const txEvidence = txPersisted ? recommendationEvidence(txPersisted) : `legacy:${txMatch?.score ?? 0}`;
+          const txCacheKey = explanationCacheKey({
+            eventId,
+            viewerRevision: txViewerIdentity?.revision ?? 0,
+            viewerHash: txViewerIdentity?.inputHash ?? txViewer.id,
+            candidateRevision: txOtherIdentity?.revision ?? 0,
+            candidateHash: txOtherIdentity?.inputHash ?? txOther.id,
+            viewerContextRevision: txViewerContext?.revision ?? 0,
+            viewerContextHash: txViewerContext?.inputHash ?? "",
+            candidateContextRevision: txOtherContext?.revision ?? 0,
+            candidateContextHash: txOtherContext?.inputHash ?? "",
+            evidenceFingerprint: txEvidence,
+            rankingVersion: txPersisted?.rankingVersion ?? RANKING_VERSION,
+            promptVersion: PROMPT_VERSION,
+            modelId: readMetaTextConfig().model,
+            locale: "en",
+          });
+          if (!regenerate) {
+            const hit = database.explanations.find(
+              (item) => item.cacheKey === txCacheKey && item.status === "completed" && item.value,
+            );
+            if (hit?.value) {
+              database.metrics.cacheHits += 1;
+              return { explanation: hit.value, cached: true as const };
+            }
+          }
+          const txGoalLabels = (txMatch?.shared.goals ?? []).map(goalLabel);
+          const txAllowed = {
+            goals: txGoalLabels,
+            interests: txMatch?.shared.interests ?? txViewer.interests.filter((item) => txOther.interests.includes(item)),
+            skills: txMatch?.shared.skills ?? [],
+            complement: txMatch?.complement ?? [],
+          };
+          const txExplanation = demoExplanation({
+            otherName: txOther.displayName,
+            shared: {
+              goals: txMatch?.shared.goals ?? [],
+              interests: txAllowed.interests,
+              skills: txAllowed.skills,
+            },
+            complement: txAllowed.complement,
+            confidence: txMatch?.confidence ?? "low",
+            goalLabels: txGoalLabels,
+          });
+          const txDraft = {
+            id: `explain:${txViewer.id}:${txOther.id}:${eventId}`,
+            cacheKey: txCacheKey,
+            eventId,
+            viewerId: txViewer.id,
+            candidateId: txOther.id,
+            modelId: readMetaTextConfig().model,
+            promptVersion: PROMPT_VERSION,
+            inputFingerprint: txEvidence,
+            createdAt: new Date(txNow).toISOString(),
+          };
+          const claimed = claimExplanation(database.explanations, txDraft, txNow, regenerate);
+          database.explanations = completeExplanation(
+            claimed.records,
+            txCacheKey,
+            txExplanation,
+            null,
+            txNow,
+          );
+          database.metrics.cacheMisses += 1;
+          const marker = `view:${txViewer.id}:${txOther.id}:${eventId}`;
+          if (!database.analytics.some((item) => item.id === marker)) {
+            database.analytics.push({
+              id: marker,
+              eventId,
+              type: "profile_viewed",
+              at: new Date().toISOString(),
+              topic: txAllowed.interests[0] ?? null,
+            });
+          }
+          return { explanation: txExplanation, cached: false as const };
+        });
+      }
+
       for (let attempt = 0; attempt < 40; attempt += 1) {
         const gate = await store.update((database) => {
           const claimed = claimExplanation(database.explanations, draft, Date.now(), regenerate && attempt === 0);
