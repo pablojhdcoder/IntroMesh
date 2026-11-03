@@ -6,15 +6,13 @@
 
 import type { FieldPerson } from "@/components/signal/signal-field";
 
-export type Presence = "visible" | "hidden";
-
-export type RoomState = "idle" | "loading" | "error" | "empty" | "success";
+export type RoomState = "loading" | "error" | "empty" | "success";
 
 export type ViewerEmbeddingStatus = "ready" | "pending";
 
 /**
- * Non-recommended attendee: profile card fields + live presence, never a
- * score, reason, or connect action. Rendered in the "Also here" directory.
+ * Non-recommended attendee: profile card fields, never a score, reason,
+ * or connect action. Rendered in the "Everyone going" directory.
  */
 export type DirectoryPerson = {
   id: string;
@@ -22,7 +20,6 @@ export type DirectoryPerson = {
   displayName: string;
   role: string;
   demo: boolean;
-  presence: "active";
   interests: string[];
   skills: string[];
 };
@@ -30,21 +27,12 @@ export type DirectoryPerson = {
 export type DiscoverySnapshot = {
   people: FieldPerson[];
   directory: DirectoryPerson[];
-  presence: Presence;
   viewerEmbeddingStatus: ViewerEmbeddingStatus;
 };
 
 function asStringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string");
-}
-
-function asPresence(value: unknown): Presence {
-  return value === "visible" ? "visible" : "hidden";
-}
-
-function asLivePresence(): "active" {
-  return "active";
 }
 
 type RawPerson = {
@@ -55,7 +43,6 @@ type RawPerson = {
   demo?: unknown;
   x?: unknown;
   y?: unknown;
-  presence?: unknown;
   recommendation?: unknown;
   interests?: unknown;
   skills?: unknown;
@@ -100,7 +87,6 @@ function toFieldPerson(raw: RawPerson): FieldPerson {
     demo: raw.demo === true,
     x: typeof raw.x === "number" && Number.isFinite(raw.x) ? raw.x : 50,
     y: typeof raw.y === "number" && Number.isFinite(raw.y) ? raw.y : 50,
-    presence: asLivePresence(),
     interests: asStringList(raw.interests),
     skills: asStringList(raw.skills),
     recommendation: toRecommendation(raw.recommendation),
@@ -113,7 +99,6 @@ function toDirectoryPerson(raw: RawPerson): DirectoryPerson {
     displayName: typeof raw.displayName === "string" ? raw.displayName : "Attendee",
     role: typeof raw.role === "string" ? raw.role : "",
     demo: raw.demo === true,
-    presence: asLivePresence(),
     interests: asStringList(raw.interests),
     skills: asStringList(raw.skills),
   };
@@ -126,15 +111,13 @@ function hasRecommendation(raw: RawPerson): boolean {
 /**
  * Reads the discovery payload against the production contract
  * (`people` = recommended only, `directory` = everyone else,
- * `viewerEmbeddingStatus`), with a fallback for the legacy shape where
- * non-recommended rows arrive inside `people` with a null recommendation.
+ * `viewerEmbeddingStatus`). Presence fields from older payloads are ignored.
  * Field nodes must only ever come from the returned `people`.
  */
 export function normalizeDiscovery(body: unknown): DiscoverySnapshot {
   const raw = (typeof body === "object" && body !== null ? body : {}) as {
     people?: unknown;
     directory?: unknown;
-    presence?: unknown;
     viewerEmbeddingStatus?: unknown;
   };
   const rawPeople = Array.isArray(raw.people) ? (raw.people as RawPerson[]) : [];
@@ -147,7 +130,6 @@ export function normalizeDiscovery(body: unknown): DiscoverySnapshot {
   return {
     people: recommended,
     directory,
-    presence: asPresence(raw.presence),
     viewerEmbeddingStatus: raw.viewerEmbeddingStatus === "pending" ? "pending" : "ready",
   };
 }
@@ -170,14 +152,7 @@ export function connectionActionBody(
   return { connectionId, action };
 }
 
-export function resolveRoomState(args: {
-  visible: boolean;
-  loading: boolean;
-  error: string | null;
-  count: number;
-}): RoomState {
-  // Hidden mode is intentional hiding, never an empty room.
-  if (!args.visible) return "idle";
+export function resolveRoomState(args: { loading: boolean; error: string | null; count: number }): RoomState {
   // A failed load is an error, never an empty room.
   if (args.error) return "error";
   // A cached roster stays on screen while a background refresh runs.
@@ -190,7 +165,6 @@ export function resolveRoomState(args: {
 export type RoomSnapshot<Connection> = {
   people: FieldPerson[];
   connections: Connection[];
-  presence: Presence;
   directory?: DirectoryPerson[];
   viewerEmbeddingStatus?: ViewerEmbeddingStatus;
   at: number;

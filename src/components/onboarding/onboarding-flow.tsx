@@ -2,22 +2,12 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Crossfade } from "@/components/ui/crossfade";
 import { ThemeSwitch } from "@/components/theme-switch";
+import { EventPicker, type EventCardEvent } from "@/components/events/event-picker";
 
-type EventCard = {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  startsAt: string | null;
-  code: string;
-  status: "upcoming" | "live" | "ended";
-  demo: boolean;
-  attendees: number;
-};
+type EventCard = EventCardEvent & { code: string };
 
 type Identity = {
   display_name: string;
@@ -115,11 +105,7 @@ function OnboardingBody({
   const params = useSearchParams();
   const [step, setStep] = useState<Step>(identityConfirmed ? "event" : draft?.identity ? "review" : "event");
   const [events, setEvents] = useState<EventCard[]>([]);
-  const [query, setQuery] = useState("");
-  const [code, setCode] = useState(params.get("code") ?? params.get("event") ?? "");
   const [selected, setSelected] = useState<EventCard | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [eventDraft, setEventDraft] = useState({ name: "", description: "", category: "", startsAt: "" });
   const [name, setName] = useState(draft?.displayName ?? "");
   const [description, setDescription] = useState(draft?.description ?? "");
   const [intent, setIntent] = useState("");
@@ -154,41 +140,9 @@ function OnboardingBody({
       .catch(() => setError("I cannot find that event."));
   }, [identityConfirmed, params]);
 
-  async function loadEvents(next = query) {
-    const response = await fetch(`/api/events?q=${encodeURIComponent(next)}`);
-    const body = await response.json();
-    setEvents(body.events ?? []);
-  }
-
-  async function chooseCode() {
-    setPending(true);
+  function pickEvent(event: EventCardEvent) {
+    setSelected(event as EventCard);
     setError(null);
-    const response = await fetch(`/api/events?code=${encodeURIComponent(code)}`);
-    const body = await response.json();
-    setPending(false);
-    if (!response.ok) {
-      setError(body.error === "ended" ? "This event is no longer available." : "I cannot find that code.");
-      return;
-    }
-    setSelected(body.event as EventCard);
-    setStep(identityConfirmed ? "intent" : "identity");
-  }
-
-  async function createEvent() {
-    setPending(true);
-    setError(null);
-    const response = await fetch("/api/events", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...eventDraft, startsAt: eventDraft.startsAt || null }),
-    });
-    const body = await response.json();
-    setPending(false);
-    if (!response.ok) {
-      setError("Could not create the event.");
-      return;
-    }
-    setSelected(body.event as EventCard);
     setStep(identityConfirmed ? "intent" : "identity");
   }
 
@@ -322,108 +276,12 @@ function OnboardingBody({
 
       <Crossfade id={step} className="flex flex-col gap-6">
       {step === "event" ? (
-        <div className="flex flex-col gap-6">
-          <label className={field}>
-            Search
-            <input className={input} value={query} onChange={(event) => setQuery(event.target.value)} />
-          </label>
-          <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" onClick={() => void loadEvents()}>
-            Search events
-          </Button>
-          <ul className="flex flex-col gap-3">
-            {events.map((event) => {
-              const isSelected = selected?.id === event.id;
-              return (
-                <li key={event.id}>
-                  <button
-                    type="button"
-                    aria-pressed={isSelected}
-                    className={`flex w-full flex-col gap-2 rounded-[20px] border border-border bg-surface px-4 py-4 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-foreground/30 hover:shadow-[var(--shadow-raise)] ${
-                      isSelected ? "border-foreground/40 bg-surface-raised ring-1 ring-foreground/20" : ""
-                    }`}
-                    onClick={() => {
-                      setSelected(event);
-                      setStep(identityConfirmed ? "intent" : "identity");
-                    }}
-                  >
-                    <span className="flex w-full items-start justify-between gap-3">
-                      <span className="font-heading text-xl leading-tight text-foreground">{event.name}</span>
-                      <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
-                        {event.status === "live" ? (
-                          <span className="flex items-center gap-1.5 font-mono text-[0.65rem] font-medium tracking-[0.08em] text-foreground uppercase">
-                            <span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--signal-strong)] dark:bg-signal" />
-                            Live
-                          </span>
-                        ) : (
-                          <span className="font-mono text-[0.65rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                            {event.status}
-                          </span>
-                        )}
-                        {event.demo ? (
-                          <span className="rounded-full border border-border px-2 py-0.5 font-mono text-[0.65rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                            Demo
-                          </span>
-                        ) : null}
-                      </span>
-                    </span>
-                    <span className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase">
-                      {[event.category, event.startsAt?.slice(0, 10)].filter(Boolean).join(" · ")}
-                      {event.demo ? "" : ` · ${event.attendees} registered`}
-                    </span>
-                    {event.description ? (
-                      <span className="text-sm leading-relaxed text-muted-foreground">{event.description}</span>
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="flex flex-col gap-4 border-t border-border pt-6">
-            <label className={field}>
-              Code or link
-              <input className={input} value={code} onChange={(event) => setCode(event.target.value)} placeholder="event code" />
-            </label>
-            <Button type="button" variant="outline" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || code.trim().length === 0} onClick={() => void chooseCode()}>
-              Join with code
-            </Button>
-          </div>
-          {canCreateEvent ? (
-            <div className="flex flex-col gap-4 border-t border-border pt-6">
-              <button
-                type="button"
-                aria-expanded={creating}
-                className="flex min-h-11 items-center gap-2 self-start text-sm text-foreground underline-offset-4 transition-colors hover:text-muted-foreground min-[720px]:min-h-9"
-                onClick={() => setCreating((value) => !value)}
-              >
-                <Plus aria-hidden="true" className="size-4" />
-                Create an event
-              </button>
-              {creating ? (
-                <div className="flex flex-col gap-4">
-              <label className={field}>
-                Name
-                <input className={input} value={eventDraft.name} onChange={(event) => setEventDraft({ ...eventDraft, name: event.target.value })} required />
-              </label>
-              <label className={field}>
-                Description
-                <textarea className={textarea} value={eventDraft.description} onChange={(event) => setEventDraft({ ...eventDraft, description: event.target.value })} />
-              </label>
-              <label className={field}>
-                Category
-                <input className={input} value={eventDraft.category} onChange={(event) => setEventDraft({ ...eventDraft, category: event.target.value })} />
-              </label>
-              <label className={field}>
-                Date
-                <input className={input} type="date" value={eventDraft.startsAt} onChange={(event) => setEventDraft({ ...eventDraft, startsAt: event.target.value })} />
-              </label>
-                  <Button type="button" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending} onClick={() => void createEvent()}>
-                    Create event
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+        <EventPicker
+          events={events}
+          onPick={pickEvent}
+          canCreateEvent={canCreateEvent}
+          selectedId={selected?.id ?? null}
+        />
       ) : null}
 
       {step === "identity" ? (

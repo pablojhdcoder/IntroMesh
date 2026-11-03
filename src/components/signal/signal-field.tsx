@@ -18,7 +18,6 @@ export type FieldPerson = {
   demo: boolean;
   x: number;
   y: number;
-  presence: "active";
   interests: string[];
   skills: string[];
   recommendation: {
@@ -99,7 +98,7 @@ export function SignalField({
           role="status"
           className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-border bg-surface/80 px-3 py-1.5 font-mono text-xs tracking-[0.08em] whitespace-nowrap text-muted-foreground uppercase shadow-sm"
         >
-          {loading ? "Loading the room" : "Nobody visible"}
+          {loading ? "Loading the room" : "No members yet"}
         </p>
       ) : null}
       <ul className="sr-only">

@@ -32,7 +32,7 @@ export default async function IntelligencePage() {
       </header>
 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
-        <Stat label="Visible" value={String(report.visible)} />
+        <Stat label="Registered" value={String(report.visible)} />
         <Stat label="Recommendations" value={String(report.recommendations)} />
         <Stat label="Profiles viewed" value={String(report.profileViews)} />
         <Stat label="Requests" value={String(report.requests)} />

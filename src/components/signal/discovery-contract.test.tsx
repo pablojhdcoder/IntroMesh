@@ -13,7 +13,6 @@ const recommendedRow = {
   demo: false,
   x: 62,
   y: 38,
-  presence: "active",
   interests: ["drones"],
   skills: ["rust"],
   recommendation: {
@@ -30,33 +29,42 @@ const directoryRow = {
   displayName: "Bea",
   role: "Design",
   demo: true,
-  presence: "active",
   interests: ["typography"],
   skills: ["figma"],
 };
 
 describe("normalizeDiscovery (production contract)", () => {
-  it("passes recommended people and the directory through with presence and status", () => {
+  it("passes recommended people and the directory through with status", () => {
     const snapshot = normalizeDiscovery({
       people: [recommendedRow],
       directory: [directoryRow],
-      presence: "visible",
       viewerEmbeddingStatus: "ready",
     });
     expect(snapshot.people).toHaveLength(1);
     expect(snapshot.people[0]?.id).toBe("ada");
     expect(snapshot.people[0]?.recommendation?.score).toBe(9);
     expect(snapshot.directory).toHaveLength(1);
-    expect(snapshot.directory[0]).toMatchObject({ id: "bea", presence: "active", demo: true });
-    expect(snapshot.presence).toBe("visible");
+    expect(snapshot.directory[0]).toMatchObject({ id: "bea", demo: true });
     expect(snapshot.viewerEmbeddingStatus).toBe("ready");
+  });
+
+  it("ignores legacy presence fields when the server still sends them", () => {
+    const snapshot = normalizeDiscovery({
+      people: [{ ...recommendedRow, presence: "active" }],
+      directory: [{ ...directoryRow, presence: "active" }],
+      presence: "visible",
+      viewerEmbeddingStatus: "ready",
+    });
+    expect(snapshot.people).toHaveLength(1);
+    expect(snapshot.people[0]).not.toHaveProperty("presence");
+    expect(snapshot.directory[0]).not.toHaveProperty("presence");
+    expect(snapshot).not.toHaveProperty("presence");
   });
 
   it("flags viewerEmbeddingStatus pending so the field shows a skeleton, not fake nodes", () => {
     const snapshot = normalizeDiscovery({
       people: [],
       directory: [directoryRow],
-      presence: "visible",
       viewerEmbeddingStatus: "pending",
     });
     expect(snapshot.viewerEmbeddingStatus).toBe("pending");
@@ -66,7 +74,7 @@ describe("normalizeDiscovery (production contract)", () => {
   it("splits the legacy shape: null-recommendation rows become directory, never field nodes", () => {
     const legacy = { ...recommendedRow };
     const cold = { ...directoryRow, x: 20, y: 80, recommendation: null };
-    const snapshot = normalizeDiscovery({ people: [legacy, cold], presence: "visible" });
+    const snapshot = normalizeDiscovery({ people: [legacy, cold] });
     expect(snapshot.people.map((person) => person.id)).toEqual(["ada"]);
     expect(snapshot.directory.map((person) => person.id)).toEqual(["bea"]);
     // Field nodes carry server coordinates; directory rows carry none.
@@ -79,7 +87,6 @@ describe("normalizeDiscovery (production contract)", () => {
     expect(normalizeDiscovery(null)).toEqual({
       people: [],
       directory: [],
-      presence: "hidden",
       viewerEmbeddingStatus: "ready",
     });
     expect(normalizeDiscovery({})).toMatchObject({ people: [], directory: [], viewerEmbeddingStatus: "ready" });
@@ -107,7 +114,7 @@ describe("normalizeDiscovery (production contract)", () => {
       },
       { ...recommendedRow, id: "string-rec", recommendation: "great match" },
     ];
-    const snapshot = normalizeDiscovery({ people: malformed, presence: "visible" });
+    const snapshot = normalizeDiscovery({ people: malformed });
     expect(snapshot.people).toEqual([]);
     expect(snapshot.directory.map((person) => person.id)).toEqual([
       "nan-score",
@@ -124,7 +131,6 @@ describe("normalizeDiscovery (production contract)", () => {
     const snapshot = normalizeDiscovery({
       people: [{ ...recommendedRow, demo: true }],
       directory: [directoryRow],
-      presence: "visible",
       viewerEmbeddingStatus: "ready",
     });
     expect(snapshot.people[0]?.demo).toBe(true);

@@ -19,7 +19,7 @@ type Explanation = {
 
 /**
  * Scan landing: anonymous visitors see a join CTA. Signed-in viewers at a
- * live event get the existing affinity + connection actions — no matching
+ * registered event get the existing affinity + connection actions — no matching
  * logic is duplicated here.
  */
 export function ScanConnect({ slug, profileId }: { slug: string; profileId: string }) {

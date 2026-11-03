@@ -4,6 +4,7 @@ import { AppNav } from "@/components/nav/app-nav";
 import { ProfileEditor } from "@/components/profile/profile-editor";
 import { ProfileSections, type ProfileLike } from "@/components/profile/profile-view";
 import { ShareTools } from "@/components/share/share-tools";
+import { EventCard } from "@/components/events/event-card";
 import type { HubEvent } from "@/components/hub/event-hub";
 import { service, viewerId } from "@/lib/http";
 
@@ -14,7 +15,7 @@ const meta = "font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-f
 type RawMyEvent = {
   eventId?: string;
   status?: string;
-  presence?: "active" | null;
+  memberCount?: number;
   event: HubEvent;
 };
 
@@ -34,7 +35,7 @@ export default async function ProfilePage() {
   const myEvents = (Array.isArray(rawMine) ? rawMine : []).map((item) => ({
     eventId: item.eventId ?? item.event.id,
     status: item.status ?? "joined",
-    presence: item.presence ?? null,
+    memberCount: item.memberCount ?? item.event.attendees,
     event: item.event,
   }));
 
@@ -54,22 +55,30 @@ export default async function ProfilePage() {
               No events yet. <Link href="/events" className="underline underline-offset-4">Find an event</Link>.
             </p>
           ) : (
-            <ul className="flex flex-col divide-y divide-border">
+            <ul className="flex flex-col gap-3">
               {myEvents.map((item) => (
-                <li key={item.eventId} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-1 last:pb-0">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <p className="font-heading text-xl leading-tight tracking-[-0.01em]">{item.event.name}</p>
-                    <p className={meta}>
-                      {item.event.category || item.event.status}
-                      {item.presence ? ` · ${item.presence}` : ""}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/events/${item.eventId}`}
-                    className="inline-flex min-h-11 items-center font-mono text-[0.7rem] font-medium tracking-[0.08em] uppercase underline underline-offset-4 transition-colors hover:text-foreground min-[720px]:min-h-9"
-                  >
-                    Open
-                  </Link>
+                <li key={item.eventId}>
+                  <EventCard
+                    event={{
+                      id: item.event.id,
+                      name: item.event.name,
+                      description: item.event.description,
+                      category: item.event.category,
+                      startsAt: item.event.startsAt,
+                      status: item.event.status,
+                      demo: item.event.demo,
+                      attendees: item.memberCount,
+                    }}
+                    joined
+                    action={
+                      <Link
+                        href={`/events/${item.eventId}`}
+                        className="inline-flex min-h-11 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-background min-[720px]:h-9"
+                      >
+                        Open
+                      </Link>
+                    }
+                  />
                 </li>
               ))}
             </ul>

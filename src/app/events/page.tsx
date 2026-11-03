@@ -9,7 +9,7 @@ type RawMyEvent = {
   eventId?: string;
   status?: string;
   joinedAt?: string | null;
-  presence?: "active" | null;
+  memberCount?: number;
   event: HubEvent;
 };
 
@@ -24,8 +24,7 @@ export default async function EventsPage() {
     eventId: item.eventId ?? item.event.id,
     status: item.status ?? "joined",
     joinedAt: item.joinedAt ?? null,
-    // UI no longer distinguishes seeking: any live backend presence maps to active.
-    presence: item.presence ? "active" : null,
+    memberCount: item.memberCount ?? item.event.attendees,
     event: item.event,
   }));
 

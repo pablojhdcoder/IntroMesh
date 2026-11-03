@@ -125,8 +125,7 @@ export function SignalIntro({
           <div className="flex flex-col gap-2 text-center">
             <h2 className="font-heading text-[2rem] leading-none tracking-[-0.02em]">Read the room</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Threads mean opportunity — not distance or score. Joining makes you visible here while you&apos;re
-              live. Leave hides you immediately.
+              Everyone you see is registered for this event. Threads point to your closest matches — say hello before the day.
             </p>
           </div>
           <ul className="flex flex-col divide-y divide-border rounded-[12px] border border-border bg-surface text-sm">
@@ -149,8 +148,8 @@ export function SignalIntro({
             <li className="flex items-start gap-3 px-4 py-3">
               <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-muted-foreground/50" />
               <span>
-                <span className="font-medium">Also here</span>
-                <span className="block text-muted-foreground">Everyone else in the room, listed below.</span>
+                <span className="font-medium">Everyone going</span>
+                <span className="block text-muted-foreground">Everyone registered, listed below.</span>
               </span>
             </li>
           </ul>

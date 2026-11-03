@@ -13,7 +13,8 @@ import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signa
 import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { SignalIntro } from "@/components/signal/signal-intro";
-import { ArrowUpRight, Check, ChevronRight, Copy, Info, LogOut, RefreshCw } from "lucide-react";
+import { PersonCard } from "@/components/events/person-card";
+import { ArrowUpRight, Check, Copy, Info, LogOut, RefreshCw } from "lucide-react";
 import {
   clearRoomCache,
   explainErrorCopy,
@@ -23,7 +24,6 @@ import {
   resolveRoomState,
   setCachedRoom,
   type DirectoryPerson,
-  type Presence,
   type ViewerEmbeddingStatus,
 } from "@/components/signal/use-room";
 
@@ -52,7 +52,7 @@ type Session = {
     status: string;
     joinedAt?: string | null;
     event: { id: string; name: string; demo: boolean };
-    presence: "active" | null;
+    memberCount?: number;
   }>;
 };
 
@@ -72,16 +72,26 @@ function reasonOf(person: FieldPerson) {
   return person.recommendation?.shared.interests[0] ?? person.recommendation?.shared.skills[0] ?? person.recommendation?.complement[0] ?? "shared goal";
 }
 
+function tagsOfRecommendation(person: FieldPerson): string[] {
+  const rec = person.recommendation;
+  if (!rec) return [...person.interests, ...person.skills].slice(0, 2);
+  return [...rec.shared.interests, ...rec.shared.skills, ...rec.complement].slice(0, 2);
+}
+
+function tagsOfDirectory(person: DirectoryPerson): string[] {
+  return [...person.interests, ...person.skills].slice(0, 2);
+}
+
 function PresenterChecklist({
   metaConfigured,
   pairCached,
-  presenceOn,
+  memberCount,
   acceptedCount,
   onDismiss,
 }: {
   metaConfigured: boolean;
   pairCached: boolean;
-  presenceOn: boolean;
+  memberCount: number;
   acceptedCount: number;
   onDismiss: () => void;
 }) {
@@ -90,7 +100,7 @@ function PresenterChecklist({
   const rows: { label: string; ok: boolean; hint: string }[] = [
     { label: "Meta", ok: metaConfigured, hint: metaConfigured ? "configured" : "not configured" },
     { label: "Pair cache", ok: pairCached, hint: pairCached ? "cached" : "open a real match to warm cache" },
-    { label: "Presence", ok: presenceOn, hint: presenceOn ? "on" : "off" },
+    { label: "Members", ok: memberCount > 0, hint: memberCount > 0 ? `${memberCount} registered` : "none yet" },
     { label: "Accepted", ok: acceptedCount > 0, hint: acceptedCount > 0 ? `${acceptedCount} accepted` : "none yet" },
   ];
   return (
@@ -120,7 +130,6 @@ function PresenterChecklist({
 export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; entry?: boolean }) {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
-  const [presence, setPresence] = useState<Presence>("hidden");
   const [people, setPeople] = useState<FieldPerson[]>([]);
   const [directory, setDirectory] = useState<DirectoryPerson[]>([]);
   const [viewerEmbeddingStatus, setViewerEmbeddingStatus] = useState<ViewerEmbeddingStatus>("ready");
@@ -156,7 +165,6 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   const [loadError, setLoadError] = useState<string | null>(null);
   const [leavePending, setLeavePending] = useState(false);
   const [roomLoading, setRoomLoading] = useState(true);
-  const presenceSeq = useRef(0);
   const roomRequest = useRef(0);
   const explainSeq = useRef(0);
   const explanationCache = useRef(new Map<string, Explanation>());
@@ -172,7 +180,6 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
     // clear the current people (no people=[] flash on mode switch).
     const cached = getCachedRoom<Connection>(eventId);
     if (cached) {
-      setPresence(cached.presence);
       setPeople(cached.people);
       setDirectory(cached.directory ?? []);
       setViewerEmbeddingStatus(cached.viewerEmbeddingStatus ?? "ready");
@@ -184,15 +191,14 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
       setLoadError(null);
     }
     const requestId = ++roomRequest.current;
-    const seqAtStart = presenceSeq.current;
     // Parallel pair (kept); per-key dedupe collapses concurrent callers
     // into one fetch each.
     const [discoveryResult, connectionsResult] = await Promise.all([
       fetchJsonDeduped(`discovery:${eventId}`, `/api/discovery?eventId=${eventId}`),
       fetchJsonDeduped(`connections:${eventId}`, `/api/connections?eventId=${eventId}`),
     ]);
-    // Ignore stale responses: a newer load or presence switch wins.
-    if (roomRequest.current !== requestId || presenceSeq.current !== seqAtStart) return;
+    // Ignore stale responses: a newer load wins.
+    if (roomRequest.current !== requestId) return;
     if (!discoveryResult.ok) {
       if (foreground) setRoomLoading(false);
       setLoadError("Could not load the event.");
@@ -201,13 +207,11 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
     const discovery = discoveryResult.body as {
       people?: unknown;
       directory?: unknown;
-      presence?: unknown;
       viewerEmbeddingStatus?: unknown;
     } | null;
     const snapshot = normalizeDiscovery(discovery ?? {});
     const fetchedPeople = discoveryResult.ok ? snapshot.people : (cached?.people ?? []);
     const fetchedDirectory = discoveryResult.ok ? snapshot.directory : (cached?.directory ?? []);
-    const fetchedPresence = discoveryResult.ok ? snapshot.presence : (cached?.presence ?? "hidden");
     const fetchedEmbeddingStatus = discoveryResult.ok
       ? snapshot.viewerEmbeddingStatus
       : (cached?.viewerEmbeddingStatus ?? "ready");
@@ -219,11 +223,9 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
       people: fetchedPeople,
       directory: fetchedDirectory,
       connections: fetchedConnections,
-      presence: fetchedPresence,
       viewerEmbeddingStatus: fetchedEmbeddingStatus,
       at: Date.now(),
     });
-    setPresence(fetchedPresence);
     setPeople(fetchedPeople);
     setDirectory(fetchedDirectory);
     setViewerEmbeddingStatus(fetchedEmbeddingStatus);
@@ -254,26 +256,6 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load; setState runs after fetch
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (!activeEventId || presence === "hidden") return;
-    // Fire-and-forget keepalive: never pile up overlapping beats. A beat that
-    // takes longer than the interval (slow backend) must not queue another
-    // full snapshot persist behind it — that backlog is what stalled discovery.
-    let inFlight = false;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "hidden" || inFlight) return;
-      inFlight = true;
-      void fetch("/api/presence", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ eventId: activeEventId }),
-      }).finally(() => {
-        inFlight = false;
-      });
-    }, 20_000);
-    return () => window.clearInterval(timer);
-  }, [presence, activeEventId]);
 
   const profileId = session?.profile?.id ?? null;
   useEffect(() => {
@@ -306,12 +288,8 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   async function leaveEvent() {
     const eventId = activeEventId;
     if (!eventId || leavePending) return;
-    // Stop the keepalive first: a beat in flight must not resurrect presence
-    // after the server marks the participation left.
-    presenceSeq.current += 1;
     roomRequest.current += 1;
     explainSeq.current += 1;
-    setPresence("hidden");
     setLeavePending(true);
     setLoadError(null);
     try {
@@ -469,18 +447,18 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
     );
   }
 
-  const visible = presence !== "hidden";
   const selfSelected = selectedId === FIELD_SELF_ID;
-  const selected = visible ? (people.find((person) => person.id === selectedId) ?? null) : null;
-  const detail = visible && selected && selected.recommendation ? { person: selected, recommendation: selected.recommendation } : null;
-  const directoryPerson = visible && !detail ? (directory.find((person) => person.id === directoryId) ?? null) : null;
+  const selected = people.find((person) => person.id === selectedId) ?? null;
+  const detail = selected && selected.recommendation ? { person: selected, recommendation: selected.recommendation } : null;
+  const directoryPerson = !detail ? (directory.find((person) => person.id === directoryId) ?? null) : null;
   const relation = connections.find((item) => item.other.id === selectedId && item.status !== "declined");
   const recommendations = people.filter((person) => person.recommendation);
   const others = detail ? recommendations.filter((person) => person.id !== detail.person.id) : recommendations;
-  const embeddingPending = visible && viewerEmbeddingStatus === "pending";
-  const roomState = resolveRoomState({ visible, loading: roomLoading, error: loadError, count: others.length });
-  const emptyRoom = visible && !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length === 0;
-  const noMatchesYet = visible && !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length > 0;
+  const embeddingPending = viewerEmbeddingStatus === "pending";
+  const roomState = resolveRoomState({ loading: roomLoading, error: loadError, count: recommendations.length });
+  const emptyRoom = !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length === 0;
+  const noMatchesYet = !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length > 0;
+  const memberCount = recommendations.length + directory.length;
   const traceChips = explanation
     ? [
         ...explanation.citedGoals.slice(0, 2).map((value) => ({ label: `Cited · goal: ${value}`, key: `goal-${value}` })),
@@ -612,7 +590,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
           <PresenterChecklist
             metaConfigured={session.metaConfigured}
             pairCached={pairCached}
-            presenceOn={visible}
+            memberCount={memberCount}
             acceptedCount={acceptedCount}
             onDismiss={() => setChecklistDismissed(true)}
           />
@@ -642,7 +620,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
         ) : (
           <>
         <SignalField
-          people={visible ? people : []}
+          people={people}
           selectedId={selectedId}
           loading={roomLoading}
           embeddingPending={embeddingPending}
@@ -651,15 +629,9 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
 
         <section className="flex min-h-0 flex-col gap-6 min-[720px]:overflow-y-auto" aria-label="Signals and people">
           <Crossfade
-            id={!visible ? "hidden" : selfSelected ? "self" : detail ? `person:${detail.person.id}` : directoryPerson ? `card:${directoryPerson.id}` : "list"}
+            id={selfSelected ? "self" : detail ? `person:${detail.person.id}` : directoryPerson ? `card:${directoryPerson.id}` : "list"}
             className="flex flex-col gap-6"
           >
-          {!visible ? (
-            <div className="flex flex-col items-start gap-3 pt-2">
-              <p className="max-w-[40ch] text-sm text-muted-foreground">Join the event to see people.</p>
-            </div>
-          ) : null}
-
           {selfSelected && session.profile ? (
             <article className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
@@ -732,9 +704,6 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                 {explainError ? (
                   <div role="alert" className="flex flex-col gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                     <p>{explainError}</p>
-                    {explainErrorKind === "presence" ? (
-                      <p className="text-destructive/80">Join the event to see people.</p>
-                    ) : null}
                     {explainErrorKind === "match" ? <p className="text-destructive/80">Pick a highlighted person.</p> : null}
                     {explainErrorKind === "meta" ? (
                       <p>
@@ -824,7 +793,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                     <h3 className="font-heading text-xl leading-none tracking-[-0.02em]">Meet now</h3>
                     <p className="flex max-w-[52ch] items-start gap-2 text-sm">
                       <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--signal-strong)] dark:text-signal" />
-                      <span>Connection accepted{relation.intro ? `. ${relation.intro}` : "."}</span>
+                      <span>Connection accepted{relation.intro ? `. ${relation.intro}.` : "."}</span>
                     </p>
                     {meetIntro ? (
                       <div className="flex flex-col gap-2">
@@ -915,113 +884,78 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
             </article>
           ) : null}
 
-          {visible ? (
+          <div className={cn("flex flex-col gap-3", (detail || selfSelected || directoryPerson) && "min-[720px]:hidden")}>
+            <h2 className={meta}>{detail ? "More signals" : "Recommendations"}</h2>
+            {roomState === "loading" || embeddingPending ? (
+              <div className="flex flex-col gap-2.5">
+                <div aria-hidden="true" className="flex animate-pulse flex-col gap-2.5">
+                  <div className="h-2.5 w-3/4 rounded-full bg-surface-raised" />
+                  <div className="h-2.5 w-full rounded-full bg-surface-raised" />
+                  <div className="h-2.5 w-1/2 rounded-full bg-surface-raised" />
+                </div>
+                <p role="status" className={embeddingPending ? "text-sm text-muted-foreground" : "sr-only"}>
+                  {embeddingPending ? "Finding your people…" : "Loading the room."}
+                </p>
+              </div>
+            ) : null}
+            {!embeddingPending && roomState === "empty" && emptyRoom ? (
+              <div className="flex flex-col items-start gap-3">
+                <p className="max-w-[40ch] text-sm text-muted-foreground">You&apos;re the first one here. Share the event link and this room fills up as people register.</p>
+                <Button type="button" className={actionSize} disabled={leavePending} onClick={() => void leaveEvent()}>
+                  {leavePending ? "Leaving…" : "Join a different event"}
+                </Button>
+              </div>
+            ) : null}
+            {!embeddingPending && roomState === "empty" && noMatchesYet ? (
+              <div className="flex flex-col items-start gap-3">
+                <p className="max-w-[40ch] text-sm text-muted-foreground">
+                  No close matches yet — everyone going is listed below.
+                </p>
+                <Button type="button" className={actionSize} disabled={leavePending} onClick={() => void leaveEvent()}>
+                  {leavePending ? "Leaving…" : "Join a different event"}
+                </Button>
+              </div>
+            ) : null}
+            {!embeddingPending && roomState === "empty" && detail && others.length === 0 ? (
+              <p className="max-w-[40ch] text-sm text-muted-foreground">No more signals.</p>
+            ) : null}
+            {roomState === "error" && others.length === 0 ? (
+              <p className="max-w-[40ch] text-sm text-muted-foreground">Could not refresh. Try again above.</p>
+            ) : null}
+            {!embeddingPending && (roomState === "success" || (roomState === "error" && others.length > 0)) ? (
+              <ul className="flex flex-col gap-3" aria-label="Recommended people">
+                {others.map((person) => (
+                  <li key={person.id}>
+                    <PersonCard
+                      name={person.displayName}
+                      role={person.role}
+                      slug={person.slug}
+                      demo={person.demo}
+                      reason={reasonOf(person)}
+                      tags={tagsOfRecommendation(person)}
+                      selected={selectedId === person.id}
+                      onSelect={() => void openPerson(person.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          {!embeddingPending && directory.length > 0 ? (
             <div className={cn("flex flex-col gap-3", (detail || selfSelected || directoryPerson) && "min-[720px]:hidden")}>
-              <h2 className={meta}>{detail ? "More signals" : "Recommendations"}</h2>
-              {roomState === "loading" || embeddingPending ? (
-                <div className="flex flex-col gap-2.5">
-                  <div aria-hidden="true" className="flex animate-pulse flex-col gap-2.5">
-                    <div className="h-2.5 w-3/4 rounded-full bg-surface-raised" />
-                    <div className="h-2.5 w-full rounded-full bg-surface-raised" />
-                    <div className="h-2.5 w-1/2 rounded-full bg-surface-raised" />
-                  </div>
-                  <p role="status" className={embeddingPending ? "text-sm text-muted-foreground" : "sr-only"}>
-                    {embeddingPending ? "Finding your people…" : "Loading the room."}
-                  </p>
-                </div>
-              ) : null}
-              {!embeddingPending && roomState === "empty" && emptyRoom ? (
-                <div className="flex flex-col items-start gap-3">
-                  <p className="max-w-[40ch] text-sm text-muted-foreground">Nobody visible yet.</p>
-                  <Button type="button" className={actionSize} disabled={leavePending} onClick={() => void leaveEvent()}>
-                    {leavePending ? "Leaving…" : "Join a different event"}
-                  </Button>
-                </div>
-              ) : null}
-              {!embeddingPending && roomState === "empty" && noMatchesYet ? (
-                <div className="flex flex-col items-start gap-3">
-                  <p className="max-w-[40ch] text-sm text-muted-foreground">
-                    No matches yet. Your profile is still being read — browse who else is here below.
-                  </p>
-                  <Button type="button" className={actionSize} disabled={leavePending} onClick={() => void leaveEvent()}>
-                    {leavePending ? "Leaving…" : "Join a different event"}
-                  </Button>
-                </div>
-              ) : null}
-              {!embeddingPending && roomState === "empty" && detail && others.length === 0 ? (
-                <p className="max-w-[40ch] text-sm text-muted-foreground">No more signals.</p>
-              ) : null}
-              {roomState === "error" && others.length === 0 ? (
-                <p className="max-w-[40ch] text-sm text-muted-foreground">Could not refresh. Try again above.</p>
-              ) : null}
-              {!embeddingPending && (roomState === "success" || (roomState === "error" && others.length > 0)) ? (
-                <ul className="flex flex-col divide-y divide-border" aria-label="Recommended people">
-                  {others.map((person) => (
-                    <li key={person.id}>
-                      <button
-                        type="button"
-                        onClick={() => void openPerson(person.id)}
-                        aria-label={`${person.displayName}, ${person.role}${person.demo ? ", demo profile" : ""}. ${reasonOf(person)}`}
-                        className={cn(
-                          "group -mx-2 flex min-h-11 w-full items-center justify-between gap-4 rounded-md px-2 py-3 text-left text-sm transition-colors hover:bg-surface-raised",
-                          focusRing,
-                        )}
-                      >
-                        <span className="flex min-w-0 flex-col gap-0.5">
-                          <span className="font-medium underline-offset-4 group-hover:underline">
-                            {person.displayName}
-                            {person.demo ? <span className="font-normal text-muted-foreground"> · Demo</span> : null}
-                          </span>
-                          <span className="truncate text-muted-foreground">{reasonOf(person)}</span>
-                        </span>
-                        <span className="flex shrink-0 items-center gap-2">
-                          <ChevronRight
-                            aria-hidden="true"
-                            className="size-4 text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                          />
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-          {visible && !embeddingPending && directory.length > 0 ? (
-            <div className={cn("flex flex-col gap-3", (detail || selfSelected || directoryPerson) && "min-[720px]:hidden")}>
-              <h2 className={meta}>Also here</h2>
-              <ul className="flex flex-col divide-y divide-border" aria-label="Other attendees">
+              <h2 className={meta}>Everyone going</h2>
+              <ul className="flex flex-col gap-3" aria-label="Everyone going">
                 {directory.map((person) => (
                   <li key={person.id}>
-                    <button
-                      type="button"
-                      onClick={() => openDirectoryPerson(person.id)}
-                      aria-label={`${person.displayName}, ${person.role}${person.demo ? ", demo profile" : ""}`}
-                      aria-pressed={directoryId === person.id}
-                      className={cn(
-                        "group -mx-2 flex min-h-11 w-full items-center justify-between gap-4 rounded-md px-2 py-3 text-left text-sm transition-colors hover:bg-surface-raised",
-                        focusRing,
-                      )}
-                    >
-                      <span className="flex min-w-0 items-start gap-2">
-                        <span
-                          aria-hidden="true"
-                          title="Active"
-                          className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/50"
-                        />
-                        <span className="flex min-w-0 flex-col gap-0.5">
-                          <span className="font-medium underline-offset-4 group-hover:underline">
-                            {person.displayName}
-                            {person.demo ? <span className="font-normal text-muted-foreground"> · Demo</span> : null}
-                          </span>
-                          <span className="truncate text-muted-foreground">{person.role}</span>
-                        </span>
-                      </span>
-                      <ChevronRight
-                        aria-hidden="true"
-                        className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                      />
-                    </button>
+                    <PersonCard
+                      name={person.displayName}
+                      role={person.role}
+                      slug={person.slug}
+                      demo={person.demo}
+                      tags={tagsOfDirectory(person)}
+                      selected={directoryId === person.id}
+                      onSelect={() => openDirectoryPerson(person.id)}
+                    />
                   </li>
                 ))}
               </ul>

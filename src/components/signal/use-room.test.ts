@@ -15,41 +15,34 @@ afterEach(() => {
 });
 
 describe("resolveRoomState", () => {
-  it("returns idle when hidden regardless of loading or error", () => {
-    expect(resolveRoomState({ visible: false, loading: true, error: null, count: 0 })).toBe("idle");
-    expect(resolveRoomState({ visible: false, loading: false, error: "boom", count: 0 })).toBe("idle");
-  });
-
-  it("returns error when the load failed and the room is visible", () => {
-    expect(resolveRoomState({ visible: true, loading: false, error: "Could not load the event.", count: 0 })).toBe(
-      "error",
-    );
+  it("returns error when the load failed", () => {
+    expect(resolveRoomState({ loading: false, error: "Could not load the event.", count: 0 })).toBe("error");
   });
 
   it("returns loading while the first response is pending and nothing is cached", () => {
-    expect(resolveRoomState({ visible: true, loading: true, error: null, count: 0 })).toBe("loading");
+    expect(resolveRoomState({ loading: true, error: null, count: 0 })).toBe("loading");
   });
 
   it("keeps success during a background refresh when cached people exist", () => {
-    expect(resolveRoomState({ visible: true, loading: true, error: null, count: 3 })).toBe("success");
+    expect(resolveRoomState({ loading: true, error: null, count: 3 })).toBe("success");
   });
 
   it("returns empty only after a successful load confirmed zero people", () => {
-    expect(resolveRoomState({ visible: true, loading: false, error: null, count: 0 })).toBe("empty");
+    expect(resolveRoomState({ loading: false, error: null, count: 0 })).toBe("empty");
   });
 
   it("returns success when people are present", () => {
-    expect(resolveRoomState({ visible: true, loading: false, error: null, count: 2 })).toBe("success");
+    expect(resolveRoomState({ loading: false, error: null, count: 2 })).toBe("success");
   });
 });
 
 describe("room cache", () => {
   it("stores and returns a snapshot per event id", () => {
     expect(getCachedRoom("event-a")).toBeNull();
-    setCachedRoom("event-a", { people: [], connections: [], presence: "visible", at: 1 });
-    setCachedRoom("event-b", { people: [], connections: [], presence: "hidden", at: 2 });
-    expect(getCachedRoom("event-a")?.presence).toBe("visible");
-    expect(getCachedRoom("event-b")?.presence).toBe("hidden");
+    setCachedRoom("event-a", { people: [], connections: [], at: 1 });
+    setCachedRoom("event-b", { people: [], connections: [], at: 2 });
+    expect(getCachedRoom("event-a")?.at).toBe(1);
+    expect(getCachedRoom("event-b")?.at).toBe(2);
     expect(getCachedRoom("event-c")).toBeNull();
   });
 
@@ -63,13 +56,11 @@ describe("room cache", () => {
           displayName: "Bea",
           role: "Design",
           demo: true,
-          presence: "active",
           interests: ["typography"],
           skills: ["figma"],
         },
       ],
       connections: [],
-      presence: "visible",
       viewerEmbeddingStatus: "pending",
       at: 3,
     });

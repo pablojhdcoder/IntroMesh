@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppNav } from "@/components/nav/app-nav";
+import { PersonCard } from "@/components/events/person-card";
 import { service, viewerId } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -65,22 +66,18 @@ export default async function ConnectionsPage() {
                 {accepted.length}
               </p>
             </div>
-            <ul className="flex flex-col divide-y divide-border">
+            <ul className="flex flex-col gap-3">
               {accepted.map((item) => {
                 const acceptedDate = formatDate(item.acceptedAt);
                 return (
-                  <li key={item.id} className="flex flex-col gap-2 py-5 first:pt-1 last:pb-0">
-                    <div className="flex items-baseline justify-between gap-4">
-                      <p className="font-heading text-xl leading-tight tracking-[-0.01em]">{item.other.displayName}</p>
-                      {item.other.demo ? (
-                        <span className="font-mono text-[0.65rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                          Demo
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                      {item.other.role}
-                    </p>
+                  <li key={item.id} className="flex flex-col gap-2">
+                    <PersonCard
+                      name={item.other.displayName}
+                      role={item.other.role}
+                      slug={item.other.slug}
+                      demo={item.other.demo}
+                      tags={[...(item.other.interests ?? []), ...(item.other.skills ?? [])].slice(0, 2)}
+                    />
                     {item.eventName ? (
                       <p className="text-sm text-muted-foreground">
                         Met at {item.eventName}
@@ -119,13 +116,15 @@ export default async function ConnectionsPage() {
                 {pending.length}
               </p>
             </div>
-            <ul className="flex flex-col divide-y divide-border">
+            <ul className="flex flex-col gap-3">
               {pending.map((item) => (
-                <li key={item.id} className="flex flex-col gap-1 py-4 first:pt-1 last:pb-0">
-                  <p className="font-heading text-xl leading-tight tracking-[-0.01em]">{item.other.displayName}</p>
-                  <p className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                    {item.other.role}
-                  </p>
+                <li key={item.id} className="flex flex-col gap-2">
+                  <PersonCard
+                    name={item.other.displayName}
+                    role={item.other.role}
+                    slug={item.other.slug}
+                    demo={item.other.demo}
+                  />
                   {item.eventName ? <p className="text-sm text-muted-foreground">Met at {item.eventName}</p> : null}
                 </li>
               ))}
