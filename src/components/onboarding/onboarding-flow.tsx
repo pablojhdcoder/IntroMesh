@@ -45,9 +45,9 @@ type Step = "event" | "identity" | "intent" | "review";
 const field =
   "flex flex-col gap-2 font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
 const input =
-  "h-11 rounded-[12px] border border-border bg-surface px-3.5 font-sans text-[0.9375rem] normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
+  "h-11 rounded-[12px] border border-border bg-surface px-3.5 font-sans text-[1rem] normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
 const textarea =
-  "min-h-36 rounded-[12px] border border-border bg-surface px-3.5 py-3 font-sans text-[0.9375rem] leading-relaxed normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
+  "min-h-36 rounded-[12px] border border-border bg-surface px-3.5 py-3 font-sans text-[1rem] leading-relaxed normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
 const badge = "font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase";
 const stepMeta: Record<Step, { number: string; label: string; progress: string }> = {
   event: { number: "01", label: "Event", progress: "25%" },
@@ -262,6 +262,12 @@ function OnboardingBody({
     onSaved();
   }
 
+  const rawPreview =
+    description.trim().length > 240 ? `${description.trim().slice(0, 240).trimEnd()}…` : description.trim();
+  const extractedChips: string[] = identity
+    ? [...identity.interests.slice(0, 4), ...identity.skills.slice(0, 4), ...identity.looking_for.slice(0, 3)]
+    : [];
+
   return (
     <form
       className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-6 sm:px-8 min-[720px]:py-12"
@@ -450,6 +456,36 @@ function OnboardingBody({
 
       {step === "review" && identity ? (
         <div className="flex flex-col gap-6">
+          <div className="grid gap-6 rounded-[20px] border border-border bg-surface p-4 min-[720px]:grid-cols-2 min-[720px]:p-5">
+            <div className="flex flex-col gap-3">
+              <p className={badge}>You wrote</p>
+              <p className="text-[0.9375rem] leading-relaxed text-foreground">
+                {rawPreview.length > 0 ? `\u201C${rawPreview}\u201D` : "\u201CNo description provided.\u201D"}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 border-t border-border pt-4 min-[720px]:border-t-0 min-[720px]:border-l min-[720px]:pt-0 min-[720px]:pl-6">
+              <p className={badge}>Muse Spark extracted</p>
+              {extractedChips.length > 0 ? (
+                <ul aria-label="Extracted interests, skills and goals" className="flex flex-wrap gap-2">
+                  {extractedChips.map((chip, index) => (
+                    <li
+                      key={`${chip}-${index}`}
+                      className="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 text-[0.8125rem] leading-relaxed text-foreground"
+                    >
+                      {chip}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  No tags found — add them below.
+                </p>
+              )}
+            </div>
+          </div>
+          <p className={badge}>
+            {manual ? "Manual · No Meta response. Nothing was invented." : "Muse Spark · editable before saving"}
+          </p>
           <IdentityPreview identity={identity} editing={editing} onChange={setIdentity} />
           <div className="flex flex-col gap-2 min-[720px]:flex-row">
             <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending}>
