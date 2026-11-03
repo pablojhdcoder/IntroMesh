@@ -23,6 +23,6 @@ Global text includes role, summary, interests, skills, projects, offer, focus, a
 
 In this repository the queue persists in the store. Confirm and join enqueue, then the server processes the jobs inline with `after()` after the response — no separate always-on service is required. The scripts `npm run worker:embeddings` and `npm run backfill:embeddings` are backfill/retry tools run from a laptop, not deploy targets. The pgvector HNSW index and RPC are in `supabase/migrations/0006_azure_embeddings_1536.sql`, which alters columns to `vector(1536)` and resets stale-provider rows to pending. Until it is applied, viewer search is brute force over event attendees, not over every pair.
 
-Seed demo profiles (no identities or participations) are excluded from embedding scope. They still appear in the discovery directory via presence.
+Seed demo profiles (no identities, hence no embeddings) are excluded from embedding scope. They still appear in the discovery directory as joined demo members.
 
 Vectors are never read by discovery or affinity. Discovery serves persisted rows; affinity explains one persisted row using its stored evidence labels.

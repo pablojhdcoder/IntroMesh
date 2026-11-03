@@ -20,7 +20,7 @@ flowchart TD
   join --> field[Existing Signal Field]
 ```
 
-1. The user picks a real event, joins with a code, or creates one. No invented events. Counts come from `presence`.
+1. The user picks a real event, joins with a code, or creates one. No invented events. Counts come from joined participations.
 2. Without a confirmed identity, only name and free-form description are asked.
 3. Meta normalizes. The person corrects and presses “Save identity”.
 4. An optional text stores that event’s context. It does not call Meta.

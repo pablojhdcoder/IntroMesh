@@ -2,7 +2,7 @@
 
 How Discover reads neighbors lives in [`FLOW.md`](FLOW.md) §3. This file is the hybrid score and its persistence on the write path.
 
-1. Visible attendees at the same event, with consent (joined, consented, discoverable participation plus live presence).
+1. Members at the same event: joined participations only. No presence, no liveness check.
 2. Global and event-context embeddings when ready. Inline `after()` processing after confirm/join is the writer; the worker scripts are backfill/retry tools only.
 3. Retrieve at most 24 by global embedding similarity (`1 - (embedding <=> query)` in pgvector; dot product if the vector is already normalized).
 4. If both sides have a context embedding, it enters the semantic blend: 35% global and 65% contextual.

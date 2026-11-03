@@ -2,7 +2,7 @@
 
 ## Consent
 
-Joining an event makes you discoverable to other live attendees. This is a social network: membership means visibility while your session is live. Leave at any time to withdraw presence immediately — leaving sets the participation to `left`, `consent = false`, `visibility = hidden` and removes live presence. Closing the tab only expires the 90s heartbeat; it is not the privacy switch, leaving is.
+Joining an event makes you visible to its other members. There are no online/offline states: membership is visibility. Leave at any time to disappear from that event immediately — leaving sets the participation to `status = "left"` and removes your recommendations there. Closing the tab changes nothing; leaving is the only switch.
 
 Accepting a connection is independent of being visible. Seeing a recommendation does not create a relationship.
 
@@ -16,12 +16,12 @@ Canonical profile text (the same global/context fields used for matching) is sen
 
 ## Public and private
 
-| Public at the event, with consent | Private |
+| Public at the event (members only) | Private |
 | --- | --- |
 | Visible name, goal, declared interests and skills | Personal contact, notes, rejections, unsent introduction drafts |
 | Connection path (link or QR) | Keys, internal identifiers, service role |
 
-Organizers see aggregated metrics: visible attendees, mutual connections, most-declared topics. They do not see profiles that did not consent or the content of introductions.
+Organizers see aggregated metrics: registered members, mutual connections, most-declared topics. They do not see non-members or the content of introductions.
 
 ## Server and secrets
 
@@ -41,13 +41,13 @@ Event aggregates only. No export of free-form profile text or messages. The `top
 
 Joining an event is not published. Which events a person joined never appears on a public card, in discovery at another event, or in organizer aggregates.
 
-Joining an event is discovery consent at that event: `event_participations.status = joined` implies `consent = true` and `visibility = discoverable`. A person appears in discovery at that event while their session presence is live. Consent at one event says nothing at any other event.
+Joining an event is visibility at that event: `event_participations.status = joined` means the person appears in that event's discovery. Consent at one event says nothing at any other event.
 
 ## Switch vs leave
 
-Switching events withdraws only live presence (through the presence heartbeat expiry). Membership stays `joined`, so the person can return without re-joining — but they are not visible anywhere without a live session.
+Switching events is only navigation: every membership stays `joined`, so the person can return without re-joining.
 
-Leaving an event is stronger: it sets the participation to `status = left`, `consent = false`, `visibility = hidden`, and removes session presence for that event. The person is hidden at that event from that moment. Identity, other events, and accepted connections are untouched.
+Leaving an event is stronger: it sets the participation to `status = "left"` and removes that event's recommendations involving the person. The person disappears from that event from that moment. Identity, other events, and accepted connections are untouched.
 
 ## Demo
 

@@ -9,22 +9,22 @@ This document sets the hackathon boundaries. The journey is already in the app. 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
 | UI | `src/app`, `src/components` (`onboarding/`, `signal/`, `share/`) | Screens and signal field. Does not call Meta or read secrets |
-| Use cases | `src/server` | Registration, presence, discovery, explanation, connection, and analytics |
-| Domain | `src/domain` | Profile, presence, scoring, and vectors. No network or disk |
+| Use cases | `src/server` | Registration, discovery, explanation, connection, and analytics |
+| Domain | `src/domain` | Profile, scoring, and vectors. No network or disk |
 | Persistence | `src/lib/store`, `src/lib/supabase` | Supabase Postgres via service role on the server. Contract type is `Store` |
 | Session | `src/lib/session` | Signed profile cookie. Does not talk to Meta |
 | Meta | `src/lib/meta` | Client, schemas, errors, and a local request limit |
 | Embeddings I/O | `src/lib/embedding` | Azure OpenAI `text-embedding-3-small` (1536 dims) over HTTPS, processed inline with `after()`. Pure math stays in `src/domain/embedding` |
 
-Read the code in product order: `session` → `presence` → `discover` → `explain` → `connect` → `learn`.
+Read the code in product order: `session` → `discover` → `explain` → `connect` → `learn`.
 
 Client components import prepared types and data. Route Handlers and Server Actions are the only edge that talks to privileged Supabase or Meta.
 
 ## Planned data
 
 - Contextual profile: what the person chooses to show at an event.
-- Voluntary presence: digital session at an event, with explicit consent.
-- Discovery: attendees visible in that session.
+- Membership: joining an event makes the member visible to the other members. No online states.
+- Discovery: registered attendees of that event.
 - Matching: declared goals, interests, and skills.
 - Explanation: structured Meta text only for recommendations that already passed the filter.
 - Introduction: personalized draft, sent only if both sides accept.
@@ -32,9 +32,9 @@ Client components import prepared types and data. Route Handlers and Server Acti
 - Link, QR, and NFC as transport for the same public identifier.
 - Organizer analytics: aggregates, no private profiles.
 
-## Presence and proximity
+## Visibility, not proximity
 
-Supabase Realtime Presence fits digital presence: who is visible in the event session. It does not measure physical distance.
+Who is visible is membership: every `joined` participation at an event sees every other. There is no online/offline tracking and no expiring session.
 
 There is no automatic phone-to-phone detection. Web NFC exists in Chrome for Android and not in Safari or most desktop browsers. NFC is progressive enhancement. QR and link cover the same flow when NFC is unavailable.
 
@@ -47,7 +47,7 @@ There are two jobs with one owner. Inline `after()` processing after confirm/joi
 Profiles are not compared all-to-all.
 
 1. Index filter attributes: event, goals, interests, and skills.
-2. Require live presence plus joined, consented, discoverable participation at the event. The room is already the reduced set.
+2. Require a `joined` participation at the event. The room is already the reduced set.
 3. Retrieve at most 24 by global embedding similarity (pgvector HNSW in production, brute force in the memory store).
 4. If both sides have a context embedding, it enters the semantic blend: 35% global and 65% contextual.
 5. Score in code with the hybrid formula, only inside that event. A neighbor below the cutoff is not a recommendation.
@@ -68,7 +68,7 @@ The signal field draws the persisted neighborhood at deterministic hash position
 
 ## Matching formula
 
-Over the set already filtered by event and live presence:
+Over the set already filtered by event and membership:
 
 `score = goals×3 + interests×2 + skills×1 + complements×2`
 
@@ -78,7 +78,7 @@ No all-pairs matrix is built. Meta only explains a persisted recommendation, and
 
 ## Persistence in this hackathon
 
-The server requires Supabase (`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Apply `supabase/migrations/0001_init.sql` through `0006_azure_embeddings_1536.sql` (see `supabase/APPLY.md`). Session presence expires after 90 seconds without a heartbeat. Embedding jobs are processed inline with `after()`; the worker scripts are backfill/retry tools only.
+The server requires Supabase (`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Apply `supabase/migrations/0001_init.sql` through `0009_membership_visibility.sql` (see `supabase/APPLY.md`). There is no presence table and no heartbeat: visibility is the `joined` participation. Embedding jobs are processed inline with `after()`; the worker scripts are backfill/retry tools only.
 
 ## Supabase
 

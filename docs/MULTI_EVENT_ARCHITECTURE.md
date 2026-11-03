@@ -1,13 +1,12 @@
 # Multi-event architecture — IntroMesh
 
-Status: implemented in migration `0007`. Existing tables keep their names; `0007` only adds columns and indexes.
+Status: implemented in migrations `0007` and `0009`. Existing tables keep their names; `0007` only adds columns and indexes, `0009` backfills joined members to visible and drops the `presence` table.
 
 ```mermaid
 flowchart TB
   GI["GlobalIdentity<br/>global_identities<br/>original / generated / confirmed"]
   P["Profile<br/>profiles<br/>slug = username, profile_visibility"]
-  EP["Event participation<br/>event_participations<br/>per event: intent, consent,<br/>visibility, status, revision"]
-  PR["Presence<br/>presence, 90s expiry<br/>separate from membership"]
+  EP["Event participation<br/>event_participations<br/>per event: intent, status, revision<br/>joined = visible"]
   GE["Global embedding<br/>profile_embeddings (global)"]
   CE["Event context embedding<br/>event_context_embeddings (per event)"]
   REC["Recommendations<br/>event_match_recommendations<br/>isolated per event"]
@@ -15,7 +14,6 @@ flowchart TB
 
   GI -->|user_id = profiles.id| P
   P --> EP
-  EP -.->|consent starts it;<br/>switch/leave removes it| PR
   P --> GE
   EP --> CE
   GE --> REC
@@ -32,12 +30,16 @@ flowchart TB
 | Global identity | `global_identities` | `user_id` (PK, = `profiles.id`), `original_description`, `generated`, `confirmed`, `input_hash`, `revision`, `status` |
 | Public profile | `profiles` | `id`, `slug` (unique username), `display_name`, `role`, declared lists, `goal`, `demo` |
 | Event | `events` | `id`, `code`, `status`; ended events hidden |
-| Membership | `event_participations` | PK `(user_id, event_id)`; `intent_text`, `consent`, `visibility`, `status` (`joined`/`left`), `revision`, `input_hash` |
-| Presence | `presence` | PK `(profile_id, event_id)`, `source = session`, `expires_at` = now + 90s. Not membership |
+| Membership | `event_participations` | PK `(user_id, event_id)`; `intent_text`, `status` (`joined`/`left`), `revision`, `input_hash`. `joined` = visible at that event |
 | Global embedding | `profile_embeddings` | One row per `user_id`, from the confirmed identity |
 | Event embedding | `event_context_embeddings` | PK `(user_id, event_id)`, from that event's intent/context |
 | Recommendations | `event_match_recommendations` | PK `(event_id, viewer_id, candidate_id)`. Rows never leak across events |
 | Connection | `connections` | `from_id`, `to_id`, `status`; `event_id` is the origin event (see `CONNECTIONS_ARCHITECTURE.md`) |
+
+## Migration `0009` (membership visibility)
+
+- Backfills `consent = true`, `visibility = 'discoverable'` for `status = 'joined'` rows (legacy columns kept, code no longer reads them).
+- `drop table if exists presence`: no heartbeat, no TTL, no online state.
 
 ## Migration `0007` additions
 
@@ -60,6 +62,6 @@ Everything else already exists: participations (`0003`, `0004`), embeddings and 
 
 ## Isolation rules
 
-- A recommendation, explanation, or presence row at one event says nothing at another event.
-- Leaving or switching affects only that event's participation/presence. Connections are global and survive (see `CONNECTIONS_ARCHITECTURE.md`).
+- A recommendation or explanation row at one event says nothing at another event.
+- Leaving affects only that event's participation; switching is navigation only. Connections are global and survive (see `CONNECTIONS_ARCHITECTURE.md`).
 - Deterministic candidates first, per event. Meta only explains a persisted recommendation; it never ranks or scans the room.

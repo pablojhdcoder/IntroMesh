@@ -17,7 +17,7 @@ Route handlers          src/app/api/*/route.ts
         ▼
 Use cases               src/server  (createService in index.ts)
         │
-        ├── Domain rules      src/domain   (score, presence, Zod, grounding)
+        ├── Domain rules      src/domain   (score, Zod, grounding)
         ├── Persistence       src/lib/store → Supabase (service role)
         ├── Session cookie    src/lib/session
         └── Meta (optional)   src/lib/meta  muse-spark-1.3, Responses API
@@ -42,7 +42,6 @@ flowchart TB
     S["GET /api/session"]
     IDapi["POST /api/identity"]
     Japi["POST /api/participation"]
-    Pap["POST /api/presence"]
     Dapi["GET /api/discovery"]
     Xapi["POST /api/affinity"]
     Capi["POST /api/connections"]
@@ -53,7 +52,6 @@ flowchart TB
   A --> S
   C --> IDapi
   C --> Japi
-  E --> Pap
   D --> Dapi
   F --> Xapi
   H --> Capi
@@ -93,7 +91,7 @@ Already confirmed identity skips the description/review when changing events.
 
 **Beneath — events.** `GET/POST /api/events` → `onboardingActions.listEvents` / `resolveEvent` / `createEvent`.
 
-- Ended events are hidden. Attendee counts = live `presence` rows (session or labeled `demo`).
+- Ended events are hidden. Attendee counts = joined participations.
 - Create is gated by `INTROMESH_ALLOW_EVENT_CREATE=1`. No invented rooms.
 
 **Beneath — normalize.** `POST /api/identity` `{ action: "normalize" }` → `onboardingActions.normalizeIdentity`.
@@ -117,33 +115,28 @@ Already confirmed identity skips the description/review when changing events.
 - Writes `participations`: intent, `consent = true`, `visibility = discoverable` (joining is consent — social model). Meta is **not** called.
 - If there is intent text, enqueues an **event** embedding job. Embedding and recommendation recompute run inline with `after()` after the response; `npm run worker:embeddings` and `npm run backfill:embeddings` are laptop backfill/retry tools only.
 - Clears this event’s recommendations that involve the joiner.
-- Always creates session `presence` `active` with 90s expiry.
+- Recomputes the joiner's list and inserts them into other members' lists immediately (`refreshViewerRecommendations` + `insertCandidateAgainstViewers`), so a registered member appears without anyone being online.
 - May copy intent into `profile.seeking` for the field.
 
 | Store (global) | Store (this event) |
 | --- | --- |
-| `identities`, `profiles` | `participations`, session `presence` |
+| `identities`, `profiles` | `participations` |
 
 ---
 
 ## 3. Discover — field and list
 
-**Front.** IntroMesh header, event name, Demo mark if the room is a fixture. `Leave event` in the header returns to the event picker at any time (identity is kept); the empty room also offers `Join a different event`. First visit shows the cinematic intro once per event (This is you → reveal → legend) with Skip + Replay. Graph on the left, list on the right. Mobile (`< 720px`): compact field + list. Presence is heartbeat live, not GPS and not two phones finding each other.
-
-**Beneath — presence.** `POST /api/presence` every 20s while the app is open → `presenceActions.setPresence`.
-
-- Heartbeat only: session row, `expiresAt` = now + 90s. Join = visible, Leave = hidden.
-- Abandoned tab expires; closing the tab is not the privacy switch — Leave is.
+**Front.** IntroMesh header, event name, Demo mark if the room is a fixture. `Leave event` in the header returns to the event picker at any time (identity is kept); the empty room also offers `Join a different event`. First visit shows the cinematic intro once per event (This is you → reveal → legend) with Skip + Replay. Graph on the left, list on the right. Mobile (`< 720px`): compact field + list. Everyone shown is registered for the event; there is no online/offline state and no GPS or phone detection.
 
 **Beneath — room.** `GET /api/discovery` → `discoverActions.discover`. Read-only: it never embeds, scores, or rewrites recommendations.
 
-1. Drop expired presence rows. All sources expire equally (`isPresenceLive`).
-2. If the viewer is not live, `people: []`.
-3. Read this viewer’s persisted top-8 `recommendations` rows for the event (written by the embedding worker), sorted by `finalScore`. No `refreshViewerRecommendations`, no `selectCandidates`, no vector work on this path.
-4. Field layout: deterministic `pointForPair(viewerId, candidateId)` hash position. Stable across renders and processes. No embeddings and no feature hashing on the read path. Up to 8 neighbors.
-5. Each person: public card + persisted `recommendation` (score, confidence, stored evidence labels) + `demo`.
-6. `directory`: other live attendees at the event who are not in the top-8, as public cards with presence only and no scores (capped at 100).
-7. `viewerEmbeddingStatus`: `pending` until the global embedding job completes or persisted rows exist, then `ready`.
+Rule: a member sees every other member with `status = "joined"`. No presence, no heartbeat, no expiry. If the viewer is not joined, `people: []` and `directory: []`.
+
+1. Read this viewer’s persisted top-8 `recommendations` rows for the event (written by the embedding worker), sorted by `finalScore`. No `refreshViewerRecommendations`, no `selectCandidates`, no vector work on this path.
+2. Field layout: deterministic `pointForPair(viewerId, candidateId)` hash position. Stable across renders and processes. No embeddings and no feature hashing on the read path. Up to 8 neighbors.
+3. Each person: public card + persisted `recommendation` (score, confidence, stored evidence labels) + `demo`.
+4. `directory` ("Everyone going"): every other joined member not in the top-8, as public cards with no scores, sorted by name (capped at 100).
+5. `viewerEmbeddingStatus`: `pending` until the global embedding job completes or persisted rows exist, then `ready`.
 
 Meta does not choose who appears. Embeddings only build the list on the write path; the discovery read path never reads vectors.
 
@@ -151,11 +144,11 @@ Meta does not choose who appears. Embeddings only build the list on the write pa
 
 ## 4. Understand — why this person
 
-**Front.** Tap a node or list row. Evidence ≤ 3. Then summary, opener, badge `Meta AI` or `Demo`. Errors: not enough evidence, turn on presence, Meta returned no explanation.
+**Front.** Tap a node or list row. Evidence ≤ 3. Then summary, opener, badge `Meta AI` or `Demo`. Errors: not enough evidence, join-the-event prompt, Meta returned no explanation.
 
 **Beneath.** `POST /api/affinity` → `explainActions.affinity`.
 
-- Both must be live at the event with joined, consented, discoverable participations. Else `error: "presence"`. Fixtures get no bypass.
+- Both must hold joined participations in this event. Else `error: "presence"` (legacy value kept for API compatibility). Fixtures get no bypass.
 - Pair must already have a persisted `recommendations` row from the write path. Else `error: "match"`. The model does not search the room.
 - Cache key: event + both identity/context revisions and hashes + evidence fingerprint + ranking/prompt/model + locale `en` (`explanationCacheKey`). Hit → return, `cached: true`.
 - Miss: atomic claim (`processing`, 30s lease, three attempts). Concurrent requests wait.
@@ -188,7 +181,7 @@ Meta does not choose who appears. Embeddings only build the list on the write pa
 
 **Beneath — public card.** `profileBySlug`. Only authorized public fields. Demo labeled. Connection still needs accept.
 
-**Beneath — intelligence.** Page `/intelligence` → `learnActions.intelligence` → `aggregateActivity`. Visible = live presence. Topics with fewer than 5 cases hidden (`suppressedTopics`). No intro text, no people ranking. Organizers do not get private profiles.
+**Beneath — intelligence.** Page `/intelligence` → `learnActions.intelligence` → `aggregateActivity`. Members = joined participations. Topics with fewer than 5 cases hidden (`suppressedTopics`). No intro text, no people ranking. Organizers do not get private profiles.
 
 ---
 
@@ -200,8 +193,7 @@ Meta does not choose who appears. Embeddings only build the list on the write pa
 | Pick / join event | Events, participation | No |
 | Continue on description | Hash, Zod, identity draft | Yes, once per new hash (or regenerate) |
 | Save identity | Profile projection, embedding job | No |
-| Presence toggle | Presence rows, consent | No |
-| See the room | Presence filter, persisted top-8, deterministic layout | No |
+| See the room | Joined members + persisted top-8, deterministic layout | No |
 | Open a person | Cache + grounding | Yes, always when not cached; no key → 503 `meta` |
 | Request / accept | Connections + analytics | No |
 | Share / Intelligence | Analytics aggregates | No |
@@ -219,7 +211,6 @@ Without `MODEL_API_KEY`, Meta-shaped UI is a badge or one line. No simulated mod
 | Description / save | `POST /api/identity` | `onboarding` |
 | Join | `POST /api/participation` | `onboarding` |
 | Leave event | `POST /api/participation` (`action: "leave"`) | `onboarding` |
-| Heartbeat (auto) | `POST /api/presence` | `presence` |
 | Field | `GET /api/discovery` | `discover` |
 | Person detail | `POST /api/affinity` | `explain` |
 | Intro | `POST /api/connections` | `connect` |
