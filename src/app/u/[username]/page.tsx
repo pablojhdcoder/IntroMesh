@@ -1,0 +1,59 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ProfileSections, type ProfileLike } from "@/components/profile/profile-view";
+import { ScanConnect } from "@/components/share/scan-connect";
+import { ShareTools } from "@/components/share/share-tools";
+import { ThemeSwitch } from "@/components/theme-switch";
+import { service, viewerId } from "@/lib/http";
+
+export const dynamic = "force-dynamic";
+
+export default async function PublicProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
+  const id = await viewerId();
+  const raw = await service().publicProfile(username, id);
+  if (!raw) notFound();
+
+  const profile = raw as typeof raw & ProfileLike & { isOwner?: boolean };
+  const isOwner = profile.isOwner ?? (id !== null && profile.id === id);
+
+  return (
+    <main className="mx-auto flex w-full max-w-xl flex-col gap-10 px-4 py-6 sm:px-8 min-[720px]:py-12">
+      <header className="flex items-start justify-between gap-4">
+        <p>
+          <Link
+            href="/"
+            className="inline-flex min-h-11 items-center font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase transition-colors hover:text-foreground min-[720px]:min-h-9"
+          >
+            IntroMesh
+          </Link>
+        </p>
+        <ThemeSwitch />
+      </header>
+
+      {isOwner ? (
+        <p role="status" className="rounded-md bg-surface px-3 py-2 text-sm text-muted-foreground">
+          This is your public profile.{" "}
+          <Link href="/profile" className="font-medium text-foreground underline underline-offset-4">
+            Edit it in My Profile
+          </Link>
+          .
+        </p>
+      ) : null}
+
+      <ProfileSections profile={profile} />
+
+      <div className="w-full border-t border-border pt-8">
+        <ScanConnect slug={profile.slug} profileId={profile.id} />
+      </div>
+
+      <div className="w-full border-t border-border pt-8">
+        <ShareTools slug={profile.slug} name={profile.displayName} />
+      </div>
+
+      <p className="max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
+        Public link — anyone with this QR can view this card. Authorized identity only. Connection still needs acceptance.
+      </p>
+    </main>
+  );
+}

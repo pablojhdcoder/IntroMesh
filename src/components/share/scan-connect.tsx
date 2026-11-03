@@ -92,7 +92,7 @@ export function ScanConnect({ slug, profileId }: { slug: string; profileId: stri
     await fetch("/api/connections", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ profileId, intro: explanation.opener, introSource: explanation.source }),
+      body: JSON.stringify({ profileId, intro: explanation.opener, introSource: explanation.source, eventId: session?.event?.id }),
     });
     setRequested(true);
   }

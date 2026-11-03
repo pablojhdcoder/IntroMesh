@@ -1,9 +1,8 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
 import type { GroundedExplanation } from "@/domain/ground";
@@ -13,8 +12,10 @@ import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding/on
 import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal/signal-field";
 import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { ArrowUpRight, Check, ChevronRight, Copy, EyeOff, RefreshCw } from "lucide-react";
+import { SignalIntro } from "@/components/signal/signal-intro";
+import { ArrowUpRight, Check, ChevronRight, Copy, Info, LogOut, RefreshCw } from "lucide-react";
 import {
+  clearRoomCache,
   explainErrorCopy,
   fetchJsonDeduped,
   getCachedRoom,
@@ -46,13 +47,14 @@ type Session = {
   draft?: OnboardingDraft | null;
   metaConfigured: boolean;
   event: { id: string; name: string; demo: boolean } | null;
+  memberships?: Array<{
+    eventId: string;
+    status: string;
+    joinedAt?: string | null;
+    event: { id: string; name: string; demo: boolean };
+    presence: "active" | null;
+  }>;
 };
-
-const PRESENCE_OPTIONS: { id: Presence; label: string; enabled: boolean; seeking: boolean }[] = [
-  { id: "invisible", label: "Invisible", enabled: false, seeking: false },
-  { id: "active", label: "Active", enabled: true, seeking: false },
-  { id: "seeking", label: "Seeking", enabled: true, seeking: true },
-];
 
 const meta = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
 const actionSize = "h-11 w-full min-[720px]:h-9 min-[720px]:w-auto";
@@ -115,9 +117,10 @@ function PresenterChecklist({
   );
 }
 
-export function SignalApp() {
+export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; entry?: boolean }) {
+  const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
-  const [presence, setPresence] = useState<Presence>("invisible");
+  const [presence, setPresence] = useState<Presence>("hidden");
   const [people, setPeople] = useState<FieldPerson[]>([]);
   const [directory, setDirectory] = useState<DirectoryPerson[]>([]);
   const [viewerEmbeddingStatus, setViewerEmbeddingStatus] = useState<ViewerEmbeddingStatus>("ready");
@@ -151,13 +154,18 @@ export function SignalApp() {
   }, [copiedIntro]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [presencePending, setPresencePending] = useState(false);
+  const [leavePending, setLeavePending] = useState(false);
   const [roomLoading, setRoomLoading] = useState(true);
   const presenceSeq = useRef(0);
   const roomRequest = useRef(0);
   const explainSeq = useRef(0);
   const explanationCache = useRef(new Map<string, Explanation>());
-  const reduceMotion = useReducedMotion();
+  const [showIntro, setShowIntro] = useState(false);
+  const activeEventId = eventIdProp ?? session?.event?.id;
+  const activeMembership = activeEventId
+    ? session?.memberships?.find((item) => item.eventId === activeEventId && item.status === "joined")
+    : undefined;
+  const activeEvent = activeMembership?.event ?? session?.event ?? null;
 
   const loadRoom = useCallback(async (eventId: string, opts?: { background?: boolean }) => {
     // Reuse the cached roster instantly; a background refresh must never
@@ -199,7 +207,7 @@ export function SignalApp() {
     const snapshot = normalizeDiscovery(discovery ?? {});
     const fetchedPeople = discoveryResult.ok ? snapshot.people : (cached?.people ?? []);
     const fetchedDirectory = discoveryResult.ok ? snapshot.directory : (cached?.directory ?? []);
-    const fetchedPresence = discoveryResult.ok ? snapshot.presence : (cached?.presence ?? "invisible");
+    const fetchedPresence = discoveryResult.ok ? snapshot.presence : (cached?.presence ?? "hidden");
     const fetchedEmbeddingStatus = discoveryResult.ok
       ? snapshot.viewerEmbeddingStatus
       : (cached?.viewerEmbeddingStatus ?? "ready");
@@ -228,9 +236,18 @@ export function SignalApp() {
     const sessionResponse = await fetch("/api/session");
     const nextSession = (await sessionResponse.json()) as Session;
     setSession(nextSession);
-    if (!nextSession.profile || nextSession.needsSetup || !nextSession.event) return;
+    if (entry && nextSession.profile && nextSession.identityConfirmed) {
+      router.replace("/events");
+      return;
+    }
+    if (!nextSession.profile) return;
+    if (eventIdProp) {
+      await loadRoom(eventIdProp);
+      return;
+    }
+    if (nextSession.needsSetup || !nextSession.event) return;
     await loadRoom(nextSession.event.id);
-  }, [loadRoom]);
+  }, [loadRoom, entry, eventIdProp, router]);
 
   useEffect(() => {
     // Session lives on the server; the first paint must read it.
@@ -239,7 +256,7 @@ export function SignalApp() {
   }, [load]);
 
   useEffect(() => {
-    if (!session?.event || presence === "invisible") return;
+    if (!activeEventId || presence === "hidden") return;
     // Fire-and-forget keepalive: never pile up overlapping beats. A beat that
     // takes longer than the interval (slow backend) must not queue another
     // full snapshot persist behind it — that backlog is what stalled discovery.
@@ -250,65 +267,81 @@ export function SignalApp() {
       void fetch("/api/presence", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ eventId: session.event?.id, enabled: true, seeking: presence === "seeking" }),
+        body: JSON.stringify({ eventId: activeEventId }),
       }).finally(() => {
         inFlight = false;
       });
     }, 20_000);
     return () => window.clearInterval(timer);
-  }, [presence, session?.event]);
+  }, [presence, activeEventId]);
 
-  async function changePresence(option: (typeof PRESENCE_OPTIONS)[number]) {
-    if (!session?.event || option.id === presence) return;
-    const previous = presence;
-    const seq = ++presenceSeq.current;
-    setPresence(option.id);
-    setPresencePending(true);
+  const profileId = session?.profile?.id ?? null;
+  useEffect(() => {
+    if (!activeEventId || !profileId) return;
     try {
-      const response = await fetch("/api/presence", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ eventId: session.event.id, enabled: option.enabled, seeking: option.seeking }),
-      });
-      if (!response.ok) throw new Error("presence");
-      if (option.id === "invisible") {
-        // Keep the cached roster in state; the field renders origin-only and
-        // reactivation reuses it instead of refetching the whole session.
-        return;
-      }
-      const cached = getCachedRoom<Connection>(session.event.id);
-      if (cached && cached.people.length > 0) {
-        // Cached roster renders instantly; refresh it in the background
-        // without clearing the current people.
-        setPresence(cached.presence === "invisible" ? option.id : cached.presence);
-        setPeople(cached.people);
-        setDirectory(cached.directory ?? []);
-        setViewerEmbeddingStatus(cached.viewerEmbeddingStatus ?? "ready");
-        setConnections(cached.connections);
-        setRoomLoading(false);
-        void loadRoom(session.event.id, { background: true });
-        return;
-      }
-      if (people.length > 0) {
-        // Cached roster renders instantly; refresh it in the background.
-        void loadRoom(session.event.id, { background: true });
-        return;
-      }
-      await loadRoom(session.event.id);
+      const key = `intro-seen:${activeEventId}:${profileId}`;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- first-visit intro; reads localStorage once per event+profile
+      if (!window.localStorage.getItem(key)) setShowIntro(true);
     } catch {
-      if (presenceSeq.current === seq) {
-        setPresence(previous);
-        setLoadError("Could not update presence. Try again.");
-      }
-    } finally {
-      if (presenceSeq.current === seq) setPresencePending(false);
+      setShowIntro(false);
     }
+  }, [activeEventId, profileId]);
+
+  function dismissIntro() {
+    if (activeEventId && profileId) {
+      try {
+        window.localStorage.setItem(`intro-seen:${activeEventId}:${profileId}`, "1");
+      } catch {
+        // Storage unavailable: still dismiss for this visit.
+      }
+    }
+    setShowIntro(false);
   }
 
   async function retryRoom() {
-    const eventId = session?.event?.id;
-    if (!eventId) return;
-    await loadRoom(eventId);
+    if (!activeEventId) return;
+    await loadRoom(activeEventId);
+  }
+
+  async function leaveEvent() {
+    const eventId = activeEventId;
+    if (!eventId || leavePending) return;
+    // Stop the keepalive first: a beat in flight must not resurrect presence
+    // after the server marks the participation left.
+    presenceSeq.current += 1;
+    roomRequest.current += 1;
+    explainSeq.current += 1;
+    setPresence("hidden");
+    setLeavePending(true);
+    setLoadError(null);
+    try {
+      const response = await fetch("/api/participation", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "leave", eventId }),
+      });
+      if (!response.ok) throw new Error("leave");
+      clearRoomCache();
+      explanationCache.current.clear();
+      setPeople([]);
+      setDirectory([]);
+      setConnections([]);
+      setSelectedId(null);
+      setDirectoryId(null);
+      setExplanation(null);
+      setExplainError(null);
+      setExplainErrorKind(null);
+      setViewerEmbeddingStatus("ready");
+      if (eventIdProp) {
+        router.push("/events");
+        return;
+      }
+      await load();
+    } catch {
+      setLoadError("Could not leave the event. Try again.");
+    } finally {
+      setLeavePending(false);
+    }
   }
 
   async function openPerson(id: string | null, regenerate = false) {
@@ -323,7 +356,7 @@ export function SignalApp() {
       return;
     }
     setSelectedId(id);
-    const cacheKey = `${session?.event?.id ?? ""}:${id}`;
+    const cacheKey = `${activeEventId ?? ""}:${id}`;
     if (!regenerate) {
       const cached = explanationCache.current.get(cacheKey);
       if (cached) {
@@ -343,7 +376,7 @@ export function SignalApp() {
       const response = await fetch("/api/affinity", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ profileId: id, regenerate, eventId: session?.event?.id }),
+        body: JSON.stringify({ profileId: id, regenerate, eventId: activeEventId }),
       });
       const body = (await response.json()) as { error?: unknown; explanation?: Explanation };
       if (explainSeq.current !== seq) return;
@@ -391,7 +424,7 @@ export function SignalApp() {
       const response = await fetch("/api/connections", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ profileId: selectedId, intro: trimmed, introSource: edited ? "user" : "model" }),
+        body: JSON.stringify({ profileId: selectedId, intro: trimmed, introSource: edited ? "user" : "model", eventId: activeEventId }),
       });
       if (!response.ok) throw new Error("request");
       setRequestError(null);
@@ -424,7 +457,7 @@ export function SignalApp() {
       </div>
     );
   }
-  if (session.needsSetup || !session.profile) {
+  if (!session.profile || (session.needsSetup && !eventIdProp)) {
     return (
       <OnboardingFlow
         metaConfigured={session.metaConfigured}
@@ -436,7 +469,7 @@ export function SignalApp() {
     );
   }
 
-  const visible = presence !== "invisible";
+  const visible = presence !== "hidden";
   const selfSelected = selectedId === FIELD_SELF_ID;
   const selected = visible ? (people.find((person) => person.id === selectedId) ?? null) : null;
   const detail = visible && selected && selected.recommendation ? { person: selected, recommendation: selected.recommendation } : null;
@@ -448,7 +481,6 @@ export function SignalApp() {
   const roomState = resolveRoomState({ visible, loading: roomLoading, error: loadError, count: others.length });
   const emptyRoom = visible && !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length === 0;
   const noMatchesYet = visible && !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length > 0;
-  const activeOption = PRESENCE_OPTIONS.find((option) => option.id === "active") ?? PRESENCE_OPTIONS[0];
   const traceChips = explanation
     ? [
         ...explanation.citedGoals.slice(0, 2).map((value) => ({ label: `Cited · goal: ${value}`, key: `goal-${value}` })),
@@ -488,66 +520,79 @@ export function SignalApp() {
             IntroMesh
           </h1>
           <p className="flex max-w-[36ch] flex-wrap items-center gap-2">
-            <span className={meta}>{session.event?.name}</span>
-            {session.event?.demo ? (
+            <span className={meta}>{activeEvent?.name}</span>
+            {activeEvent?.demo ? (
               <span className="rounded-full border border-border px-2 py-0.5 font-mono text-[0.65rem] tracking-[0.08em] text-muted-foreground uppercase">
                 Demo
               </span>
             ) : null}
           </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/events"
+              className={cn("inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground min-[720px]:min-h-9", focusRing)}
+            >
+              Back to events
+            </Link>
+            {session.memberships && session.memberships.filter((item) => item.status === "joined").length > 0 ? (
+              <>
+                <label htmlFor="event-switcher" className="sr-only">
+                  Switch event
+                </label>
+                <select
+                  id="event-switcher"
+                  aria-label="Switch event"
+                  value={activeEventId ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (!value || value === activeEventId) return;
+                    router.push(`/events/${value}`);
+                  }}
+                  className={cn(
+                    "min-h-11 rounded-[8px] border border-border bg-surface px-3 py-2 text-base text-foreground min-[720px]:min-h-9 min-[720px]:text-sm",
+                    focusRing,
+                  )}
+                >
+                  {session.memberships
+                    .filter((item) => item.status === "joined")
+                    .map((item) => (
+                      <option key={item.eventId} value={item.eventId}>
+                        {item.event.name}
+                      </option>
+                    ))}
+                </select>
+              </>
+            ) : null}
+          </div>
         </div>
         <div className="flex flex-col gap-2 min-[720px]:items-end">
           <ThemeSwitch className="absolute top-0 right-0 min-[720px]:static" />
-          <div className="flex items-center justify-between gap-4 min-[720px]:justify-end">
-            <div
-              role="group"
-              aria-label="Presence"
-              aria-busy={presencePending}
-              className="flex items-center rounded-full border border-border bg-surface p-1 shadow-[var(--shadow-raise)]"
+          <div className="flex items-center justify-between gap-2 min-[720px]:justify-end">
+            <button
+              type="button"
+              onClick={() => setShowIntro(true)}
+              aria-label="Replay intro"
+              className={cn(
+                "inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground min-[720px]:h-9",
+                focusRing,
+              )}
             >
-              {PRESENCE_OPTIONS.map((option) => {
-                const active = presence === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => void changePresence(option)}
-                    className={cn(
-                      "group relative inline-flex h-11 items-center rounded-full px-3.5 text-sm select-none min-[720px]:h-9",
-                      "transition-[color,transform] duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
-                      focusRing,
-                      active ? "text-background" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {active ? (
-                      <motion.span
-                        aria-hidden="true"
-                        layoutId="presence-pill"
-                        transition={reduceMotion ? { duration: 0 } : { type: "spring", duration: 0.4, bounce: 0.12 }}
-                        className="absolute inset-0 rounded-full bg-foreground shadow-[0_1px_2px_rgb(22_24_15/0.2)]"
-                      />
-                    ) : (
-                      <span
-                        aria-hidden="true"
-                        className="absolute inset-0 rounded-full transition-colors duration-200 ease-[var(--ease-out)] group-hover:bg-surface-raised"
-                      />
-                    )}
-                    <span className="relative z-10 inline-flex items-center gap-1.5">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "size-1.5 shrink-0 rounded-full transition-[background-color,opacity,transform] duration-200 ease-[var(--ease-out)]",
-                          active && option.id !== "invisible" ? "scale-100 bg-signal" : active ? "scale-100 bg-current opacity-50" : "scale-75 bg-current opacity-0",
-                          presencePending && active && "animate-pulse",
-                        )}
-                      />
-                      {option.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              <Info aria-hidden="true" className="size-4" />
+              Replay intro
+            </button>
+            <button
+              type="button"
+              onClick={() => void leaveEvent()}
+              disabled={leavePending}
+              aria-label={leavePending ? "Leaving event" : "Leave event"}
+              className={cn(
+                "inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground disabled:opacity-50 min-[720px]:h-9",
+                focusRing,
+              )}
+            >
+              <LogOut aria-hidden="true" className="size-4" />
+              {leavePending ? "Leaving…" : "Leave event"}
+            </button>
             <Link
               href="/intelligence"
               className={cn(
@@ -559,9 +604,6 @@ export function SignalApp() {
               <ArrowUpRight aria-hidden="true" className="size-4" />
             </Link>
           </div>
-          <p className="text-xs text-muted-foreground min-[720px]:max-w-[40ch] min-[720px]:truncate min-[720px]:text-right">
-            Active: visible. Seeking: visible + open to intros. Invisible: hidden.
-          </p>
         </div>
       </header>
 
@@ -579,7 +621,7 @@ export function SignalApp() {
       {loadError ? (
         <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <p>{loadError}</p>
-          {session.event ? (
+          {activeEvent ? (
             <button type="button" onClick={() => void retryRoom()} className={cn("rounded-md px-2 py-1 font-medium underline underline-offset-4", focusRing)}>
               Try again
             </button>
@@ -588,6 +630,17 @@ export function SignalApp() {
       ) : null}
 
       <div className="grid min-h-0 flex-1 items-stretch gap-6 min-[720px]:grid-cols-[minmax(0,1.3fr)_minmax(16rem,0.7fr)] min-[720px]:gap-8">
+        {showIntro && session.profile ? (
+          <div className="flex flex-col gap-6 min-[720px]:col-span-2">
+            <SignalIntro
+              displayName={session.profile.displayName}
+              role={session.profile.role}
+              onDone={dismissIntro}
+              onSkip={dismissIntro}
+            />
+          </div>
+        ) : (
+          <>
         <SignalField
           people={visible ? people : []}
           selectedId={selectedId}
@@ -598,15 +651,12 @@ export function SignalApp() {
 
         <section className="flex min-h-0 flex-col gap-6 min-[720px]:overflow-y-auto" aria-label="Signals and people">
           <Crossfade
-            id={!visible ? "invisible" : selfSelected ? "self" : detail ? `person:${detail.person.id}` : directoryPerson ? `card:${directoryPerson.id}` : "list"}
+            id={!visible ? "hidden" : selfSelected ? "self" : detail ? `person:${detail.person.id}` : directoryPerson ? `card:${directoryPerson.id}` : "list"}
             className="flex flex-col gap-6"
           >
           {!visible ? (
             <div className="flex flex-col items-start gap-3 pt-2">
-              <span className="flex size-10 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground">
-                <EyeOff aria-hidden="true" className="size-4" />
-              </span>
-              <p className="max-w-[40ch] text-sm text-muted-foreground">Invisible. Turn on presence to see the room.</p>
+              <p className="max-w-[40ch] text-sm text-muted-foreground">Join the event to see people.</p>
             </div>
           ) : null}
 
@@ -682,16 +732,8 @@ export function SignalApp() {
                 {explainError ? (
                   <div role="alert" className="flex flex-col gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                     <p>{explainError}</p>
-                    {explainErrorKind === "presence" && activeOption ? (
-                      <p>
-                        <button
-                          type="button"
-                          onClick={() => void changePresence(activeOption)}
-                          className={cn("rounded-md px-2 py-1 font-medium underline underline-offset-4", focusRing)}
-                        >
-                          Turn Active
-                        </button>
-                      </p>
+                    {explainErrorKind === "presence" ? (
+                      <p className="text-destructive/80">Join the event to see people.</p>
                     ) : null}
                     {explainErrorKind === "match" ? <p className="text-destructive/80">Pick a highlighted person.</p> : null}
                     {explainErrorKind === "meta" ? (
@@ -857,7 +899,7 @@ export function SignalApp() {
               ) : null}
               <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
                 <Link
-                  href={`/p/${directoryPerson.slug}`}
+                  href={`/u/${directoryPerson.slug}`}
                   className={cn(
                     "inline-flex h-11 items-center gap-1.5 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-transform duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 min-[720px]:h-9",
                     focusRing,
@@ -889,12 +931,22 @@ export function SignalApp() {
                 </div>
               ) : null}
               {!embeddingPending && roomState === "empty" && emptyRoom ? (
-                <p className="max-w-[40ch] text-sm text-muted-foreground">Nobody visible yet.</p>
+                <div className="flex flex-col items-start gap-3">
+                  <p className="max-w-[40ch] text-sm text-muted-foreground">Nobody visible yet.</p>
+                  <Button type="button" className={actionSize} disabled={leavePending} onClick={() => void leaveEvent()}>
+                    {leavePending ? "Leaving…" : "Join a different event"}
+                  </Button>
+                </div>
               ) : null}
               {!embeddingPending && roomState === "empty" && noMatchesYet ? (
-                <p className="max-w-[40ch] text-sm text-muted-foreground">
-                  No matches yet. Your profile is still being read — browse who else is here below.
-                </p>
+                <div className="flex flex-col items-start gap-3">
+                  <p className="max-w-[40ch] text-sm text-muted-foreground">
+                    No matches yet. Your profile is still being read — browse who else is here below.
+                  </p>
+                  <Button type="button" className={actionSize} disabled={leavePending} onClick={() => void leaveEvent()}>
+                    {leavePending ? "Leaving…" : "Join a different event"}
+                  </Button>
+                </div>
               ) : null}
               {!embeddingPending && roomState === "empty" && detail && others.length === 0 ? (
                 <p className="max-w-[40ch] text-sm text-muted-foreground">No more signals.</p>
@@ -954,11 +1006,8 @@ export function SignalApp() {
                       <span className="flex min-w-0 items-start gap-2">
                         <span
                           aria-hidden="true"
-                          title={person.presence === "seeking" ? "Seeking intros" : "Active"}
-                          className={cn(
-                            "mt-1.5 size-1.5 shrink-0 rounded-full",
-                            person.presence === "seeking" ? "bg-[var(--signal-strong)] dark:bg-signal" : "bg-muted-foreground/50",
-                          )}
+                          title="Active"
+                          className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/50"
                         />
                         <span className="flex min-w-0 flex-col gap-0.5">
                           <span className="font-medium underline-offset-4 group-hover:underline">
@@ -980,6 +1029,8 @@ export function SignalApp() {
           ) : null}
           </Crossfade>
         </section>
+          </>
+        )}
       </div>
     </div>
   );

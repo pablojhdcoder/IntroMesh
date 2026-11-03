@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 function profileLink(value: string): string | null {
   try {
     const url = new URL(value);
-    if (url.origin !== window.location.origin || !url.pathname.startsWith("/p/")) return null;
+    if (url.origin !== window.location.origin || !url.pathname.startsWith("/u/")) return null;
     return `${url.origin}${url.pathname}`;
   } catch {
     return null;
@@ -30,7 +30,7 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client capability probe
     setSupported(nfcSupported());
   }, []);
-  const url = typeof window === "undefined" ? `/p/${slug}` : `${window.location.origin}/p/${slug}`;
+  const url = typeof window === "undefined" ? `/u/${slug}` : `${window.location.origin}/u/${slug}`;
 
   async function track(method: "link" | "qr" | "nfc" | "wallet" | "vcard") {
     await fetch("/api/share", {
