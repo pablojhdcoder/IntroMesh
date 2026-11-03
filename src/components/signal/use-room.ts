@@ -6,7 +6,7 @@
 
 import type { FieldPerson } from "@/components/signal/signal-field";
 
-export type Presence = "invisible" | "active" | "seeking";
+export type Presence = "visible" | "hidden";
 
 export type RoomState = "idle" | "loading" | "error" | "empty" | "success";
 
@@ -22,7 +22,7 @@ export type DirectoryPerson = {
   displayName: string;
   role: string;
   demo: boolean;
-  presence: "active" | "seeking";
+  presence: "active";
   interests: string[];
   skills: string[];
 };
@@ -40,11 +40,11 @@ function asStringList(value: unknown): string[] {
 }
 
 function asPresence(value: unknown): Presence {
-  return value === "active" || value === "seeking" || value === "invisible" ? value : "invisible";
+  return value === "visible" ? "visible" : "hidden";
 }
 
-function asLivePresence(value: unknown): "active" | "seeking" {
-  return value === "seeking" ? "seeking" : "active";
+function asLivePresence(): "active" {
+  return "active";
 }
 
 type RawPerson = {
@@ -100,7 +100,7 @@ function toFieldPerson(raw: RawPerson): FieldPerson {
     demo: raw.demo === true,
     x: typeof raw.x === "number" && Number.isFinite(raw.x) ? raw.x : 50,
     y: typeof raw.y === "number" && Number.isFinite(raw.y) ? raw.y : 50,
-    presence: asLivePresence(raw.presence),
+    presence: asLivePresence(),
     interests: asStringList(raw.interests),
     skills: asStringList(raw.skills),
     recommendation: toRecommendation(raw.recommendation),
@@ -113,7 +113,7 @@ function toDirectoryPerson(raw: RawPerson): DirectoryPerson {
     displayName: typeof raw.displayName === "string" ? raw.displayName : "Attendee",
     role: typeof raw.role === "string" ? raw.role : "",
     demo: raw.demo === true,
-    presence: asLivePresence(raw.presence),
+    presence: asLivePresence(),
     interests: asStringList(raw.interests),
     skills: asStringList(raw.skills),
   };
@@ -155,7 +155,7 @@ export function normalizeDiscovery(body: unknown): DiscoverySnapshot {
 /** Honest affinity error copy: never invents an explanation. */
 export function explainErrorCopy(kind: "match" | "presence" | "meta"): string {
   if (kind === "match") return "Not enough evidence.";
-  if (kind === "presence") return "Turn on presence.";
+  if (kind === "presence") return "Join the event to see people.";
   return "Explanation unavailable — Meta API not configured. Try again.";
 }
 
@@ -176,7 +176,7 @@ export function resolveRoomState(args: {
   error: string | null;
   count: number;
 }): RoomState {
-  // Invisible mode is intentional hiding, never an empty room.
+  // Hidden mode is intentional hiding, never an empty room.
   if (!args.visible) return "idle";
   // A failed load is an error, never an empty room.
   if (args.error) return "error";

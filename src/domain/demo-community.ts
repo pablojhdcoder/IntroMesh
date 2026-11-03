@@ -97,10 +97,10 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
 
   const founders = FOUNDERS.map((entry, index) => founderProfile(entry, index, now));
   const visible = [...profiles.slice(0, 28), ...founders];
-  const presence: PresenceRecord[] = visible.map((profile, index) => ({
+  const presence: PresenceRecord[] = visible.map((profile) => ({
     profileId: profile.id,
     eventId: DEMO_EVENT_ID,
-    status: index % 3 === 0 ? "seeking" : "active",
+    status: "active",
     source: "demo",
     updatedAt: new Date(now).toISOString(),
     expiresAt: nextExpiry(now),

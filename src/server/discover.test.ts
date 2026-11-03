@@ -97,10 +97,27 @@ function database(input: Partial<Database> = {}): Database {
   });
 }
 
+function joinedParticipation(userId: string) {
+  return {
+    userId,
+    eventId: "e1",
+    intentText: "",
+    lookingFor: [],
+    collaborationInterests: [],
+    revision: 1,
+    inputHash: "hash",
+    consent: true,
+    visibility: "discoverable" as const,
+    status: "joined" as const,
+    updatedAt: new Date(NOW).toISOString(),
+  };
+}
+
 describe("discover (read-only)", () => {
   it("never recomputes: recommendations stay empty and directory lists live others", async () => {
     const db = database({
       profiles: [person("viewer"), person("ana"), person("ben")],
+      participations: ["viewer", "ana", "ben"].map(joinedParticipation),
       presence: livePresence(["viewer", "ana", "ben"]),
     });
     const result = await discoverActions(fakeStore(db)).discover("viewer", "e1");
@@ -116,6 +133,7 @@ describe("discover (read-only)", () => {
   it("prunes expired presence for every source, demo included", async () => {
     const db = database({
       profiles: [person("viewer"), person("ghost")],
+      participations: ["viewer", "ghost"].map(joinedParticipation),
       presence: [
         ...livePresence(["viewer"]),
         ...livePresence(["ghost"], "demo", PAST),
@@ -129,13 +147,14 @@ describe("discover (read-only)", () => {
   it("returns empty rooms when the viewer is not live", async () => {
     const db = database({
       profiles: [person("viewer"), person("ana")],
+      participations: ["viewer", "ana"].map(joinedParticipation),
       presence: livePresence(["ana"]),
       recommendations: [row("ana", 0.9)],
     });
     const result = await discoverActions(fakeStore(db)).discover("viewer", "e1");
     expect("error" in result).toBe(false);
     if ("error" in result) return;
-    expect(result.presence).toBe("invisible");
+    expect(result.presence).toBe("hidden");
     expect(result.people).toEqual([]);
     expect(result.directory).toEqual([]);
   });
@@ -143,6 +162,7 @@ describe("discover (read-only)", () => {
   it("serves persisted rows with stored labels, stable positions and no directory duplicates", async () => {
     const db = database({
       profiles: [person("viewer"), person("ana"), person("ben")],
+      participations: ["viewer", "ana", "ben"].map(joinedParticipation),
       presence: livePresence(["viewer", "ana", "ben"]),
       recommendations: [row("ana", 0.9)],
       embeddings: [
@@ -184,6 +204,7 @@ describe("discover (read-only)", () => {
   it("reports pending while the global embedding job is claimed", async () => {
     const db = database({
       profiles: [person("viewer")],
+      participations: ["viewer"].map(joinedParticipation),
       presence: livePresence(["viewer"]),
       embeddings: [
         {
@@ -212,8 +233,30 @@ describe("discover (read-only)", () => {
   });
 
   it("reports an unknown viewer", async () => {
-    const db = database({ profiles: [person("viewer")], presence: livePresence(["viewer"]) });
+    const db = database({
+      profiles: [person("viewer")],
+      participations: ["viewer"].map(joinedParticipation),
+      presence: livePresence(["viewer"]),
+    });
     const result = await discoverActions(fakeStore(db)).discover("ghost", "e1");
     expect(result).toEqual({ error: "profile" });
+  });
+
+  it("hides opt-out and left participations even with live presence", async () => {
+    const db = database({
+      profiles: [person("viewer"), person("ana"), person("ben")],
+      participations: [
+        joinedParticipation("viewer"),
+        { ...joinedParticipation("ana"), consent: false, visibility: "hidden" as const },
+        { ...joinedParticipation("ben"), status: "left" as const, consent: false, visibility: "hidden" as const },
+      ],
+      presence: livePresence(["viewer", "ana", "ben"]),
+    });
+    const result = await discoverActions(fakeStore(db)).discover("viewer", "e1");
+    expect("error" in result).toBe(false);
+    if ("error" in result) return;
+    expect(result.presence).toBe("visible");
+    expect(result.people).toEqual([]);
+    expect(result.directory).toEqual([]);
   });
 });

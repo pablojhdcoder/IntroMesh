@@ -18,7 +18,7 @@ export type FieldPerson = {
   demo: boolean;
   x: number;
   y: number;
-  presence: "active" | "seeking";
+  presence: "active";
   interests: string[];
   skills: string[];
   recommendation: {

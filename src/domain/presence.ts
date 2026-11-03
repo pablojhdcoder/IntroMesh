@@ -1,6 +1,6 @@
 export const PRESENCE_TTL_MS = 90_000;
 
-export type PresenceStatus = "active" | "seeking";
+export type PresenceStatus = "active";
 
 export type PresenceRecord = {
   profileId: string;

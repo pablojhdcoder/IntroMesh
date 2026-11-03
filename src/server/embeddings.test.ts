@@ -139,7 +139,7 @@ describe("processEmbeddingJob (inline single job)", () => {
   it("completes the join→schedule→embed chain with recompute", async () => {
     const database = baseDatabase();
     const store = fakeStore(database);
-    const joined = await onboardingActions(store).joinEvent("u1", "e1", "Meet builders", true);
+    const joined = await onboardingActions(store).joinEvent("u1", "e1", "Meet builders");
     expect(joined).not.toHaveProperty("error");
     const job = database.embeddings.find(
       (item) => item.kind === "event" && item.userId === "u1" && item.eventId === "e1",

@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe("resolveRoomState", () => {
-  it("returns idle when invisible regardless of loading or error", () => {
+  it("returns idle when hidden regardless of loading or error", () => {
     expect(resolveRoomState({ visible: false, loading: true, error: null, count: 0 })).toBe("idle");
     expect(resolveRoomState({ visible: false, loading: false, error: "boom", count: 0 })).toBe("idle");
   });
@@ -46,10 +46,10 @@ describe("resolveRoomState", () => {
 describe("room cache", () => {
   it("stores and returns a snapshot per event id", () => {
     expect(getCachedRoom("event-a")).toBeNull();
-    setCachedRoom("event-a", { people: [], connections: [], presence: "active", at: 1 });
-    setCachedRoom("event-b", { people: [], connections: [], presence: "seeking", at: 2 });
-    expect(getCachedRoom("event-a")?.presence).toBe("active");
-    expect(getCachedRoom("event-b")?.presence).toBe("seeking");
+    setCachedRoom("event-a", { people: [], connections: [], presence: "visible", at: 1 });
+    setCachedRoom("event-b", { people: [], connections: [], presence: "hidden", at: 2 });
+    expect(getCachedRoom("event-a")?.presence).toBe("visible");
+    expect(getCachedRoom("event-b")?.presence).toBe("hidden");
     expect(getCachedRoom("event-c")).toBeNull();
   });
 
@@ -69,7 +69,7 @@ describe("room cache", () => {
         },
       ],
       connections: [],
-      presence: "active",
+      presence: "visible",
       viewerEmbeddingStatus: "pending",
       at: 3,
     });

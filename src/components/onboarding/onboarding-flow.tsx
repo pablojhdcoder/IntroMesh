@@ -123,7 +123,6 @@ function OnboardingBody({
   const [name, setName] = useState(draft?.displayName ?? "");
   const [description, setDescription] = useState(draft?.description ?? "");
   const [intent, setIntent] = useState("");
-  const [consent, setConsent] = useState(false);
   const [identity, setIdentity] = useState<Identity | null>(draft?.identity ?? null);
   const [editing, setEditing] = useState(false);
   const [manual, setManual] = useState(false);
@@ -241,7 +240,7 @@ function OnboardingBody({
     const response = await fetch("/api/participation", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ eventId: selected.id, intent, consent }),
+      body: JSON.stringify({ eventId: selected.id, intent }),
     });
     const body = await response.json();
     setPending(false);
@@ -515,19 +514,10 @@ function OnboardingBody({
               placeholder="I'm looking to meet potential co-founders, discover interesting AI projects, find people to collaborate with and explore new opportunities."
             />
           </label>
-          <label className="flex items-start gap-3 rounded-[12px] border border-border bg-surface px-4 py-3 text-sm leading-relaxed text-foreground transition-colors hover:border-foreground/25">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 shrink-0 accent-[var(--signal-strong)]"
-              checked={consent}
-              onChange={(event) => setConsent(event.target.checked)}
-            />
-            <span>Appear in discovery. Unchecked stays invisible.</span>
-          </label>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || !selected}>
             {pending ? "Joining" : "Join the event"}
           </Button>
-          <p className={badge}>Optional · Meta is not called</p>
+          <p className={badge}>Joining makes you visible to others at this event.</p>
         </div>
       ) : null}
       </Crossfade>

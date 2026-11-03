@@ -44,9 +44,16 @@ export function discoverActions(store: Store) {
       const viewer = database.profiles.find((item) => item.id === profileId);
       if (!viewer) return { error: "profile" as const };
       const event = database.events.find((item) => item.id === eventId) ?? null;
+      // Social model: visibility = joined + consented + discoverable + live.
+      // Presence alone never exposes an opt-out, left, or hidden user.
+      const allowed = new Set(
+        database.participations
+          .filter((item) => item.eventId === eventId && item.status === "joined" && item.consent && item.visibility === "discoverable")
+          .map((item) => item.userId),
+      );
       const live = new Map(
         database.presence
-          .filter((record) => record.eventId === eventId && isPresenceLive(record, now))
+          .filter((record) => record.eventId === eventId && allowed.has(record.profileId) && isPresenceLive(record, now))
           .map((record) => [record.profileId, record]),
       );
       const self = live.get(viewer.id);
@@ -63,7 +70,7 @@ export function discoverActions(store: Store) {
       const viewerReady = rows.length > 0 || viewerJob?.status === "completed";
       const viewerEmbeddingStatus = viewerReady ? ("ready" as const) : ("pending" as const);
       if (!self) {
-        return { event, presence: "invisible" as const, viewerEmbeddingStatus, people: [], directory: [] };
+        return { event, presence: "hidden" as const, viewerEmbeddingStatus, people: [], directory: [] };
       }
       const byId = new Map(database.profiles.map((profile) => [profile.id, profile]));
       const recommendedIds = new Set<string>();
@@ -101,7 +108,7 @@ export function discoverActions(store: Store) {
           if (!profile) return [];
           return [{ ...toSharedCard(profile), presence: record.status }];
         });
-      return { event, presence: self.status, viewerEmbeddingStatus, people, directory };
+      return { event, presence: "visible" as const, viewerEmbeddingStatus, people, directory };
     },
   };
 }
