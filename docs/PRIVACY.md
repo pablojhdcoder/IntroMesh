@@ -2,7 +2,7 @@
 
 ## Consent
 
-Appearing in discovery is opt-in. The default is not visible. A person can leave visibility at any time; real-time presence must be withdrawn then, not when the tab closes.
+Joining an event makes you discoverable to other live attendees. This is a social network: membership means visibility while your session is live. Leave at any time to withdraw presence immediately — leaving sets the participation to `left`, `consent = false`, `visibility = hidden` and removes live presence. Closing the tab only expires the 90s heartbeat; it is not the privacy switch, leaving is.
 
 Accepting a connection is independent of being visible. Seeing a recommendation does not create a relationship.
 
@@ -32,6 +32,22 @@ Meta logs may include HTTP status, error type, and latency. They do not include 
 ## Analytics
 
 Event aggregates only. No export of free-form profile text or messages. The `topic` field on analytics rows is a coarse aggregate label (the first declared interest at write time) used only for counts, never a person ranking.
+
+## Profile visibility
+
+`profiles.profile_visibility` (`public` | `private`) controls only the public username page `/u/[username]`. `public` exposes the SharedCard fields and nothing else (see `GLOBAL_IDENTITY.md`): never the original description, per-event intents, or event memberships. `private` returns no card. The avatar is optional and changes nothing about exposure.
+
+## Membership is not public, and join is consent
+
+Joining an event is not published. Which events a person joined never appears on a public card, in discovery at another event, or in organizer aggregates.
+
+Joining an event is discovery consent at that event: `event_participations.status = joined` implies `consent = true` and `visibility = discoverable`. A person appears in discovery at that event while their session presence is live. Consent at one event says nothing at any other event.
+
+## Switch vs leave
+
+Switching events withdraws only live presence (through the presence heartbeat expiry). Membership stays `joined`, so the person can return without re-joining — but they are not visible anywhere without a live session.
+
+Leaving an event is stronger: it sets the participation to `status = left`, `consent = false`, `visibility = hidden`, and removes session presence for that event. The person is hidden at that event from that moment. Identity, other events, and accepted connections are untouched.
 
 ## Demo
 

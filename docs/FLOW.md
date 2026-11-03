@@ -73,6 +73,7 @@ flowchart TB
 - Store lookup: `identities` (confirmed?), `participations` (joined event?), `profiles`.
 - Response: `needsSetup`, `identityConfirmed`, `draft`, `event`, `metaConfigured`, `canCreateEvent`.
 - Ready = confirmed identity **and** a joined event. Otherwise onboarding.
+- With the event hub (see `EVENT_HUB.md`), `/` resolves a returning confirmed user to `/events`; the active event then lives in the URL at `/events/[eventId]`, not in session state.
 - The browser never opens Supabase with the service role and never calls `api.meta.ai`.
 
 ---
@@ -113,10 +114,10 @@ Already confirmed identity skips the description/review when changing events.
 **Beneath — join.** `POST /api/participation` → `joinEvent`.
 
 - Requires confirmed identity + live event.
-- Writes `participations`: intent, consent, visibility (`discoverable` | `hidden`). Meta is **not** called.
+- Writes `participations`: intent, `consent = true`, `visibility = discoverable` (joining is consent — social model). Meta is **not** called.
 - If there is intent text, enqueues an **event** embedding job. Embedding and recommendation recompute run inline with `after()` after the response; `npm run worker:embeddings` and `npm run backfill:embeddings` are laptop backfill/retry tools only.
 - Clears this event’s recommendations that involve the joiner.
-- Consent true → session `presence` `active` with 90s expiry. Consent false → no presence row.
+- Always creates session `presence` `active` with 90s expiry.
 - May copy intent into `profile.seeking` for the field.
 
 | Store (global) | Store (this event) |
@@ -127,13 +128,12 @@ Already confirmed identity skips the description/review when changing events.
 
 ## 3. Discover — field and list
 
-**Front.** IntroMesh header, event name, Demo mark if the room is a fixture. Presence: Invisible / Active / Seeking. Graph on the left, list on the right. Mobile (`< 720px`): compact field + list. Presence is not GPS and not two phones finding each other.
+**Front.** IntroMesh header, event name, Demo mark if the room is a fixture. `Leave event` in the header returns to the event picker at any time (identity is kept); the empty room also offers `Join a different event`. First visit shows the cinematic intro once per event (This is you → reveal → legend) with Skip + Replay. Graph on the left, list on the right. Mobile (`< 720px`): compact field + list. Presence is heartbeat live, not GPS and not two phones finding each other.
 
-**Beneath — presence.** `POST /api/presence` every 20s while visible → `presenceActions.setPresence`.
+**Beneath — presence.** `POST /api/presence` every 20s while the app is open → `presenceActions.setPresence`.
 
-- Invisible: drop session presence; `consent = false`, `visibility = hidden`. Identity is unchanged.
-- Active / Seeking: session row, `expiresAt` = now + 90s.
-- Abandoned tab expires; closing the tab is not the privacy switch — Invisible is.
+- Heartbeat only: session row, `expiresAt` = now + 90s. Join = visible, Leave = hidden.
+- Abandoned tab expires; closing the tab is not the privacy switch — Leave is.
 
 **Beneath — room.** `GET /api/discovery` → `discoverActions.discover`. Read-only: it never embeds, scores, or rewrites recommendations.
 
@@ -218,12 +218,17 @@ Without `MODEL_API_KEY`, Meta-shaped UI is a badge or one line. No simulated mod
 | Event list / code | `GET/POST /api/events` | `onboarding` |
 | Description / save | `POST /api/identity` | `onboarding` |
 | Join | `POST /api/participation` | `onboarding` |
-| Invisible / Active / Seeking | `POST /api/presence` | `presence` |
+| Leave event | `POST /api/participation` (`action: "leave"`) | `onboarding` |
+| Heartbeat (auto) | `POST /api/presence` | `presence` |
 | Field | `GET /api/discovery` | `discover` |
 | Person detail | `POST /api/affinity` | `explain` |
 | Intro | `POST /api/connections` | `connect` |
 | Link / QR / NFC | `POST /api/share` | `learn` |
 | `/intelligence` | server page | `learn` |
+| `/events` | server page | Event hub: My Events vs Discover (`EVENT_HUB.md`) |
+| `/events/[eventId]` | server page | Active event; the Signal Field scoped to this event |
+| `/profile` | server page | Own global identity: visibility, avatar, username |
+| `/u/[username]` | server page | Public card for `profiles.slug` when `profile_visibility = public`; no card when `private` |
 
 ---
 
@@ -238,4 +243,8 @@ Without `MODEL_API_KEY`, Meta-shaped UI is a badge or one line. No simulated mod
 | Azure embedding queue and write path | `EMBEDDING.md` |
 | Explanation cache key | `META_AI_CACHE.md` |
 | Consent | `PRIVACY.md` |
+| Global identity + username | `GLOBAL_IDENTITY.md` |
+| Event hub, switch vs leave | `EVENT_HUB.md` |
+| Multi-event tables, migration `0007` | `MULTI_EVENT_ARCHITECTURE.md` |
+| Global connections, origin event | `CONNECTIONS_ARCHITECTURE.md` |
 | UI tokens | `DESIGN.md` |
