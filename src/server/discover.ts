@@ -1,10 +1,9 @@
 import { DEMO_EVENT_ID } from "@/domain/catalog";
 import { toSharedCard } from "@/domain/profile";
-import { isPresenceLive } from "@/domain/presence";
 import type { Database, Store } from "@/lib/store";
 import { confidenceOf } from "@/server/recommendations";
 
-/** Other live attendees surfaced without scores. Bounded payload, bounded layout. */
+/** Other joined members surfaced without scores. Bounded payload, bounded layout. */
 const DIRECTORY_CAP = 100;
 
 type DiscoveryFastStore = Store & {
@@ -30,12 +29,8 @@ export function pointForPair(viewerId: string, candidateId: string): { x: number
 export function discoverActions(store: Store) {
   return {
     async discover(profileId: string, eventId = DEMO_EVENT_ID) {
-      const now = Date.now();
-      // The only write on this path: drop expired presence. Every source
-      // expires equally; nothing here recomputes or scores.
-      await store.update((database) => {
-        database.presence = database.presence.filter((record) => isPresenceLive(record, now));
-      });
+      // Read-only path: membership is visibility, so nothing expires and
+      // nothing is written here. Scoring inputs stay on the write path.
       const fast = store as DiscoveryFastStore;
       const database =
         typeof fast.readDiscoverySnapshot === "function"
@@ -44,19 +39,13 @@ export function discoverActions(store: Store) {
       const viewer = database.profiles.find((item) => item.id === profileId);
       if (!viewer) return { error: "profile" as const };
       const event = database.events.find((item) => item.id === eventId) ?? null;
-      // Social model: visibility = joined + consented + discoverable + live.
-      // Presence alone never exposes an opt-out, left, or hidden user.
-      const allowed = new Set(
+      // Social model: visibility = joined membership on both sides.
+      // Consent/visibility columns are legacy and ignored; presence is gone.
+      const members = new Set(
         database.participations
-          .filter((item) => item.eventId === eventId && item.status === "joined" && item.consent && item.visibility === "discoverable")
+          .filter((item) => item.eventId === eventId && item.status === "joined")
           .map((item) => item.userId),
       );
-      const live = new Map(
-        database.presence
-          .filter((record) => record.eventId === eventId && allowed.has(record.profileId) && isPresenceLive(record, now))
-          .map((record) => [record.profileId, record]),
-      );
-      const self = live.get(viewer.id);
       const rows = database.recommendations
         .filter((item) => item.eventId === eventId && item.viewerId === viewer.id)
         .sort((a, b) => b.finalScore - a.finalScore || a.candidateId.localeCompare(b.candidateId))
@@ -69,15 +58,14 @@ export function discoverActions(store: Store) {
       );
       const viewerReady = rows.length > 0 || viewerJob?.status === "completed";
       const viewerEmbeddingStatus = viewerReady ? ("ready" as const) : ("pending" as const);
-      if (!self) {
-        return { event, presence: "hidden" as const, viewerEmbeddingStatus, people: [], directory: [] };
+      if (!members.has(viewer.id)) {
+        return { event, viewerEmbeddingStatus, people: [], directory: [] };
       }
       const byId = new Map(database.profiles.map((profile) => [profile.id, profile]));
       const recommendedIds = new Set<string>();
       const people = rows.flatMap((row) => {
         const candidate = byId.get(row.candidateId);
-        const presence = live.get(row.candidateId);
-        if (!candidate || !presence) return [];
+        if (!candidate || !members.has(row.candidateId)) return [];
         recommendedIds.add(row.candidateId);
         const point = pointForPair(viewer.id, row.candidateId);
         return [
@@ -85,7 +73,6 @@ export function discoverActions(store: Store) {
             ...toSharedCard(candidate),
             x: point.x,
             y: point.y,
-            presence: presence.status,
             recommendation: {
               score: row.finalScore,
               confidence: confidenceOf(row),
@@ -99,16 +86,16 @@ export function discoverActions(store: Store) {
           },
         ];
       });
-      const directory = [...live.entries()]
-        .filter(([id]) => id !== viewer.id && !recommendedIds.has(id))
-        .sort(([a], [b]) => a.localeCompare(b))
-        .slice(0, DIRECTORY_CAP)
-        .flatMap(([id, record]) => {
+      const directory = [...members]
+        .filter((id) => id !== viewer.id && !recommendedIds.has(id))
+        .flatMap((id) => {
           const profile = byId.get(id);
           if (!profile) return [];
-          return [{ ...toSharedCard(profile), presence: record.status }];
-        });
-      return { event, presence: "visible" as const, viewerEmbeddingStatus, people, directory };
+          return [toSharedCard(profile)];
+        })
+        .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id))
+        .slice(0, DIRECTORY_CAP);
+      return { event, viewerEmbeddingStatus, people, directory };
     },
   };
 }

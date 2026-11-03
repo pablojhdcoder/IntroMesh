@@ -6,8 +6,6 @@ import { hubActions } from "@/server/hub";
 import { onboardingActions } from "@/server/onboarding";
 
 const NOW = Date.parse("2026-11-03T12:00:00.000Z");
-const LIVE = new Date(Date.now() + 3_600_000).toISOString();
-const EXPIRED = new Date(Date.now() - 3_600_000).toISOString();
 
 const identity: StructuredIdentity = {
   display_name: "Ada",
@@ -90,22 +88,58 @@ function baseDatabase(): Database {
         updatedAt: new Date(NOW).toISOString(),
       },
     ],
-    presence: [
-      { profileId: "u1", eventId: "e1", status: "active", source: "session", updatedAt: new Date(NOW).toISOString(), expiresAt: LIVE },
-      { profileId: "u2", eventId: "e1", status: "active", source: "session", updatedAt: new Date(NOW).toISOString(), expiresAt: LIVE },
-      { profileId: "u2", eventId: "e2", status: "active", source: "session", updatedAt: new Date(NOW).toISOString(), expiresAt: EXPIRED },
-    ],
   });
 }
 
 describe("hubActions.listMyEvents", () => {
-  it("returns joined memberships with event and live presence", async () => {
-    const store = fakeStore(baseDatabase());
+  it("returns joined memberships with event and joined memberCount, no presence", async () => {
+    const database = baseDatabase();
+    expect(database).not.toHaveProperty("presence");
+    const store = fakeStore(database);
     const mine = await hubActions(store).listMyEvents("u1");
     expect(mine).toHaveLength(1);
-    expect(mine[0]).toMatchObject({ eventId: "e1", status: "joined", presence: "active" });
-    expect(mine[0].event).toMatchObject({ id: "e1", name: "Hackathon", code: "E1" });
-    expect(mine[0].joinedAt).toBe(new Date(NOW).toISOString());
+    expect(mine[0]).toMatchObject({ eventId: "e1", status: "joined", memberCount: 1 });
+    expect(mine[0]).not.toHaveProperty("presence");
+    expect(mine[0]?.event).toMatchObject({ id: "e1", name: "Hackathon", code: "E1" });
+    expect(mine[0]?.joinedAt).toBe(new Date(NOW).toISOString());
+  });
+
+  it("counts joined members only: 3 joined + 1 left = 3", async () => {
+    const database = baseDatabase();
+    for (const userId of ["u2", "u3"]) {
+      database.profiles.push(profile(userId, `${userId}-slug`, userId));
+      database.participations.push({
+        userId,
+        eventId: "e1",
+        intentText: "",
+        lookingFor: [],
+        collaborationInterests: [],
+        revision: 1,
+        inputHash: `hash-${userId}`,
+        consent: true,
+        visibility: "discoverable",
+        status: "joined",
+        updatedAt: new Date(NOW).toISOString(),
+      });
+    }
+    database.profiles.push(profile("u5", "u5-slug", "u5"));
+    database.participations.push({
+      userId: "u5",
+      eventId: "e1",
+      intentText: "",
+      lookingFor: [],
+      collaborationInterests: [],
+      revision: 1,
+      inputHash: "hash-u5",
+      consent: false,
+      visibility: "hidden",
+      status: "left",
+      updatedAt: new Date(NOW).toISOString(),
+    });
+    const store = fakeStore(database);
+    const mine = await hubActions(store).listMyEvents("u1");
+    expect(mine).toHaveLength(1);
+    expect(mine[0]?.memberCount).toBe(3);
   });
 
   it("keeps contexts independent after joining a second event", async () => {
@@ -119,17 +153,29 @@ describe("hubActions.listMyEvents", () => {
       .map((item) => [item.eventId, item.intentText]);
     expect(intents).toContainEqual(["e1", "Meet builders"]);
     expect(intents).toContainEqual(["e2", "Meet designers"]);
-    // Joining e2 creates live presence there; e1's stays live too (single
-    // "active" status, scoped per event).
-    expect(mine.find((item) => item.eventId === "e1")?.presence).toBe("active");
-    expect(mine.find((item) => item.eventId === "e2")?.presence).toBe("active");
+    expect(mine.find((item) => item.eventId === "e1")?.memberCount).toBe(1);
+    expect(mine.find((item) => item.eventId === "e2")?.memberCount).toBe(1);
     expect(database.participations.filter((item) => item.userId === "u1" && item.status === "joined")).toHaveLength(2);
   });
 });
 
 describe("hubActions.discoverEvents", () => {
-  it("excludes ended events, flags joined, and counts live attendees", async () => {
-    const store = fakeStore(baseDatabase());
+  it("excludes ended events, flags joined, and counts joined attendees", async () => {
+    const database = baseDatabase();
+    database.participations.push({
+      userId: "u2",
+      eventId: "e1",
+      intentText: "",
+      lookingFor: [],
+      collaborationInterests: [],
+      revision: 1,
+      inputHash: "hash-u2-e1",
+      consent: true,
+      visibility: "discoverable",
+      status: "joined",
+      updatedAt: new Date(NOW).toISOString(),
+    });
+    const store = fakeStore(database);
     const events = await hubActions(store).discoverEvents("u1");
     expect(events.map((item) => item.id).sort()).toEqual(["e1", "e2"]);
     expect(events.find((item) => item.id === "e1")).toMatchObject({ joined: true, attendees: 2 });

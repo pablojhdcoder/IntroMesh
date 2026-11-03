@@ -12,7 +12,6 @@ import {
   semanticCompatibility,
   type HybridProfile,
 } from "@/domain/matching/hybrid";
-import { isPresenceLive, type PresenceRecord } from "@/domain/presence";
 import type { Database, EventRecord, GlobalIdentityRecord, ParticipationRecord, RecommendationRecord } from "@/lib/store";
 import type { StoredProfile } from "@/domain/profile";
 
@@ -21,7 +20,7 @@ export type RecommendationIndex = {
   participationByUserEvent: Map<string, ParticipationRecord>;
   globalVectorByUser: Map<string, number[]>;
   eventVectorByUserEvent: Map<string, number[]>;
-  presenceByProfileEvent: Map<string, PresenceRecord>;
+  memberByProfileEvent: Map<string, ParticipationRecord>;
   eventById: Map<string, EventRecord>;
 };
 
@@ -49,9 +48,10 @@ export function buildRecommendationIndex(database: Database): RecommendationInde
     if (item.kind === "global") setFirst(globalVectorByUser, item.userId, item.vector);
     else if (item.eventId) setFirst(eventVectorByUserEvent, `${item.userId}::${item.eventId}`, item.vector);
   }
-  const presenceByProfileEvent = new Map<string, PresenceRecord>();
-  for (const item of database.presence) {
-    setFirst(presenceByProfileEvent, `${item.profileId}::${item.eventId}`, item);
+  const memberByProfileEvent = new Map<string, ParticipationRecord>();
+  for (const item of database.participations) {
+    if (item.status !== "joined") continue;
+    setFirst(memberByProfileEvent, `${item.userId}::${item.eventId}`, item);
   }
   const eventById = new Map<string, EventRecord>();
   for (const item of database.events) setFirst(eventById, item.id, item);
@@ -60,7 +60,7 @@ export function buildRecommendationIndex(database: Database): RecommendationInde
     participationByUserEvent,
     globalVectorByUser,
     eventVectorByUserEvent,
-    presenceByProfileEvent,
+    memberByProfileEvent,
     eventById,
   };
 }
@@ -127,14 +127,10 @@ function hybridProfileIndexed(
   };
 }
 
-function visibleIndexed(index: RecommendationIndex, profileId: string, eventId: string, now: number): boolean {
-  // Every candidate earns visibility the same way: live presence plus a
-  // joined, consented, discoverable participation. Fixtures carry no bypass.
-  const presence = index.presenceByProfileEvent.get(`${profileId}::${eventId}`);
-  if (!presence || !isPresenceLive(presence, now)) return false;
-  const participation = index.participationByUserEvent.get(`${profileId}::${eventId}`);
-  if (!participation) return false;
-  return participation.status === "joined" && participation.consent && participation.visibility === "discoverable";
+function memberIndexed(index: RecommendationIndex, profileId: string, eventId: string): boolean {
+  // Visibility is membership: both sides hold a joined participation for
+  // this event. Consent/visibility columns are legacy and ignored.
+  return index.memberByProfileEvent.has(`${profileId}::${eventId}`);
 }
 
 export function scheduleEmbedding(
@@ -300,7 +296,7 @@ function rankViewerCandidates(
   const viewer = database.profiles.find((item) => item.id === viewerId);
   if (!event || !viewer) return null;
   const viewerGlobal = globalHashIndexed(index, viewerId);
-  const pool = database.profiles.filter((item) => item.id !== viewerId && visibleIndexed(index, item.id, eventId, now));
+  const pool = database.profiles.filter((item) => item.id !== viewerId && memberIndexed(index, item.id, eventId));
   const retrieved = retrieveBySimilarity(
     viewerGlobal.vector,
     pool.map((item) => ({ item, vector: globalHashIndexed(index, item.id).vector })),

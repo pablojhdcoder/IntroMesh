@@ -3,7 +3,6 @@ import { DEMO_EVENT_ID } from "@/domain/catalog";
 import { claimExplanation, completeExplanation, failExplanation } from "@/domain/cache/explanations";
 import { explanationCacheKey, PROMPT_VERSION, RANKING_VERSION } from "@/domain/identity/canonical";
 import { assertGrounded, type GroundedExplanation } from "@/domain/ground";
-import { isPresenceLive } from "@/domain/presence";
 import { createStructuredResponse } from "@/lib/meta/client";
 import { readMetaTextConfig } from "@/lib/meta/schema";
 import type { Database, Store } from "@/lib/store";
@@ -51,15 +50,9 @@ export function explainActions(store: Store) {
       const viewer = snapshot.profiles.find((item) => item.id === profileId);
       const other = snapshot.profiles.find((item) => item.id === otherId);
       if (!viewer || !other) return { error: "profile" };
-      const viewerLive = snapshot.presence.some(
-        (record) => record.profileId === viewer.id && record.eventId === eventId && isPresenceLive(record, now),
-      );
-      const otherLive = snapshot.presence.some(
-        (record) => record.profileId === other.id && record.eventId === eventId && isPresenceLive(record, now),
-      );
-      if (!viewerLive || !otherLive) return { error: "presence" };
-      // Affinity is consent-gated: both sides need a joined, consented,
-      // discoverable participation in this event. Fixtures get no bypass.
+      // Affinity is membership-gated: both sides need a joined participation
+      // in this event. Consent/visibility columns are legacy and ignored.
+      // The error value stays "presence" for existing clients.
       const viewerParticipation = snapshot.participations.find(
         (item) => item.userId === viewer.id && item.eventId === eventId,
       );
@@ -67,12 +60,7 @@ export function explainActions(store: Store) {
         (item) => item.userId === other.id && item.eventId === eventId,
       );
       for (const participation of [viewerParticipation, otherParticipation]) {
-        if (
-          !participation ||
-          participation.status !== "joined" ||
-          !participation.consent ||
-          participation.visibility !== "discoverable"
-        ) {
+        if (!participation || participation.status !== "joined") {
           return { error: "presence" };
         }
       }

@@ -17,8 +17,8 @@ function sqlJson(value: unknown): string {
 }
 
 async function main() {
-  const { profiles, presence, analytics } = buildDemoCommunity(180, Date.parse("2026-11-04T09:00:00.000Z"));
-  const visibleIds = new Set(presence.map((record) => record.profileId));
+  const { profiles, participations, analytics } = buildDemoCommunity(180, Date.parse("2026-11-04T09:00:00.000Z"));
+  const visibleIds = new Set(participations.map((record) => record.userId));
   const visible = profiles.filter((profile) => visibleIds.has(profile.id));
 
   const profileRows = visible
@@ -28,10 +28,10 @@ async function main() {
     )
     .join(",\n");
 
-  const presenceRows = presence
+  const participationRows = participations
     .map(
       (record) =>
-        `  (${sqlString(record.profileId)}, ${sqlString(record.eventId)}, ${sqlString(record.status)}, 'demo', now(), now() + interval '6 hours')`,
+        `  (${sqlString(record.userId)}, ${sqlString(record.eventId)}, '', '{}'::text[], '{}'::text[], 0, ${sqlString(record.inputHash)}, true, 'discoverable', 'joined', now(), now(), 'attendee', null)`,
     )
     .join(",\n");
 
@@ -43,7 +43,7 @@ async function main() {
     .join(",\n");
 
   const sql = `-- Semilla demo de IntroMesh. Idempotente.
--- Los 28 perfiles con presencia son los del campo. demo = true: no disparan Meta Model API.
+-- Los 28 perfiles con participación joined son los del campo. demo = true: no disparan Meta Model API.
 -- Pegar en el SQL editor de Supabase después de 0001_init.sql.
 
 create table if not exists affinity_explanations (
@@ -79,14 +79,15 @@ on conflict (id) do update set
   demo = true,
   presentation = excluded.presentation;
 
-insert into presence (profile_id, event_id, status, source, updated_at, expires_at)
+insert into event_participations (user_id, event_id, intent_text, looking_for, collaboration_interests, revision, input_hash, consent, visibility, status, updated_at, joined_at, role, last_active_at)
 values
-${presenceRows}
-on conflict (profile_id, event_id) do update set
-  status = excluded.status,
-  source = 'demo',
+${participationRows}
+on conflict (user_id, event_id) do update set
+  status = 'joined',
+  consent = true,
+  visibility = 'discoverable',
   updated_at = excluded.updated_at,
-  expires_at = excluded.expires_at;
+  joined_at = excluded.joined_at;
 
 insert into analytics_events (id, event_id, type, topic, at)
 values
@@ -97,7 +98,7 @@ on conflict (id) do nothing;
   const target = path.join(process.cwd(), "supabase", "migrations", "0002_demo_seed.sql");
   await mkdir(path.dirname(target), { recursive: true });
   await writeFile(target, sql, "utf8");
-  process.stdout.write(`${target}\n${visible.length} perfiles, ${presence.length} presencias, ${analytics.length} analíticas\n`);
+  process.stdout.write(`${target}\n${visible.length} perfiles, ${participations.length} participaciones, ${analytics.length} analíticas\n`);
 }
 
 void main();

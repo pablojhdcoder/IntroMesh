@@ -1,6 +1,5 @@
 import { aggregateActivity } from "@/domain/analytics";
 import { DEMO_EVENT_ID } from "@/domain/catalog";
-import { isPresenceLive } from "@/domain/presence";
 import { newId } from "@/lib/meta/explain";
 import type { Store } from "@/lib/store";
 
@@ -20,7 +19,6 @@ export function learnActions(store: Store) {
       await store.update((database) => {
         const eventId =
           database.participations.find((item) => item.userId === profileId && item.status === "joined")?.eventId ??
-          database.presence.find((item) => item.profileId === profileId && item.source === "session")?.eventId ??
           DEMO_EVENT_ID;
         database.analytics.push({
           id: `share-${newId()}`,
@@ -33,17 +31,16 @@ export function learnActions(store: Store) {
     },
 
     async intelligence(eventId = DEMO_EVENT_ID) {
-      const now = Date.now();
       const database = await store.read();
-      const visible = database.presence.filter(
-        (record) => record.eventId === eventId && isPresenceLive(record, now),
+      const members = database.participations.filter(
+        (record) => record.eventId === eventId && record.status === "joined",
       ).length;
       return {
         event: database.events.find((item) => item.id === eventId) ?? null,
         demo: true,
         report: aggregateActivity({
           events: database.analytics.filter((item) => item.eventId === eventId),
-          visible,
+          visible: members,
         }),
         engine: database.metrics,
       };

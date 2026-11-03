@@ -1,4 +1,3 @@
-import { isPresenceLive } from "@/domain/presence";
 import { MIN_FINAL_SCORE, RECOMMENDATION_LIMIT } from "@/domain/matching/hybrid";
 import type { Database } from "@/lib/store";
 import {
@@ -8,11 +7,12 @@ import {
   type RecommendationIndex,
 } from "@/server/recommendations";
 
-function liveViewersInEvent(database: Database, eventId: string, now: number): string[] {
+function joinedViewersInEvent(database: Database, eventId: string, now: number): string[] {
+  void now; // Signature keeps the clock for call-site parity; membership needs no expiry.
   const seen = new Set<string>();
-  for (const record of database.presence) {
-    if (record.eventId !== eventId || !isPresenceLive(record, now)) continue;
-    seen.add(record.profileId);
+  for (const record of database.participations) {
+    if (record.eventId !== eventId || record.status !== "joined") continue;
+    seen.add(record.userId);
   }
   return [...seen];
 }
@@ -41,7 +41,7 @@ export function recomputeViewerOnEmbedding(
 }
 
 /**
- * Inserts one fresh candidate against every other live viewer in the event
+ * Inserts one fresh candidate against every other joined viewer in the event
  * that already has a completed global vector. Each pair is scored exactly
  * once; the viewer's list stays sorted by finalScore and capped at 8
  * (the newcomer evicts the last row only when it scores higher and clears
@@ -60,7 +60,7 @@ export function insertCandidateAgainstViewers(
   const candidateHasVector = index.globalVectorByUser.get(candidateId) != null;
   if (!candidateHasVector) return 0;
   let inserted = 0;
-  for (const viewerId of liveViewersInEvent(database, eventId, now)) {
+  for (const viewerId of joinedViewersInEvent(database, eventId, now)) {
     if (viewerId === candidateId) continue;
     if (index.globalVectorByUser.get(viewerId) == null) continue;
     const viewer = database.profiles.find((item) => item.id === viewerId);

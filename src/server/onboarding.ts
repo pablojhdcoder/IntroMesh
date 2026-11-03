@@ -1,20 +1,19 @@
 import { canonicalContextText, canonicalGlobalText, sha256, shouldNormalize } from "@/domain/identity/canonical";
 import { cleanIdentity, identityDraftSchema, structuredIdentitySchema, type StructuredIdentity } from "@/domain/identity/schema";
 import { toProfileInput } from "@/domain/identity/to-profile";
-import { isPresenceLive, nextExpiry } from "@/domain/presence";
 import { modelConfigured, newId } from "@/lib/meta/explain";
 import { normalizeDescription } from "@/lib/meta/normalize";
 import type { Store } from "@/lib/store";
 import { slugify } from "@/server/match-profile";
-import { scheduleEmbedding } from "@/server/recommendations";
+import { insertCandidateAgainstViewers } from "@/server/recompute";
+import { refreshViewerRecommendations, scheduleEmbedding } from "@/server/recommendations";
 
 function publicEvent(database: Awaited<ReturnType<Store["read"]>>, eventId: string) {
   const event = database.events.find((item) => item.id === eventId);
   if (!event) return null;
-  const now = Date.now();
   return {
     ...event,
-    attendees: database.presence.filter((item) => item.eventId === event.id && isPresenceLive(item, now)).length,
+    attendees: database.participations.filter((item) => item.eventId === event.id && item.status === "joined").length,
   };
 }
 
@@ -125,7 +124,13 @@ export function onboardingActions(store: Store) {
           if (normalized.usage.output) database.metrics.outputTokens += normalized.usage.output;
         });
         return { userId, identity: normalized.identity, source: "model" as const, metaConfigured: true };
-      } catch {
+      } catch (error) {
+        // Log the failure class (status/type/code only — never the prompt,
+        // description, or key) so repeated 503s can be diagnosed.
+        const details = error as { status?: unknown; type?: unknown; code?: unknown; message?: unknown };
+        console.error(
+          `[normalize] failed status=${String(details.status ?? null)} type=${String((details as { type?: unknown }).type ?? null)} code=${String((details as { code?: unknown }).code ?? null)} message=${typeof details.message === "string" ? details.message.slice(0, 160) : "unknown"}`,
+        );
         await saveDraft();
         return { error: "meta" as const, userId: prepared.userId };
       }
@@ -183,8 +188,11 @@ export function onboardingActions(store: Store) {
           participation.updatedAt = new Date(now).toISOString();
           participation.lastActiveAt = new Date(now).toISOString();
         }
-        database.presence = database.presence.filter(
-          (item) => !(item.profileId === profileId && item.eventId === eventId && item.source === "session"),
+        // Leaving withdraws visibility immediately: drop every persisted
+        // recommendation row where the leaver is the viewer or the candidate.
+        database.recommendations = database.recommendations.filter(
+          (item) =>
+            item.eventId !== eventId || (item.viewerId !== profileId && item.candidateId !== profileId),
         );
         return { left: true as const, eventId };
       });
@@ -238,17 +246,11 @@ export function onboardingActions(store: Store) {
         database.recommendations = database.recommendations.filter(
           (item) => item.eventId !== eventId || (item.viewerId !== profileId && item.candidateId !== profileId),
         );
-        database.presence = database.presence.filter(
-          (item) => !(item.profileId === profileId && item.source === "session" && item.eventId === eventId),
-        );
-        database.presence.push({
-          profileId,
-          eventId,
-          status: "active",
-          source: "session",
-          updatedAt: new Date(now).toISOString(),
-          expiresAt: nextExpiry(now),
-        });
+        // Write path owns the join: refresh the joiner's own list and insert
+        // the joiner into every other joined viewer's list, all synchronously
+        // in this update so the room is populated without waiting for a worker.
+        refreshViewerRecommendations(database, profileId, eventId, now);
+        insertCandidateAgainstViewers(database, profileId, eventId, now);
         const seeking = intent.trim() || identity.confirmed.looking_for.join(", ");
         if (seeking) profile.seeking = seeking.slice(0, 500);
         return { event: publicEvent(database, eventId) };

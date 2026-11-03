@@ -1,4 +1,3 @@
-import { isPresenceLive } from "@/domain/presence";
 import type { Database, Store } from "@/lib/store";
 
 function eventSummary(database: Database, eventId: string) {
@@ -16,27 +15,26 @@ function eventSummary(database: Database, eventId: string) {
   };
 }
 
+function memberCount(database: Database, eventId: string): number {
+  return database.participations.filter((item) => item.eventId === eventId && item.status === "joined").length;
+}
+
 export function hubActions(store: Store) {
   return {
     async listMyEvents(profileId: string) {
       const database = await store.read();
-      const now = Date.now();
       return database.participations
         .filter((item) => item.userId === profileId && item.status === "joined")
         .flatMap((item) => {
           const event = eventSummary(database, item.eventId);
           if (!event) return [];
-          const livePresence = database.presence.find(
-            (presence) =>
-              presence.profileId === profileId && presence.eventId === item.eventId && isPresenceLive(presence, now),
-          );
           return [
             {
               eventId: item.eventId,
               status: item.status,
               joinedAt: item.joinedAt ?? item.updatedAt,
               event,
-              presence: livePresence ? livePresence.status : null,
+              memberCount: memberCount(database, item.eventId),
             },
           ];
         });
@@ -45,7 +43,6 @@ export function hubActions(store: Store) {
     async discoverEvents(profileId: string, query = "") {
       const database = await store.read();
       const needle = query.trim().toLowerCase();
-      const now = Date.now();
       const joinedEventIds = new Set(
         database.participations
           .filter((item) => item.userId === profileId && item.status === "joined")
@@ -62,7 +59,7 @@ export function hubActions(store: Store) {
         })
         .map((event) => ({
           ...event,
-          attendees: database.presence.filter((item) => item.eventId === event.id && isPresenceLive(item, now)).length,
+          attendees: memberCount(database, event.id),
           joined: joinedEventIds.has(event.id),
         }));
     },

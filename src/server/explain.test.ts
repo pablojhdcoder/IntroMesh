@@ -4,9 +4,6 @@ import type { StoredProfile } from "@/domain/profile";
 import { explainActions } from "@/server/explain";
 
 const NOW = Date.parse("2026-11-03T12:00:00.000Z");
-// Presence is evaluated against the real clock, so live fixtures stay
-// relative to Date.now() instead of the fixed NOW above.
-const liveAt = (): string => new Date(Date.now() + 60_000).toISOString();
 const KEY = "MODEL_API_KEY";
 const previousKey = process.env[KEY];
 
@@ -108,20 +105,12 @@ function database(input: Partial<Database> = {}): Database {
       },
     ],
     profiles: [person("viewer"), person("other")],
-    presence: ["viewer", "other"].map((profileId) => ({
-      profileId,
-      eventId: "e1",
-      status: "active" as const,
-      source: "session" as const,
-      updatedAt: new Date(NOW).toISOString(),
-      expiresAt: liveAt(),
-    })),
     participations: ["viewer", "other"].map(joinedParticipation),
     ...input,
   });
 }
 
-describe("affinity (read-only, real Meta only)", () => {
+describe("affinity (membership-gated, real Meta only)", () => {
   it("returns a match error without a persisted recommendation row", async () => {
     const result = await explainActions(fakeStore(database())).affinity("viewer", "other", false, "e1");
     expect(result).toEqual({ error: "match" });
@@ -133,32 +122,46 @@ describe("affinity (read-only, real Meta only)", () => {
     expect(result).toEqual({ error: "meta" });
   });
 
-  it("requires both profiles to be live", async () => {
+  it("works with zero presence rows when both sides are joined", async () => {
+    const db = database({ recommendations: [persistedRow()] });
+    expect(db).not.toHaveProperty("presence");
+    const result = await explainActions(fakeStore(db)).affinity("viewer", "other", false, "e1");
+    // No key is configured, so a fully gated pair surfaces the meta error —
+    // never a presence error when both sides are joined.
+    expect(result).toEqual({ error: "meta" });
+  });
+
+  it("still errors presence when the candidate is not joined", async () => {
     const db = database({
       recommendations: [persistedRow()],
-      presence: ["viewer"].map((profileId) => ({
-        profileId,
-        eventId: "e1",
-        status: "active" as const,
-        source: "session" as const,
-        updatedAt: new Date(NOW).toISOString(),
-        expiresAt: liveAt(),
-      })),
+      participations: [
+        joinedParticipation("viewer"),
+        { ...joinedParticipation("other"), status: "left" as const, consent: false, visibility: "hidden" as const },
+      ],
     });
     const result = await explainActions(fakeStore(db)).affinity("viewer", "other", false, "e1");
     expect(result).toEqual({ error: "presence" });
   });
 
-  it("requires consented discoverable participation on both sides", async () => {
+  it("still errors presence when the viewer never joined", async () => {
+    const db = database({
+      recommendations: [persistedRow()],
+      participations: [joinedParticipation("other")],
+    });
+    const result = await explainActions(fakeStore(db)).affinity("viewer", "other", false, "e1");
+    expect(result).toEqual({ error: "presence" });
+  });
+
+  it("ignores legacy consent/visibility columns: joined membership is enough", async () => {
     const db = database({
       recommendations: [persistedRow()],
       participations: [
-        joinedParticipation("viewer"),
+        { ...joinedParticipation("viewer"), consent: false, visibility: "hidden" as const },
         { ...joinedParticipation("other"), consent: false, visibility: "hidden" as const },
       ],
     });
     const result = await explainActions(fakeStore(db)).affinity("viewer", "other", false, "e1");
-    expect(result).toEqual({ error: "presence" });
+    expect(result).toEqual({ error: "meta" });
   });
 
   it("reports unknown profiles", async () => {

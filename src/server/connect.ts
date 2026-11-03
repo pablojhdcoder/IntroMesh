@@ -60,7 +60,6 @@ export function connectActions(store: Store) {
         const resolvedEventId =
           eventId ??
           database.participations.find((item) => item.userId === profileId && item.status === "joined")?.eventId ??
-          database.presence.find((item) => item.profileId === profileId && item.source === "session")?.eventId ??
           DEMO_EVENT_ID;
         const record = {
           id: `cx-${newId()}`,

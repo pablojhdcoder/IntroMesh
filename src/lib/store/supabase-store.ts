@@ -6,7 +6,6 @@ import type { EmbeddingRecord } from "@/domain/embedding/jobs";
 import type { GroundedExplanation } from "@/domain/ground";
 import type { StructuredIdentity } from "@/domain/identity/schema";
 import type { Presentation, StoredProfile } from "@/domain/profile";
-import { nextExpiry, type PresenceRecord, type PresenceStatus } from "@/domain/presence";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   hydrateDatabase,
@@ -45,7 +44,7 @@ function getAdmin(): Admin {
  * vector) again. Writes bump the version, so readers only ever skip loads
  * that cannot have changed in this process. External writers (SQL editor,
  * backfill script runs) are bounded by the TTL instead — 2.5 s of
- * staleness max on presence-grade data. Single-instance assumption: with
+ * staleness max on membership-grade data. Single-instance assumption: with
  * several server instances each keeps its own cache and TTL is the coherency
  * bound. Cloned on the way out: mutators own what they receive.
  */
@@ -78,7 +77,6 @@ const EVENT_COLUMNS =
 const PROFILE_COLUMNS =
   "id,slug,display_name,role,bio,interests,skills,projects,offers,seeking,goal,demo,presentation,created_at,avatar_url,profile_visibility";
 const LINK_COLUMNS = "profile_id,label,url";
-const PRESENCE_COLUMNS = "profile_id,event_id,status,source,updated_at,expires_at";
 const CONNECTION_COLUMNS = "id,event_id,from_id,to_id,status,intro,intro_source,created_at,accepted_at";
 const ANALYTICS_COLUMNS = "id,event_id,type,topic,at";
 const IDENTITY_COLUMNS =
@@ -152,17 +150,6 @@ function mapEvent(row: Record<string, unknown>): EventRecord {
     code: String(row.code ?? row.id),
     status: (row.status as EventRecord["status"]) ?? "live",
     createdBy: row.created_by ? String(row.created_by) : null,
-  };
-}
-
-function mapPresenceRow(row: Record<string, unknown>): PresenceRecord {
-  return {
-    profileId: String(row.profile_id),
-    eventId: String(row.event_id),
-    status: row.status as PresenceRecord["status"],
-    source: row.source as PresenceRecord["source"],
-    updatedAt: String(row.updated_at),
-    expiresAt: String(row.expires_at),
   };
 }
 
@@ -351,7 +338,6 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     events,
     profiles,
     links,
-    presence,
     connections,
     analytics,
     identities,
@@ -365,7 +351,6 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     admin.from("events").select(EVENT_COLUMNS),
     admin.from("profiles").select(PROFILE_COLUMNS),
     admin.from("profile_links").select(LINK_COLUMNS),
-    admin.from("presence").select(PRESENCE_COLUMNS),
     admin.from("connections").select(CONNECTION_COLUMNS),
     admin.from("analytics_events").select(ANALYTICS_COLUMNS),
     admin.from("global_identities").select(IDENTITY_COLUMNS),
@@ -386,7 +371,6 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     events.error,
     profiles.error,
     links.error,
-    presence.error,
     connections.error,
     analytics.error,
     identities.error,
@@ -419,7 +403,6 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     profiles: (profiles.data ?? []).map((row) =>
       mapProfile(row as Record<string, unknown>, linksByProfile.get(String(row.id)) ?? []),
     ),
-    presence: (presence.data ?? []).map((row) => mapPresenceRow(row as unknown as Record<string, unknown>)),
     connections: (connections.data ?? []).map((row) => mapConnectionRow(row as unknown as Record<string, unknown>)),
     analytics: (analytics.data ?? []).map((row) => mapAnalyticsRow(row as unknown as Record<string, unknown>)),
     identities: (identities.data ?? []).map((row) => mapIdentityRow(row as unknown as Record<string, unknown>)),
@@ -482,7 +465,6 @@ async function replaceTable(
 type PersistedCollection =
   | "events"
   | "profiles"
-  | "presence"
   | "connections"
   | "analytics"
   | "identities"
@@ -496,7 +478,6 @@ function snapshotSignatures(database: Database): Record<PersistedCollection, str
   return {
     events: JSON.stringify(database.events),
     profiles: JSON.stringify(database.profiles),
-    presence: JSON.stringify(database.presence),
     connections: JSON.stringify(database.connections),
     analytics: JSON.stringify(database.analytics),
     identities: JSON.stringify(database.identities),
@@ -591,22 +572,6 @@ async function persistSnapshot(admin: Admin, database: Database, dirty?: Set<Per
     const schedule = (key: PersistedCollection, write: () => Promise<void>): void => {
       if (isDirty(key)) pending.push(write());
     };
-
-    schedule("presence", () =>
-      replaceTable(
-        admin,
-        "presence",
-        database.presence.map((item) => ({
-          profile_id: item.profileId,
-          event_id: item.eventId,
-          status: item.status,
-          source: item.source,
-          updated_at: item.updatedAt,
-          expires_at: item.expiresAt,
-        })),
-        ["profile_id", "event_id"],
-      ),
-    );
 
     schedule("connections", () =>
       replaceTable(
@@ -835,16 +800,15 @@ function emptyRows() {
 async function readSessionSnapshot(profileId: string | null): Promise<Database> {
   const admin = getAdmin();
   const scoped = Boolean(profileId && SAFE_ID.test(profileId));
-  const [events, profiles, links, identities, participations, presence] = await Promise.all([
+  const [events, profiles, links, identities, participations] = await Promise.all([
     admin.from("events").select(EVENT_COLUMNS),
     scoped ? admin.from("profiles").select(PROFILE_COLUMNS).eq("id", profileId).limit(1) : emptyRows(),
     scoped ? admin.from("profile_links").select(LINK_COLUMNS).eq("profile_id", profileId) : emptyRows(),
     scoped ? admin.from("global_identities").select(IDENTITY_COLUMNS).eq("user_id", profileId) : emptyRows(),
     scoped ? admin.from("event_participations").select(PARTICIPATION_COLUMNS).eq("user_id", profileId) : emptyRows(),
-    scoped ? admin.from("presence").select(PRESENCE_COLUMNS).eq("profile_id", profileId) : emptyRows(),
   ]);
   throwOnErrors(
-    [events.error, profiles.error, links.error, identities.error, participations.error, presence.error].filter(
+    [events.error, profiles.error, links.error, identities.error, participations.error].filter(
       Boolean,
     ) as { message: string }[],
   );
@@ -859,7 +823,6 @@ async function readSessionSnapshot(profileId: string | null): Promise<Database> 
     profiles: ((profiles.data ?? []) as Record<string, unknown>[]).map((row) =>
       mapProfile(row, linksByProfile.get(String(row.id)) ?? []),
     ),
-    presence: ((presence.data ?? []) as Record<string, unknown>[]).map(mapPresenceRow),
     identities: ((identities.data ?? []) as Record<string, unknown>[]).map(mapIdentityRow),
     participations: ((participations.data ?? []) as Record<string, unknown>[]).map(mapParticipationRow),
   });
@@ -934,16 +897,16 @@ async function readConnectionsSnapshot(profileId: string, eventId: string): Prom
 }
 
 /**
- * Discovery read path: one event, its live presence, the viewer's persisted
+ * Discovery read path: one event, its joined members, the viewer's persisted
  * top-8, profiles by id, and the viewer's embedding readiness (status only,
  * never the vector). No scoring inputs beyond the stored rows.
  */
 async function readDiscoverySnapshot(profileId: string, eventId: string): Promise<Database> {
   const admin = getAdmin();
   if (!SAFE_ID.test(profileId) || !SAFE_ID.test(eventId)) return loadSnapshot(admin);
-  const [eventRes, presenceRes, recommendationsRes, embeddingRes] = await Promise.all([
+  const [eventRes, participationsRes, recommendationsRes, embeddingRes] = await Promise.all([
     admin.from("events").select(EVENT_COLUMNS).eq("id", eventId).limit(1),
-    admin.from("presence").select(PRESENCE_COLUMNS).eq("event_id", eventId),
+    admin.from("event_participations").select(PARTICIPATION_COLUMNS).eq("event_id", eventId).eq("status", "joined"),
     admin
       .from("event_match_recommendations")
       .select(RECOMMENDATION_COLUMNS)
@@ -954,17 +917,17 @@ async function readDiscoverySnapshot(profileId: string, eventId: string): Promis
     admin.from("profile_embeddings").select(GLOBAL_EMBEDDING_STATUS_COLUMNS).eq("user_id", profileId).limit(1),
   ]);
   throwOnErrors(
-    [eventRes.error, presenceRes.error, recommendationsRes.error, embeddingRes.error].filter(Boolean) as {
+    [eventRes.error, participationsRes.error, recommendationsRes.error, embeddingRes.error].filter(Boolean) as {
       message: string;
     }[],
   );
   const recommendations = ((recommendationsRes.data ?? []) as Record<string, unknown>[]).map(mapRecommendationRow);
-  const liveIds = new Set<string>([profileId]);
-  for (const row of (presenceRes.data ?? []) as Record<string, unknown>[]) {
-    liveIds.add(String(row.profile_id));
+  const memberIds = new Set<string>([profileId]);
+  for (const row of (participationsRes.data ?? []) as Record<string, unknown>[]) {
+    memberIds.add(String(row.user_id));
   }
-  for (const row of recommendations) liveIds.add(row.candidateId);
-  const ids = [...liveIds].slice(0, 500);
+  for (const row of recommendations) memberIds.add(row.candidateId);
+  const ids = [...memberIds].slice(0, 500);
   const [profilesRes, linksRes] = await Promise.all([
     admin.from("profiles").select(PROFILE_COLUMNS).in("id", ids),
     admin.from("profile_links").select(LINK_COLUMNS).in("profile_id", ids),
@@ -981,16 +944,16 @@ async function readDiscoverySnapshot(profileId: string, eventId: string): Promis
     profiles: ((profilesRes.data ?? []) as Record<string, unknown>[]).map((row) =>
       mapProfile(row, linksByProfile.get(String(row.id)) ?? []),
     ),
-    presence: ((presenceRes.data ?? []) as Record<string, unknown>[]).map(mapPresenceRow),
+    participations: ((participationsRes.data ?? []) as Record<string, unknown>[]).map(mapParticipationRow),
     recommendations,
     embeddings: ((embeddingRes.data ?? []) as Record<string, unknown>[]).map(mapGlobalEmbeddingStatusRow),
   });
 }
 
 /**
- * Affinity read path: both profiles, live presence in the event, the
- * persisted viewer/candidate row, both identities and participations, and
- * prior explanations for the triple. No vectors, no analytics.
+ * Affinity read path: both profiles, the persisted viewer/candidate row,
+ * both identities and participations, and prior explanations for the triple.
+ * No vectors, no analytics.
  */
 async function readAffinitySnapshot(profileId: string, otherId: string, eventId: string): Promise<Database> {
   const admin = getAdmin();
@@ -998,11 +961,10 @@ async function readAffinitySnapshot(profileId: string, otherId: string, eventId:
     return loadSnapshot(admin);
   }
   const ids = [profileId, otherId];
-  const [profilesRes, linksRes, presenceRes, recommendationsRes, identitiesRes, participationsRes, explanationsRes] =
+  const [profilesRes, linksRes, recommendationsRes, identitiesRes, participationsRes, explanationsRes] =
     await Promise.all([
       admin.from("profiles").select(PROFILE_COLUMNS).in("id", ids),
       admin.from("profile_links").select(LINK_COLUMNS).in("profile_id", ids),
-      admin.from("presence").select(PRESENCE_COLUMNS).eq("event_id", eventId).in("profile_id", ids),
       admin
         .from("event_match_recommendations")
         .select(RECOMMENDATION_COLUMNS)
@@ -1027,7 +989,6 @@ async function readAffinitySnapshot(profileId: string, otherId: string, eventId:
     [
       profilesRes.error,
       linksRes.error,
-      presenceRes.error,
       recommendationsRes.error,
       identitiesRes.error,
       participationsRes.error,
@@ -1044,7 +1005,6 @@ async function readAffinitySnapshot(profileId: string, otherId: string, eventId:
     profiles: ((profilesRes.data ?? []) as Record<string, unknown>[]).map((row) =>
       mapProfile(row, linksByProfile.get(String(row.id)) ?? []),
     ),
-    presence: ((presenceRes.data ?? []) as Record<string, unknown>[]).map(mapPresenceRow),
     recommendations: ((recommendationsRes.data ?? []) as Record<string, unknown>[]).map(mapRecommendationRow),
     identities: ((identitiesRes.data ?? []) as Record<string, unknown>[]).map(mapIdentityRow),
     participations: ((participationsRes.data ?? []) as Record<string, unknown>[]).map(mapParticipationRow),
@@ -1061,15 +1021,7 @@ export type SupabaseFastReads = {
   readAffinitySnapshot: (profileId: string, otherId: string, eventId: string) => Promise<Database>;
 };
 
-/** Scoped write exposed alongside the Store (structural, optional). */
-export type SupabaseFastWrites = {
-  touchPresence: (
-    profileId: string,
-    eventId: string,
-  ) => Promise<{ status: PresenceStatus } | { error: "profile" }>;
-};
-
-export function createSupabaseStore(): Store & SupabaseFastReads & SupabaseFastWrites {
+export function createSupabaseStore(): Store & SupabaseFastReads {
   let chain: Promise<unknown> = Promise.resolve();
 
   async function read(): Promise<Database> {
@@ -1101,67 +1053,10 @@ export function createSupabaseStore(): Store & SupabaseFastReads & SupabaseFastW
     return run;
   }
 
-  /**
-   * Heartbeat-sized presence write: one profile check plus scoped row writes,
-   * serialized on the same chain but with no 13-table snapshot, no full
-   * persist and no vector payloads. The 20s keepalive used to cost a full
-   * loadSnapshot+persistSnapshot each tick and queue everything behind it.
-   */
-  function touchPresence(
-    profileId: string,
-    eventId: string,
-  ): Promise<{ status: PresenceStatus } | { error: "profile" }> {
-    const run = chain.then(async () => {
-      if (!SAFE_ID.test(profileId) || !SAFE_ID.test(eventId)) return { error: "profile" as const };
-      const admin = getAdmin();
-      const now = Date.now();
-      const profileRes = await admin.from("profiles").select("id,demo").eq("id", profileId).limit(1);
-      if (profileRes.error) throw new Error(profileRes.error.message);
-      const row = (profileRes.data ?? [])[0] as { id?: unknown; demo?: unknown } | undefined;
-      if (!row || row.demo) return { error: "profile" as const };
-      // No advisory lock: every statement below is a single atomic row write,
-      // so there is nothing to hold across calls. A concurrent full persist
-      // may overwrite these timestamps with a seconds-old snapshot; the next
-      // 20s keepalive repairs it.
-      try {
-        const status: PresenceStatus = "active";
-        // Heartbeat is presence-only: verify joined membership, never mutate
-        // it. Join/leave own consent and visibility. A left event stays left.
-        const membership = await admin
-          .from("event_participations")
-          .select("user_id")
-          .eq("user_id", profileId)
-          .eq("event_id", eventId)
-          .eq("status", "joined")
-          .limit(1);
-        if (membership.error) throw new Error(membership.error.message);
-        if ((membership.data ?? []).length === 0) return { error: "profile" as const };
-        const upserted = await admin.from("presence").upsert({
-          profile_id: profileId,
-          event_id: eventId,
-          status,
-          source: "session",
-          updated_at: new Date(now).toISOString(),
-          expires_at: nextExpiry(now),
-        });
-        if (upserted.error) throw new Error(upserted.error.message);
-        return { status };
-      } finally {
-        invalidateSnapshot();
-      }
-    });
-    chain = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
-  }
-
   return {
     file: "supabase",
     read,
     update,
-    touchPresence,
     readSessionSnapshot,
     readProfileCardSnapshot,
     readConnectionsSnapshot,

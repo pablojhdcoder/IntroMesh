@@ -3,27 +3,7 @@ import { openProfileId, sealProfileId } from "@/lib/session";
 import { toSharedCard, type StoredProfile } from "./profile";
 import { aggregateActivity } from "./analytics";
 import { assertGrounded, type GroundedExplanation } from "./ground";
-import { isPresenceLive, nextExpiry } from "./presence";
 import { selectCandidates } from "./matching/select-candidates";
-
-describe("presence", () => {
-  it("expires an abandoned heartbeat", () => {
-    const now = Date.parse("2026-11-04T12:00:00.000Z");
-    expect(
-      isPresenceLive(
-        {
-          profileId: "a",
-          eventId: "e",
-          status: "active",
-          source: "session",
-          updatedAt: new Date(now).toISOString(),
-          expiresAt: nextExpiry(now - 120_000),
-        },
-        now,
-      ),
-    ).toBe(false);
-  });
-});
 
 describe("grounding", () => {
   it("rejects an interest that is not in the evidence", () => {

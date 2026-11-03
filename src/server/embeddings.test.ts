@@ -8,7 +8,6 @@ import { onboardingActions } from "@/server/onboarding";
 import { scheduleEmbedding } from "@/server/recommendations";
 
 const NOW = Date.parse("2026-11-03T12:00:00.000Z");
-const LIVE = new Date(Date.now() + 3_600_000).toISOString();
 
 const identity: StructuredIdentity = {
   display_name: "Ada",
@@ -93,16 +92,6 @@ function baseDatabase(): Database {
         status: "confirmed",
         source: "model",
         updatedAt: new Date(NOW).toISOString(),
-      },
-    ],
-    presence: [
-      {
-        profileId: "u1",
-        eventId: "e1",
-        status: "active",
-        source: "session",
-        updatedAt: new Date(NOW).toISOString(),
-        expiresAt: LIVE,
       },
     ],
   });

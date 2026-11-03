@@ -6,7 +6,6 @@ import { insertCandidateAgainstViewers, recomputeViewerOnEmbedding } from "@/ser
 import { buildRecommendationIndex, refreshViewerRecommendations } from "@/server/recommendations";
 
 const NOW = Date.parse("2026-11-03T12:00:00.000Z");
-const LIVE = new Date(NOW + 60_000).toISOString();
 
 function person(id: string, interests: string[]): StoredProfile {
   return {
@@ -44,14 +43,6 @@ function database(): Database {
       },
     ],
     profiles: [person("viewer", ["models", "data"]), person("ana", ["models"]), person("ben", ["data"])],
-    presence: ["viewer", "ana", "ben"].map((profileId) => ({
-      profileId,
-      eventId: "e1",
-      status: "active" as const,
-      source: "session" as const,
-      updatedAt: new Date(NOW).toISOString(),
-      expiresAt: LIVE,
-    })),
     participations: ["viewer", "ana", "ben"].map(joinedParticipation),
   });
 }
@@ -188,14 +179,6 @@ describe("write-path recompute", () => {
         },
       ],
       profiles,
-      presence: ids.map((profileId) => ({
-        profileId,
-        eventId: "e1",
-        status: "active" as const,
-        source: "session" as const,
-        updatedAt: new Date(NOW).toISOString(),
-        expiresAt: LIVE,
-      })),
       participations: ids.map(joinedParticipation),
       embeddings: ids.map((userId) => ({
         id: `global:${userId}:global`,
@@ -234,6 +217,8 @@ describe("write-path recompute", () => {
     expect(
       db.recommendations.some((item) => item.viewerId === "viewer" && item.candidateId === "c1"),
     ).toBe(false);
+    // No presence rows anywhere: membership alone drives the insert.
+    expect(db).not.toHaveProperty("presence");
     db.profiles.push({
       id: "newcomer",
       slug: "newcomer",
@@ -250,14 +235,6 @@ describe("write-path recompute", () => {
       demo: false,
       presentation: null,
       createdAt: new Date(NOW).toISOString(),
-    });
-    db.presence.push({
-      profileId: "newcomer",
-      eventId: "e1",
-      status: "active",
-      source: "session",
-      updatedAt: new Date(NOW).toISOString(),
-      expiresAt: LIVE,
     });
     db.participations.push(joinedParticipation("newcomer"));
     db.embeddings.push({

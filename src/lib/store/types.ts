@@ -7,7 +7,6 @@ import { emptyMetrics, type EngineMetrics } from "@/domain/engine-metrics";
 import type { GroundedExplanation } from "@/domain/ground";
 import type { StructuredIdentity } from "@/domain/identity/schema";
 import type { StoredProfile } from "@/domain/profile";
-import type { PresenceRecord } from "@/domain/presence";
 
 export type EventRecord = {
   id: string;
@@ -97,7 +96,6 @@ export type AffinityCacheRecord = {
 export type Database = {
   events: EventRecord[];
   profiles: StoredProfile[];
-  presence: PresenceRecord[];
   connections: ConnectionRecord[];
   analytics: AnalyticsRecord[];
   affinity: AffinityCacheRecord[];
@@ -148,12 +146,11 @@ export function hydrateDatabase(input: Partial<Database> | null | undefined): Da
   return {
     events,
     profiles: input?.profiles ?? seeded?.profiles ?? [],
-    presence: input?.presence ?? seeded?.presence ?? [],
     connections: input?.connections ?? [],
     analytics: input?.analytics ?? seeded?.analytics ?? [],
     affinity: input?.affinity ?? [],
     identities: input?.identities ?? [],
-    participations: (input?.participations ?? []).map((item) => ({
+    participations: (input?.participations ?? seeded?.participations ?? []).map((item) => ({
       ...item,
       lookingFor: item.lookingFor ?? [],
       collaborationInterests: item.collaborationInterests ?? [],

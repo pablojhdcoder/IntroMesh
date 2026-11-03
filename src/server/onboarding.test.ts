@@ -5,7 +5,6 @@ import { hydrateDatabase, type Database, type Store } from "@/lib/store/types";
 import { onboardingActions } from "@/server/onboarding";
 
 const NOW = Date.parse("2026-11-03T12:00:00.000Z");
-const LIVE = new Date(Date.now() + 3_600_000).toISOString();
 
 const identity: StructuredIdentity = {
   display_name: "Ada",
@@ -105,22 +104,13 @@ function baseDatabase(): Database {
         updatedAt: new Date(NOW).toISOString(),
       },
     ],
-    presence: [
-      {
-        profileId: "u1",
-        eventId: "e1",
-        status: "active",
-        source: "session",
-        updatedAt: new Date(NOW).toISOString(),
-        expiresAt: LIVE,
-      },
-    ],
   });
 }
 
 describe("leaveEvent", () => {
-  it("marks the participation left, hides it, and removes session presence", async () => {
+  it("marks the participation left and hides it", async () => {
     const database = baseDatabase();
+    expect(database).not.toHaveProperty("presence");
     const store = fakeStore(database);
     const result = await onboardingActions(store).leaveEvent("u1", "e1");
     expect(result).toEqual({ left: true, eventId: "e1" });
@@ -129,11 +119,95 @@ describe("leaveEvent", () => {
     expect(participation?.status).toBe("left");
     expect(participation?.consent).toBe(false);
     expect(participation?.visibility).toBe("hidden");
-    expect(database.presence.filter((item) => item.profileId === "u1" && item.eventId === "e1")).toHaveLength(0);
 
     // Identity and profile survive the leave so rejoin skips them.
     expect(database.identities.find((item) => item.userId === "u1")?.status).toBe("confirmed");
     expect(database.profiles.find((item) => item.id === "u1")).toBeDefined();
+  });
+
+  it("clears the leaver's recommendations as viewer and as candidate", async () => {
+    const database = baseDatabase();
+    database.recommendations = [
+      {
+        eventId: "e1",
+        viewerId: "u1",
+        candidateId: "u2",
+        identitySimilarity: null,
+        contextSimilarity: null,
+        cosineDistance: null,
+        goalCompatibility: 1,
+        skillComplementarity: 0,
+        sharedInterests: 0,
+        eventRelevance: null,
+        finalScore: 0.7,
+        confidence: "medium",
+        sharedGoalLabels: [],
+        sharedInterestLabels: [],
+        sharedSkillLabels: [],
+        complementLabels: [],
+        rankingVersion: "hybrid-v1",
+        viewerHash: "v",
+        candidateHash: "c",
+        viewerContextHash: "",
+        candidateContextHash: "",
+        createdAt: new Date(NOW).toISOString(),
+        updatedAt: new Date(NOW).toISOString(),
+      },
+      {
+        eventId: "e1",
+        viewerId: "u2",
+        candidateId: "u1",
+        identitySimilarity: null,
+        contextSimilarity: null,
+        cosineDistance: null,
+        goalCompatibility: 1,
+        skillComplementarity: 0,
+        sharedInterests: 0,
+        eventRelevance: null,
+        finalScore: 0.7,
+        confidence: "medium",
+        sharedGoalLabels: [],
+        sharedInterestLabels: [],
+        sharedSkillLabels: [],
+        complementLabels: [],
+        rankingVersion: "hybrid-v1",
+        viewerHash: "v2",
+        candidateHash: "c2",
+        viewerContextHash: "",
+        candidateContextHash: "",
+        createdAt: new Date(NOW).toISOString(),
+        updatedAt: new Date(NOW).toISOString(),
+      },
+      {
+        eventId: "e2",
+        viewerId: "u1",
+        candidateId: "u2",
+        identitySimilarity: null,
+        contextSimilarity: null,
+        cosineDistance: null,
+        goalCompatibility: 1,
+        skillComplementarity: 0,
+        sharedInterests: 0,
+        eventRelevance: null,
+        finalScore: 0.7,
+        confidence: "medium",
+        sharedGoalLabels: [],
+        sharedInterestLabels: [],
+        sharedSkillLabels: [],
+        complementLabels: [],
+        rankingVersion: "hybrid-v1",
+        viewerHash: "v",
+        candidateHash: "c",
+        viewerContextHash: "",
+        candidateContextHash: "",
+        createdAt: new Date(NOW).toISOString(),
+        updatedAt: new Date(NOW).toISOString(),
+      },
+    ];
+    const store = fakeStore(database);
+    await onboardingActions(store).leaveEvent("u1", "e1");
+    expect(database.recommendations.filter((item) => item.eventId === "e1")).toEqual([]);
+    expect(database.recommendations.filter((item) => item.eventId === "e2")).toHaveLength(1);
   });
 
   it("is idempotent: leaving twice still succeeds", async () => {
@@ -145,13 +219,12 @@ describe("leaveEvent", () => {
     expect(database.participations.find((item) => item.userId === "u1" && item.eventId === "e1")?.status).toBe("left");
   });
 
-  it("succeeds when there is no participation, clearing stray presence", async () => {
+  it("succeeds when there is no participation", async () => {
     const database = baseDatabase();
     database.participations = [];
     const store = fakeStore(database);
     const result = await onboardingActions(store).leaveEvent("u1", "e1");
     expect(result).toEqual({ left: true, eventId: "e1" });
-    expect(database.presence.filter((item) => item.profileId === "u1" && item.eventId === "e1")).toHaveLength(0);
   });
 
   it("leaves other events untouched", async () => {
@@ -182,5 +255,56 @@ describe("leaveEvent", () => {
     expect(joined).toHaveLength(0);
     // Identity stays confirmed so rejoin skips straight to the event step.
     expect(database.identities.find((item) => item.userId === "u1")?.status).toBe("confirmed");
+  });
+});
+
+describe("joinEvent", () => {
+  it("joining writes a joined participation and no presence rows", async () => {
+    const database = baseDatabase();
+    database.participations = [];
+    const store = fakeStore(database);
+    const result = await onboardingActions(store).joinEvent("u1", "e1", "Meet builders");
+    expect(result).not.toHaveProperty("error");
+    expect(database.participations.filter((item) => item.eventId === "e1" && item.status === "joined")).toHaveLength(
+      1,
+    );
+    expect(database).not.toHaveProperty("presence");
+  });
+
+  it("publicEvent attendees counts joined participations, not presence", async () => {
+    const database = baseDatabase();
+    database.participations.push(
+      {
+        userId: "u2",
+        eventId: "e1",
+        intentText: "",
+        lookingFor: [],
+        collaborationInterests: [],
+        revision: 1,
+        inputHash: "hash-u2",
+        consent: true,
+        visibility: "discoverable",
+        status: "joined",
+        updatedAt: new Date(NOW).toISOString(),
+      },
+      {
+        userId: "u3",
+        eventId: "e1",
+        intentText: "",
+        lookingFor: [],
+        collaborationInterests: [],
+        revision: 1,
+        inputHash: "hash-u3",
+        consent: false,
+        visibility: "hidden",
+        status: "left",
+        updatedAt: new Date(NOW).toISOString(),
+      },
+    );
+    const store = fakeStore(database);
+    const listed = await onboardingActions(store).listEvents();
+    expect(listed.find((item) => item?.id === "e1")?.attendees).toBe(2);
+    const resolved = await onboardingActions(store).resolveEvent("E1");
+    expect("event" in resolved && resolved.event?.attendees).toBe(2);
   });
 });

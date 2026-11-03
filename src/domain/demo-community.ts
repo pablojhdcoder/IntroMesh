@@ -1,6 +1,6 @@
 import { DEMO_EVENT_ID, GOALS, INTERESTS, PROJECTS, SKILLS, type GoalId } from "./catalog";
 import type { Presentation, StoredProfile } from "./profile";
-import { nextExpiry, type PresenceRecord } from "./presence";
+import type { ParticipationRecord } from "@/lib/store/types";
 import type { AnalyticsRecord } from "./analytics";
 
 const NAMES = [
@@ -97,13 +97,23 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
 
   const founders = FOUNDERS.map((entry, index) => founderProfile(entry, index, now));
   const visible = [...profiles.slice(0, 28), ...founders];
-  const presence: PresenceRecord[] = visible.map((profile) => ({
-    profileId: profile.id,
+  // Membership is visibility: demo fixtures join the event instead of
+  // writing presence rows (presence no longer exists).
+  const participations: ParticipationRecord[] = visible.map((profile) => ({
+    userId: profile.id,
     eventId: DEMO_EVENT_ID,
-    status: "active",
-    source: "demo",
+    intentText: "",
+    lookingFor: [],
+    collaborationInterests: [],
+    revision: 0,
+    inputHash: `demo:${profile.id}`,
+    consent: true,
+    visibility: "discoverable",
+    status: "joined",
     updatedAt: new Date(now).toISOString(),
-    expiresAt: nextExpiry(now),
+    joinedAt: new Date(now).toISOString(),
+    role: "attendee",
+    lastActiveAt: null,
   }));
 
   const analytics: AnalyticsRecord[] = [];
@@ -153,7 +163,7 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
     }
   });
 
-  return { profiles: [...profiles, ...founders], presence, analytics };
+  return { profiles: [...profiles, ...founders], participations, analytics };
 }
 
 const FOUNDERS: Array<{

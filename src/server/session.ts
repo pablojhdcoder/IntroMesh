@@ -1,5 +1,4 @@
 import { profileInputSchema, toPublicProfile, toSharedCard, type Presentation, type ProfileInput, type StoredProfile } from "@/domain/profile";
-import { isPresenceLive } from "@/domain/presence";
 import { modelConfigured, newId } from "@/lib/meta/explain";
 import { persistenceMode, type Database, type Store } from "@/lib/store";
 
@@ -26,24 +25,16 @@ export function sessionActions(store: Store) {
       const participation = profileId
         ? (database.participations.find((item) => item.userId === profileId && item.status === "joined") ?? null)
         : null;
-      const legacyPresence = profile
-        ? (database.presence.find((item) => item.profileId === profile.id && item.source === "session") ?? null)
-        : null;
       const legacyEvent = legacy ? (database.events[0]?.id ?? null) : null;
-      const eventId = participation?.eventId ?? legacyPresence?.eventId ?? legacyEvent;
+      const eventId = participation?.eventId ?? legacyEvent;
       const event = eventId ? (database.events.find((item) => item.id === eventId) ?? null) : null;
       const ready = confirmed && Boolean(event);
-      const now = Date.now();
       const memberships = profileId
         ? database.participations
             .filter((item) => item.userId === profileId)
             .flatMap((item) => {
               const membershipEvent = database.events.find((candidate) => candidate.id === item.eventId);
               if (!membershipEvent) return [];
-              const livePresence = database.presence.find(
-                (presence) =>
-                  presence.profileId === profileId && presence.eventId === item.eventId && isPresenceLive(presence, now),
-              );
               return [
                 {
                   eventId: item.eventId,
@@ -59,7 +50,9 @@ export function sessionActions(store: Store) {
                     code: membershipEvent.code,
                     status: membershipEvent.status,
                   },
-                  presence: livePresence ? livePresence.status : null,
+                  memberCount: database.participations.filter(
+                    (candidate) => candidate.eventId === item.eventId && candidate.status === "joined",
+                  ).length,
                 },
               ];
             })
