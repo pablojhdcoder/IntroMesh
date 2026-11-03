@@ -46,6 +46,9 @@ export type ParticipationRecord = {
   visibility: "discoverable" | "hidden";
   status: "joined" | "left";
   updatedAt: string;
+  joinedAt?: string;
+  role?: string;
+  lastActiveAt?: string | null;
 };
 
 export type RecommendationRecord = {
@@ -154,6 +157,9 @@ export function hydrateDatabase(input: Partial<Database> | null | undefined): Da
       ...item,
       lookingFor: item.lookingFor ?? [],
       collaborationInterests: item.collaborationInterests ?? [],
+      joinedAt: item.joinedAt ?? item.updatedAt,
+      role: item.role ?? "attendee",
+      lastActiveAt: item.lastActiveAt ?? null,
     })),
     embeddings: input?.embeddings ?? [],
     recommendations: (input?.recommendations ?? []).map((item) => ({

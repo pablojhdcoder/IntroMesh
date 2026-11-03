@@ -7,11 +7,18 @@ import { processEmbeddingJob } from "@/server/embeddings";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
+const joinSchema = z.object({
+  action: z.literal("join").optional(),
   eventId: z.string().min(1),
   intent: z.string().max(1000).default(""),
-  consent: z.boolean().default(false),
 });
+
+const leaveSchema = z.object({
+  action: z.literal("leave"),
+  eventId: z.string().min(1),
+});
+
+const bodySchema = z.union([joinSchema, leaveSchema]);
 
 /**
  * Inline embedding (Vercel `after()`): the response goes out first, then
@@ -43,7 +50,11 @@ export async function POST(request: Request) {
     const id = await viewerId();
     if (!id) return json({ error: "profile" }, 401);
     const body = bodySchema.parse(await request.json());
-    const result = await service().joinEvent(id, body.eventId, body.intent, body.consent);
+    if (body.action === "leave") {
+      const left = await service().leaveEvent(id, body.eventId);
+      return json(left);
+    }
+    const result = await service().joinEvent(id, body.eventId, body.intent);
     if ("error" in result) {
       const status = result.error === "ended" ? 410 : result.error === "missing" ? 404 : 409;
       return json(result, status);

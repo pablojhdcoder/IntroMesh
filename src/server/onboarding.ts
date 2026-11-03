@@ -170,7 +170,27 @@ export function onboardingActions(store: Store) {
       });
     },
 
-    async joinEvent(profileId: string, eventId: string, intent: string, consent: boolean) {
+    async leaveEvent(profileId: string, eventId: string) {
+      const now = Date.now();
+      return store.update((database) => {
+        const participation = database.participations.find(
+          (item) => item.userId === profileId && item.eventId === eventId,
+        );
+        if (participation) {
+          participation.status = "left";
+          participation.consent = false;
+          participation.visibility = "hidden";
+          participation.updatedAt = new Date(now).toISOString();
+          participation.lastActiveAt = new Date(now).toISOString();
+        }
+        database.presence = database.presence.filter(
+          (item) => !(item.profileId === profileId && item.eventId === eventId && item.source === "session"),
+        );
+        return { left: true as const, eventId };
+      });
+    },
+
+    async joinEvent(profileId: string, eventId: string, intent: string) {
       const now = Date.now();
       return store.update((database) => {
         const profile = database.profiles.find((item) => item.id === profileId && !item.demo);
@@ -188,6 +208,7 @@ export function onboardingActions(store: Store) {
           eventDescription: event.description,
         });
         const previous = database.participations.find((item) => item.userId === profileId && item.eventId === eventId);
+        // Social model (Option A): joining is consent. Membership = discoverable.
         const participation = {
           userId: profileId,
           eventId,
@@ -196,10 +217,13 @@ export function onboardingActions(store: Store) {
           collaborationInterests: [],
           revision: (previous?.revision ?? 0) + 1,
           inputHash: sha256(text),
-          consent,
-          visibility: consent ? ("discoverable" as const) : ("hidden" as const),
+          consent: true,
+          visibility: "discoverable" as const,
           status: "joined" as const,
           updatedAt: new Date(now).toISOString(),
+          joinedAt: previous?.joinedAt ?? new Date(now).toISOString(),
+          role: previous?.role ?? "attendee",
+          lastActiveAt: new Date(now).toISOString(),
         };
         database.participations = database.participations
           .filter((item) => !(item.userId === profileId && item.eventId === eventId))
@@ -214,17 +238,17 @@ export function onboardingActions(store: Store) {
         database.recommendations = database.recommendations.filter(
           (item) => item.eventId !== eventId || (item.viewerId !== profileId && item.candidateId !== profileId),
         );
-        database.presence = database.presence.filter((item) => !(item.profileId === profileId && item.source === "session"));
-        if (consent) {
-          database.presence.push({
-            profileId,
-            eventId,
-            status: "active",
-            source: "session",
-            updatedAt: new Date(now).toISOString(),
-            expiresAt: nextExpiry(now),
-          });
-        }
+        database.presence = database.presence.filter(
+          (item) => !(item.profileId === profileId && item.source === "session" && item.eventId === eventId),
+        );
+        database.presence.push({
+          profileId,
+          eventId,
+          status: "active",
+          source: "session",
+          updatedAt: new Date(now).toISOString(),
+          expiresAt: nextExpiry(now),
+        });
         const seeking = intent.trim() || identity.confirmed.looking_for.join(", ");
         if (seeking) profile.seeking = seeking.slice(0, 500);
         return { event: publicEvent(database, eventId) };

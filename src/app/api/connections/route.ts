@@ -30,6 +30,7 @@ const createSchema = z.object({
   profileId: z.string().min(1),
   intro: z.string().trim().min(1).max(280),
   introSource: z.enum(["model", "user"]),
+  eventId: z.string().min(1),
 });
 
 const resolveSchema = z.object({
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
       return json(result);
     }
     const parsed = createSchema.parse(body);
-    const result = await service().requestConnection(id, parsed.profileId, parsed.intro, parsed.introSource);
+    const result = await service().requestConnection(id, parsed.profileId, parsed.intro, parsed.introSource, parsed.eventId);
     if ("error" in result) return json(result, 403);
     return json({ connection: result });
   } catch (error) {

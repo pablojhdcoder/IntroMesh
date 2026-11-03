@@ -1,4 +1,5 @@
 import { profileInputSchema, toPublicProfile, toSharedCard, type Presentation, type ProfileInput, type StoredProfile } from "@/domain/profile";
+import { isPresenceLive } from "@/domain/presence";
 import { modelConfigured, newId } from "@/lib/meta/explain";
 import { persistenceMode, type Database, type Store } from "@/lib/store";
 
@@ -32,6 +33,37 @@ export function sessionActions(store: Store) {
       const eventId = participation?.eventId ?? legacyPresence?.eventId ?? legacyEvent;
       const event = eventId ? (database.events.find((item) => item.id === eventId) ?? null) : null;
       const ready = confirmed && Boolean(event);
+      const now = Date.now();
+      const memberships = profileId
+        ? database.participations
+            .filter((item) => item.userId === profileId)
+            .flatMap((item) => {
+              const membershipEvent = database.events.find((candidate) => candidate.id === item.eventId);
+              if (!membershipEvent) return [];
+              const livePresence = database.presence.find(
+                (presence) =>
+                  presence.profileId === profileId && presence.eventId === item.eventId && isPresenceLive(presence, now),
+              );
+              return [
+                {
+                  eventId: item.eventId,
+                  status: item.status,
+                  joinedAt: item.joinedAt ?? item.updatedAt,
+                  event: {
+                    id: membershipEvent.id,
+                    name: membershipEvent.name,
+                    demo: membershipEvent.demo,
+                    description: membershipEvent.description,
+                    category: membershipEvent.category,
+                    startsAt: membershipEvent.startsAt,
+                    code: membershipEvent.code,
+                    status: membershipEvent.status,
+                  },
+                  presence: livePresence ? livePresence.status : null,
+                },
+              ];
+            })
+        : [];
       return {
         profile: confirmed && profile ? toPublicProfile(profile) : null,
         needsSetup: !ready,
@@ -48,6 +80,7 @@ export function sessionActions(store: Store) {
         canCreateEvent: process.env.INTROMESH_ALLOW_EVENT_CREATE === "1",
         persistence: persistenceMode(),
         event: ready ? event : null,
+        memberships,
       };
     },
 
@@ -69,12 +102,16 @@ export function sessionActions(store: Store) {
       });
     },
 
-    async profileBySlug(slug: string) {
+    async profileBySlug(slug: string, viewerId: string | null = null) {
       const fast = store as SessionFastStore;
       const database =
         typeof fast.readProfileCardSnapshot === "function" ? await fast.readProfileCardSnapshot(slug) : await store.read();
       const profile = database.profiles.find((item) => item.slug === slug);
-      return profile ? toSharedCard(profile) : null;
+      if (!profile) return null;
+      // Private global profiles are hidden from everyone but their owner,
+      // including the unauthenticated card/QR/vCard surfaces.
+      if ((profile.profileVisibility ?? "public") === "private" && viewerId !== profile.id) return null;
+      return toSharedCard(profile);
     },
   };
 }

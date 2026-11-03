@@ -14,7 +14,13 @@ export const profileInputSchema = z.object({
     .array(
       z.object({
         label: z.string().trim().min(2).max(24),
-        url: z.string().url().max(200),
+        url: z
+          .string()
+          .url()
+          .max(200)
+          .refine((value) => value.startsWith("https://") || value.startsWith("http://"), {
+            message: "Only http(s) links are allowed",
+          }),
       }),
     )
     .max(4)
@@ -41,6 +47,8 @@ export type StoredProfile = ProfileInput & {
   demo: boolean;
   presentation: Presentation | null;
   createdAt: string;
+  avatarUrl?: string | null;
+  profileVisibility?: "public" | "private";
 };
 
 export type PublicProfile = Pick<
@@ -58,7 +66,10 @@ export type PublicProfile = Pick<
   | "goal"
   | "demo"
   | "presentation"
->;
+> & {
+  avatarUrl?: string | null;
+  profileVisibility?: "public" | "private";
+};
 
 export type SharedCard = Pick<
   PublicProfile,
@@ -95,5 +106,7 @@ export function toPublicProfile(profile: StoredProfile): PublicProfile {
     goal: profile.goal,
     demo: profile.demo,
     presentation: profile.presentation,
+    avatarUrl: profile.avatarUrl ?? null,
+    profileVisibility: profile.profileVisibility ?? "public",
   };
 }

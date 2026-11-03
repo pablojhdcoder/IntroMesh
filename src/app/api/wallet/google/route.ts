@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (!slug) return json({ error: "invalid" }, 400);
   const status = googleWalletStatus();
   if (!status.configured) return json({ error: status.reason }, 503);
-  const database = await service().profileBySlug(slug);
+  const database = await service().profileBySlug(slug, id);
   if (!database) return json({ error: "missing" }, 404);
   try {
     const origin = new URL(request.url).origin;

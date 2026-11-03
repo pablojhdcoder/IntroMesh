@@ -76,7 +76,7 @@ async function loadSnapshotCached(admin: Admin): Promise<Database> {
 const EVENT_COLUMNS =
   "id,name,demo,description,category,starts_at,code,status,created_by";
 const PROFILE_COLUMNS =
-  "id,slug,display_name,role,bio,interests,skills,projects,offers,seeking,goal,demo,presentation,created_at";
+  "id,slug,display_name,role,bio,interests,skills,projects,offers,seeking,goal,demo,presentation,created_at,avatar_url,profile_visibility";
 const LINK_COLUMNS = "profile_id,label,url";
 const PRESENCE_COLUMNS = "profile_id,event_id,status,source,updated_at,expires_at";
 const CONNECTION_COLUMNS = "id,event_id,from_id,to_id,status,intro,intro_source,created_at,accepted_at";
@@ -84,7 +84,7 @@ const ANALYTICS_COLUMNS = "id,event_id,type,topic,at";
 const IDENTITY_COLUMNS =
   "user_id,display_name,original_description,input_hash,generated,confirmed,revision,status,source,updated_at";
 const PARTICIPATION_COLUMNS =
-  "user_id,event_id,intent_text,looking_for,collaboration_interests,revision,input_hash,consent,visibility,status,updated_at";
+  "user_id,event_id,intent_text,looking_for,collaboration_interests,revision,input_hash,consent,visibility,status,updated_at,joined_at,role,last_active_at";
 const GLOBAL_EMBEDDING_COLUMNS =
   "user_id,embedding,model_id,model_revision,input_hash,profile_revision,status,attempts,lease_until,error,created_at,updated_at";
 // Status-only variant for read paths: discovery/affinity need to know whether
@@ -136,6 +136,8 @@ function mapProfile(row: Record<string, unknown>, links: { label: string; url: s
     demo: Boolean(row.demo),
     presentation: (row.presentation as Presentation | null) ?? null,
     createdAt: String(row.created_at ?? new Date().toISOString()),
+    avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+    profileVisibility: row.profile_visibility === "private" ? "private" : "public",
   };
 }
 
@@ -216,6 +218,9 @@ function mapParticipationRow(row: Record<string, unknown>): ParticipationRecord 
     visibility: row.visibility as ParticipationRecord["visibility"],
     status: row.status as ParticipationRecord["status"],
     updatedAt: String(row.updated_at),
+    joinedAt: row.joined_at ? String(row.joined_at) : String(row.updated_at),
+    role: row.role ? String(row.role) : "attendee",
+    lastActiveAt: row.last_active_at ? String(row.last_active_at) : null,
   };
 }
 
@@ -560,6 +565,8 @@ async function persistSnapshot(admin: Admin, database: Database, dirty?: Set<Per
           demo: profile.demo,
           presentation: profile.presentation,
           created_at: profile.createdAt,
+          avatar_url: profile.avatarUrl ?? null,
+          profile_visibility: profile.profileVisibility ?? "public",
         })),
         "id",
       );
@@ -671,6 +678,9 @@ async function persistSnapshot(admin: Admin, database: Database, dirty?: Set<Per
           visibility: item.visibility,
           status: item.status,
           updated_at: item.updatedAt,
+          joined_at: item.joinedAt ?? item.updatedAt,
+          role: item.role ?? "attendee",
+          last_active_at: item.lastActiveAt ?? null,
         })),
         ["user_id", "event_id"],
       ),
@@ -1056,9 +1066,7 @@ export type SupabaseFastWrites = {
   touchPresence: (
     profileId: string,
     eventId: string,
-    enabled: boolean,
-    seeking: boolean,
-  ) => Promise<{ status: PresenceStatus | "invisible" } | { error: "profile" }>;
+  ) => Promise<{ status: PresenceStatus } | { error: "profile" }>;
 };
 
 export function createSupabaseStore(): Store & SupabaseFastReads & SupabaseFastWrites {
@@ -1102,9 +1110,7 @@ export function createSupabaseStore(): Store & SupabaseFastReads & SupabaseFastW
   function touchPresence(
     profileId: string,
     eventId: string,
-    enabled: boolean,
-    seeking: boolean,
-  ): Promise<{ status: PresenceStatus | "invisible" } | { error: "profile" }> {
+  ): Promise<{ status: PresenceStatus } | { error: "profile" }> {
     const run = chain.then(async () => {
       if (!SAFE_ID.test(profileId) || !SAFE_ID.test(eventId)) return { error: "profile" as const };
       const admin = getAdmin();
@@ -1116,41 +1122,20 @@ export function createSupabaseStore(): Store & SupabaseFastReads & SupabaseFastW
       // No advisory lock: every statement below is a single atomic row write,
       // so there is nothing to hold across calls. A concurrent full persist
       // may overwrite these timestamps with a seconds-old snapshot; the next
-      // 20s keepalive (or user toggle) repairs it. Participation updates are
-      // unconditional: zero matched rows is a silent no-op, no pre-select.
+      // 20s keepalive repairs it.
       try {
-        if (!enabled) {
-          const deleted = await admin
-            .from("presence")
-            .delete()
-            .eq("profile_id", profileId)
-            .eq("event_id", eventId)
-            .eq("source", "session");
-          if (deleted.error) throw new Error(deleted.error.message);
-          const updated = await admin
-            .from("event_participations")
-            .update({ consent: false, visibility: "hidden", updated_at: new Date(now).toISOString() })
-            .eq("user_id", profileId)
-            .eq("event_id", eventId)
-            .select("user_id");
-          if (updated.error) throw new Error(updated.error.message);
-          if ((updated.data ?? []).length === 0) return { error: "profile" as const };
-          return { status: "invisible" as const };
-        }
-        const status: PresenceStatus = seeking ? "seeking" : "active";
-        const updated = await admin
+        const status: PresenceStatus = "active";
+        // Heartbeat is presence-only: verify joined membership, never mutate
+        // it. Join/leave own consent and visibility. A left event stays left.
+        const membership = await admin
           .from("event_participations")
-          .update({
-            consent: true,
-            visibility: "discoverable",
-            status: "joined",
-            updated_at: new Date(now).toISOString(),
-          })
+          .select("user_id")
           .eq("user_id", profileId)
           .eq("event_id", eventId)
-          .select("user_id");
-        if (updated.error) throw new Error(updated.error.message);
-        if ((updated.data ?? []).length === 0) return { error: "profile" as const };
+          .eq("status", "joined")
+          .limit(1);
+        if (membership.error) throw new Error(membership.error.message);
+        if ((membership.data ?? []).length === 0) return { error: "profile" as const };
         const upserted = await admin.from("presence").upsert({
           profile_id: profileId,
           event_id: eventId,

@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   if (!slug) return json({ error: "invalid" }, 400);
   const status = appleWalletStatus();
   if (!status.configured) return json({ error: status.reason }, 503);
-  const profile = await service().profileBySlug(slug);
+  const profile = await service().profileBySlug(slug, id);
   if (!profile) return json({ error: "missing" }, 404);
   const origin = new URL(request.url).origin;
   return json({ pass: buildPassJson(profile, origin), note: "pkpass-signing-pending-cert" });
