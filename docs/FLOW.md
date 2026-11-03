@@ -107,14 +107,14 @@ Already confirmed identity skips the description/review when changing events.
 - Writes `identities.confirmed`, `status: confirmed`, bumps `revision`.
 - Projects into `profiles` via `toProfileInput`. Missing role → `Participant`.
 - Clears recommendation rows where this person is viewer or candidate.
-- Enqueues a **global** embedding job (`scheduleEmbedding`). `processEmbeddingQueue` starts after the response (does not block).
+- Enqueues a **global** embedding job (`scheduleEmbedding`). The job is processed inline with `after()` after the response; no separate always-on service is required.
 - Editing structured fields does not call Meta.
 
 **Beneath — join.** `POST /api/participation` → `joinEvent`.
 
 - Requires confirmed identity + live event.
 - Writes `participations`: intent, consent, visibility (`discoverable` | `hidden`). Meta is **not** called.
-- If there is intent text, enqueues an **event** embedding job.
+- If there is intent text, enqueues an **event** embedding job. Embedding and recommendation recompute run inline with `after()` after the response; `npm run worker:embeddings` and `npm run backfill:embeddings` are laptop backfill/retry tools only.
 - Clears this event’s recommendations that involve the joiner.
 - Consent true → session `presence` `active` with 90s expiry. Consent false → no presence row.
 - May copy intent into `profile.seeking` for the field.
@@ -132,19 +132,20 @@ Already confirmed identity skips the description/review when changing events.
 **Beneath — presence.** `POST /api/presence` every 20s while visible → `presenceActions.setPresence`.
 
 - Invisible: drop session presence; `consent = false`, `visibility = hidden`. Identity is unchanged.
-- Active / Seeking: session row, `expiresAt` = now + 90s. Demo presence is refreshed in discovery, not by this heartbeat.
+- Active / Seeking: session row, `expiresAt` = now + 90s.
 - Abandoned tab expires; closing the tab is not the privacy switch — Invisible is.
 
-**Beneath — room.** `GET /api/discovery` → `discoverActions.discover`.
+**Beneath — room.** `GET /api/discovery` → `discoverActions.discover`. Read-only: it never embeds, scores, or rewrites recommendations.
 
-1. Drop expired non-demo presence. Keep demo fixtures alive for the hackathon room.
+1. Drop expired presence rows. All sources expire equally (`isPresenceLive`).
 2. If the viewer is not live, `people: []`.
-3. `refreshViewerRecommendations`: visible pool at this event only (consent + live presence). Optional hybrid retrieve (E5 vectors in `embeddings`) at most 24, then score, persist at most 8 in `recommendations`. No all-pairs over the whole database.
-4. Field layout: **local** feature hash (`embedProfile` / `mapSignalGraph` in `src/domain/embedding`). Meta has no embeddings API. Angle = vector, not random. Up to 18 neighbors.
-5. Ranker in the room: `selectCandidates`, `score = goals×3 + interests×2 + skills×1 + complements×2`. Need overlap. Max **8** recommendations (threads). If both global E5 vectors exist, hybrid `finalScore` can label the edge; otherwise the formula above so the demo room does not jump.
-6. Each person: public card + `recommendation | null` + `demo`.
+3. Read this viewer’s persisted top-8 `recommendations` rows for the event (written by the embedding worker), sorted by `finalScore`. No `refreshViewerRecommendations`, no `selectCandidates`, no vector work on this path.
+4. Field layout: deterministic `pointForPair(viewerId, candidateId)` hash position. Stable across renders and processes. No embeddings and no feature hashing on the read path. Up to 8 neighbors.
+5. Each person: public card + persisted `recommendation` (score, confidence, stored evidence labels) + `demo`.
+6. `directory`: other live attendees at the event who are not in the top-8, as public cards with presence only and no scores (capped at 100).
+7. `viewerEmbeddingStatus`: `pending` until the global embedding job completes or persisted rows exist, then `ready`.
 
-Meta does not choose who appears.
+Meta does not choose who appears. Embeddings only build the list on the write path; the discovery read path never reads vectors.
 
 ---
 
@@ -154,12 +155,12 @@ Meta does not choose who appears.
 
 **Beneath.** `POST /api/affinity` → `explainActions.affinity`.
 
-- Both must be live at the event. Else `error: "presence"`.
-- Pair must already be a `selectCandidates` hit or a stored `recommendations` row. Else `error: "match"`. The model does not search the room.
+- Both must be live at the event with joined, consented, discoverable participations. Else `error: "presence"`. Fixtures get no bypass.
+- Pair must already have a persisted `recommendations` row from the write path. Else `error: "match"`. The model does not search the room.
 - Cache key: event + both identity/context revisions and hashes + evidence fingerprint + ranking/prompt/model + locale `en` (`explanationCacheKey`). Hit → return, `cached: true`.
 - Miss: atomic claim (`processing`, 30s lease, three attempts). Concurrent requests wait.
-- `shouldCallMetaForAffinity`: no call if either profile is `demo` or `MODEL_API_KEY` is missing → `demoExplanation` from declared overlaps, `source: "demo"`.
-- Otherwise `createStructuredResponse` (`src/lib/meta/client`). Prompt gets confirmed identities, intents, **allowed** signal lists, and already computed scores — not the 384-d vector. Zod `match_explanation`. Ungrounded terms → reject, no invented fill-in.
+- No-key or model failure → `error: "meta"`. No fabricated text is ever returned.
+- With key: `createStructuredResponse` (`src/lib/meta/client`). Prompt gets confirmed identities, intents, **stored evidence labels**, and already computed scores — not the embedding vector. Zod `match_explanation`. Ungrounded terms → reject, no invented fill-in.
 - Store completed explanation; analytics `profile_viewed` once per pair/event.
 - `regenerate: true` ignores a cache hit.
 
@@ -167,13 +168,13 @@ Meta does not choose who appears.
 
 ## 5. Connect — request and accept
 
-**Front.** Request connection (needs an explanation). Pending. Demo fixture: Simulate accept. Accepted: intro text stays on the panel.
+**Front.** Request connection (needs an explanation). Pending. Accepted: intro text stays on the panel.
 
 **Beneath.** `POST /api/connections` → `connectActions`.
 
-- Request: row `pending`, `intro` + `introSource` (`model` | `demo` | `user`), analytics `intro_requested`. Duplicate non-declined request is a no-op.
+- Request: row `pending`, `intro` + `introSource` (`model` | `user`), analytics `intro_requested`. Duplicate non-declined request is a no-op. `introSource` values other than `model`/`user` are rejected.
 - Seeing a recommendation is not a relationship. Accept is independent of visibility.
-- Resolve: `toId` may accept/decline. `simulateDemo` only if the target is `demo` and the caller is `fromId`.
+- Resolve: only `toId` may accept/decline. No simulated accept path.
 - Accept → `accepted` + `connection_accepted` analytics. Decline stays declined.
 - No email, phone, or chat payload. Public slug is enough to meet in the hall.
 
@@ -200,8 +201,8 @@ Meta does not choose who appears.
 | Continue on description | Hash, Zod, identity draft | Yes, once per new hash (or regenerate) |
 | Save identity | Profile projection, embedding job | No |
 | Presence toggle | Presence rows, consent | No |
-| See the room | Presence filter, local vectors, `selectCandidates`, optional hybrid | No |
-| Open a person | Cache + grounding | Yes, only if not demo, not cached, pair already ranked |
+| See the room | Presence filter, persisted top-8, deterministic layout | No |
+| Open a person | Cache + grounding | Yes, always when not cached; no key → 503 `meta` |
 | Request / accept | Connections + analytics | No |
 | Share / Intelligence | Analytics aggregates | No |
 
@@ -234,7 +235,7 @@ Without `MODEL_API_KEY`, Meta-shaped UI is a badge or one line. No simulated mod
 | Identity + Muse Spark | `PROFILE_INTELLIGENCE.md`, `ONBOARDING.md` |
 | Global vs event fields | `EVENT_CONTEXT.md` |
 | Hybrid ranking | `MATCHING.md` |
-| E5 queue vs field hashing | `EMBEDDING.md` |
+| Azure embedding queue and write path | `EMBEDDING.md` |
 | Explanation cache key | `META_AI_CACHE.md` |
 | Consent | `PRIVACY.md` |
 | UI tokens | `DESIGN.md` |

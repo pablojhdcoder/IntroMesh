@@ -14,7 +14,7 @@ This document sets the hackathon boundaries. The journey is already in the app. 
 | Persistence | `src/lib/store`, `src/lib/supabase` | Supabase Postgres via service role on the server. Contract type is `Store` |
 | Session | `src/lib/session` | Signed profile cookie. Does not talk to Meta |
 | Meta | `src/lib/meta` | Client, schemas, errors, and a local request limit |
-| Embeddings I/O | `src/lib/embedding` | Local E5 runtime. Pure math stays in `src/domain/embedding` |
+| Embeddings I/O | `src/lib/embedding` | Azure OpenAI `text-embedding-3-small` (1536 dims) over HTTPS, processed inline with `after()`. Pure math stays in `src/domain/embedding` |
 
 Read the code in product order: `session` → `presence` → `discover` → `explain` → `connect` → `learn`.
 
@@ -42,18 +42,19 @@ Precise continuous location is not collected.
 
 ## Matching at scale
 
-There are two channels. The signal field still projects the neighborhood with feature hashing in `src/domain/embedding/vector.ts` so the approved layout does not move. The newer compatibility lives in `src/domain/matching/hybrid.ts` and in `docs/EMBEDDING.md`, `docs/MATCHING.md`, and `docs/META_AI_CACHE.md`.
+There are two jobs with one owner. Inline `after()` processing after confirm/join is the writer of recommendations: it embeds the enqueued global/event texts via Azure OpenAI, then recomputes the affected viewer lists. The discovery read path never embeds, scores, or reads vectors. `npm run worker:embeddings` and `npm run backfill:embeddings` are laptop backfill/retry tools, not a required deploy service. Details live in `docs/EMBEDDING.md`, `docs/MATCHING.md`, and `docs/META_AI_CACHE.md`.
 
 Profiles are not compared all-to-all.
 
 1. Index filter attributes: event, goals, interests, and skills.
-2. Require presence at the event. The room is already the reduced set.
-3. Project each visible profile to a local vector (`src/domain/embedding`). The text is the goal, interests, skills, and what they seek. Weights are `MATCH_WEIGHTS`. Closeness is cosine.
-4. Keep a small neighborhood by that cosine. That places the field: closer to “You” means more alike. Angle comes from the vector, not from an index or randomness.
-5. Score in code, with the formula below, only inside that room. A neighbor with no overlap is not a recommendation and gets no thread.
-6. Ask Meta for an explanation only for recommendations that will be shown.
+2. Require live presence plus joined, consented, discoverable participation at the event. The room is already the reduced set.
+3. Retrieve at most 24 by global embedding similarity (pgvector HNSW in production, brute force in the memory store).
+4. If both sides have a context embedding, it enters the semantic blend: 35% global and 65% contextual.
+5. Score in code with the hybrid formula, only inside that event. A neighbor below the cutoff is not a recommendation.
+6. Persist at most 8 per viewer in `event_match_recommendations` with stored evidence labels (shared goals/interests/skills, complements).
+7. Ask Meta for an explanation only for persisted recommendations that will be shown.
 
-Meta Model API does not document an embeddings endpoint. The vector does not come from that API or another provider: it is deterministic feature hashing and is recomputed. It is not persisted. If official embeddings appear later, replace `embedProfile` and optionally store the vector; retrieval and the map keep the same contract. The signal field draws that neighborhood.
+The signal field draws the persisted neighborhood at deterministic hash positions (`pointForPair`); closer to “You” is layout only, not a score claim.
 
 ## Meta Model API
 
@@ -73,11 +74,11 @@ Over the set already filtered by event and live presence:
 
 A complement is a skill the other has that appears in what you are looking for and is not already a shared skill. Confidence is low with fewer than two signals, medium with two or three, high with four or more. Weights live in `MATCH_WEIGHTS`.
 
-No all-pairs matrix is built. Meta only explains a candidate already scored, and the result is cached. A `demo` profile does not call Meta: the explanation is built from declared data and labeled as demo.
+No all-pairs matrix is built. Meta only explains a persisted recommendation, and the result is cached. The `demo` badge marks a fixture profile in the UI only; it changes no matching, explanation, or connection behavior.
 
 ## Persistence in this hackathon
 
-The server requires Supabase (`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Apply `supabase/migrations/0001_init.sql` through `0004_store_parity.sql` (see `supabase/APPLY.md`). Session presence expires after 90 seconds without a heartbeat. Presence marked `demo` is a labeled fixture, not a phone in the room.
+The server requires Supabase (`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Apply `supabase/migrations/0001_init.sql` through `0006_azure_embeddings_1536.sql` (see `supabase/APPLY.md`). Session presence expires after 90 seconds without a heartbeat. Embedding jobs are processed inline with `after()`; the worker scripts are backfill/retry tools only.
 
 ## Supabase
 

@@ -20,7 +20,7 @@ The `muse-spark-1.3` model is called from the server with the OpenAI SDK and `MO
 
 If the response cites an interest or skill that is not in the data, it is rejected. Nothing is replaced with invented text.
 
-Without `MODEL_API_KEY` the UI says so and uses a **demo** draft built only from declared fields. That is not a Meta response.
+Without `MODEL_API_KEY` the UI says so. Affinity returns HTTP 503 `meta`, and the onboarding draft saves for manual entry. That is not a Meta response.
 
 ## Start
 
@@ -32,7 +32,14 @@ npm run dev
 
 Open http://localhost:3000.
 
-Persistence is **Supabase only**. Apply the SQL in `supabase/APPLY.md` (migrations `0001` → `0004`), then set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The demo room is the 28 labeled profiles from `0002_demo_seed.sql`.
+Persistence is **Supabase only**. Apply the SQL in `supabase/APPLY.md` (migrations `0001` → `0006`), then set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The demo room is the 28 labeled profiles from `0002_demo_seed.sql`. Migration `0006_azure_embeddings_1536.sql` moves vectors to `vector(1536)` and resets stale-provider rows to pending.
+
+Embeddings use Azure OpenAI `text-embedding-3-small` (set `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION`). Join and confirm enqueue jobs that the server processes inline with `after()` — no separate worker deploy target is required. For retries or old rows, run from a laptop:
+
+```bash
+npm run backfill:embeddings
+npm run worker:embeddings
+```
 
 ## Variables
 
@@ -44,6 +51,10 @@ Persistence is **Supabase only**. Apply the SQL in `supabase/APPLY.md` (migratio
 | `NEXT_PUBLIC_SUPABASE_URL` | Project URL. Required |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key. Required |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server only. Required for reads/writes |
+| `AZURE_OPENAI_ENDPOINT` | Embedding provider. Server only |
+| `AZURE_OPENAI_API_KEY` | Embedding provider. Server only |
+| `AZURE_OPENAI_DEPLOYMENT` | `text-embedding-3-small` deployment name. Server only |
+| `AZURE_OPENAI_API_VERSION` | Embedding provider API version. Server only |
 
 The full product journey (join → field → explanation → connection → intelligence) is in [docs/FLOW.md](docs/FLOW.md).
 
@@ -51,9 +62,9 @@ The full product journey (join → field → explanation → connection → inte
 
 1. Create your identity. Pick catalog interests (`models`, `product`…) to overlap the demo community.
 2. Press **Active** or **Seeking**. Session presence expires after 90 seconds if abandoned.
-3. Select a highlighted node. The list below is the same information for keyboard and mobile.
-4. Read the explanation. Without a key, the label is “Demo, not Meta AI”.
-5. Request the connection and, if the other person is a fixture, **Simulate accept**.
+3. Wait for inline embedding (`viewerEmbeddingStatus: ready`; the backfill script is only for retries), then select a highlighted node. The list below is the same information for keyboard and mobile.
+4. Read the explanation. Without a key, affinity returns 503 `meta`.
+5. Request the connection and accept or decline it as the real recipient.
 6. Copy the link or open the QR. NFC only appears in Chrome for Android, in a secure context, and writes a tag: it does not detect other phones.
 7. Open **Intelligence**. Numbers come from stored events. Topics with fewer than five cases are hidden.
 
@@ -61,9 +72,9 @@ The full product journey (join → field → explanation → connection → inte
 
 1. Join, save a profile with a hackathon goal and interest `models`.
 2. Turn on presence.
-3. Select a demo node with a shared interest.
-4. Show the labeled explanation.
-5. Request and simulate acceptance.
+3. Wait for inline embedding, then select a node with a shared interest.
+4. Show the Meta-grounded explanation.
+5. Request and accept the connection.
 6. Show the QR.
 7. Open Intelligence and point out that aggregates are not a people ranking.
 
@@ -93,8 +104,8 @@ npm run verify:meta
 
 ## Decisions
 
-- Ranking is deterministic: goals×3, interests×2, skills×1, complements×2. Meta does not scan the room.
-- The graph vector is local: declared labels, not a Meta embedding. That API does not document embeddings.
+- Ranking is deterministic on the write path: hybrid score over semantic, goals, interests, complements, and event relevance. Meta does not scan the room.
+- The graph position is a deterministic pair hash, not an embedding. Recommendations are persisted top-8 rows.
 - In-app presence is not physical distance.
 - Organizers see aggregates. That view has no individual history.
 
