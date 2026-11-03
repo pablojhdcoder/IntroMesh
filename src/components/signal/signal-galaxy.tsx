@@ -287,6 +287,10 @@ export function SignalGalaxy({
       dressed.current = true;
       renderer.outputColorSpace = SRGBColorSpace;
       renderer.toneMapping = ACESFilmicToneMapping;
+      // Cap the drawing buffer: the transmission pass scales with physical
+      // pixels, so uncapped hidpi ratios make the first frames (and battery)
+      // much slower for no visible gain on small spheres.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       const pmrem = new PMREMGenerator(renderer);
       graph.scene().environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
       pmrem.dispose();
@@ -306,6 +310,8 @@ export function SignalGalaxy({
   // graphData identity, size jitter, or theme), skipped for the origin-only
   // placeholder, and skipped when the roster matches the last fitted one —
   // so invisible → visible with a cached roster never re-runs layout/camera.
+  // The delay is short on purpose: nodes start from deterministic seeds and
+  // warmup ticks, so the layout is already stable after a couple of frames.
   useEffect(() => {
     if (!ready || size.width === 0 || size.height === 0) return;
     if (graphData.nodes.length <= 1) return;
@@ -320,7 +326,7 @@ export function SignalGalaxy({
       const pose = { x: fitted.x * 0.2 + 36, y: fitted.y * 0.25 + 28, z: fitted.z };
       overviewPose.current = pose;
       graph.cameraPosition(pose, { x: 0, y: 0, z: 0 }, reducedMotion ? 0 : 800);
-    }, 700);
+    }, 150);
     return () => window.clearTimeout(frame);
   }, [graphData, ready, reducedMotion, rosterSig, size.height, size.width]);
 
@@ -451,7 +457,7 @@ export function SignalGalaxy({
           linkDirectionalParticleSpeed={0.006}
           linkDirectionalParticleColor={particleColor}
           warmupTicks={reducedMotion ? 90 : 40}
-          cooldownTime={reducedMotion ? 0 : 6000}
+          cooldownTime={reducedMotion ? 0 : 3000}
         />
       ) : (
         <div aria-hidden="true" className="absolute inset-0 grid place-items-center">
