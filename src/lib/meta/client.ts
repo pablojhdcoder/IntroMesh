@@ -121,7 +121,7 @@ export async function createStructuredResponse<T>(options: {
         },
       },
       reasoning: { effort: "low" },
-      max_output_tokens: 1024,
+      max_output_tokens: 4096,
     });
 
     if (response.status !== "completed" || !response.output_text) {
