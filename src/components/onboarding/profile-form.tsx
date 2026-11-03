@@ -174,7 +174,7 @@ export function ProfileForm({
       {presentation ? (
         <div className="flex flex-col gap-4 border-t border-border pt-8">
           <p className={meta}>
-            {presentation.source === "model" ? "Presentation · Meta AI" : presentation.source === "demo" ? "Presentation · Demo, not Meta AI" : "Presentation · edited"}
+            {presentation.source === "model" ? "Presentation · Meta AI" : "Presentation · edited"}
           </p>
           <label className={field}>
             Headline

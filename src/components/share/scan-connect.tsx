@@ -11,7 +11,7 @@ type SessionShape = {
 };
 
 type Explanation = {
-  source: "model" | "demo";
+  source: "model";
   summary: string;
   opener: string;
   confidence: string;
@@ -75,7 +75,7 @@ export function ScanConnect({ slug, profileId }: { slug: string; profileId: stri
             ? "Both of you need presence on at the same event."
             : body.error === "match"
               ? "Not enough shared signals yet."
-              : "Meta returned no explanation.",
+              : "Explanation unavailable — Meta API not configured. Try again.",
         );
         return;
       }

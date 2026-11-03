@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cn } from "cn";
 import type { PublicProfile, SharedCard } from "@/domain/profile";
+import type { GroundedExplanation } from "@/domain/ground";
 import { Button } from "@/components/ui/button";
 import { Crossfade } from "@/components/ui/crossfade";
 import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding/onboarding-flow";
@@ -14,23 +15,19 @@ import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ArrowUpRight, Check, ChevronRight, Copy, EyeOff, RefreshCw } from "lucide-react";
 import {
+  explainErrorCopy,
   fetchJsonDeduped,
   getCachedRoom,
+  normalizeDiscovery,
   resolveRoomState,
   setCachedRoom,
+  type DirectoryPerson,
   type Presence,
+  type ViewerEmbeddingStatus,
 } from "@/components/signal/use-room";
 
-type Explanation = {
-  source: "model" | "demo";
-  summary: string;
-  opener: string;
-  citedGoals: string[];
-  citedInterests: string[];
-  citedSkills: string[];
-  complement: string[];
-  confidence: "low" | "medium" | "high";
-};
+// Grounded model explanation only: source "model" comes from the domain type.
+type Explanation = GroundedExplanation & { cached?: boolean };
 
 type Connection = {
   id: string;
@@ -89,15 +86,15 @@ function PresenterChecklist({
   const params = useSearchParams();
   if (params.get("present") !== "1") return null;
   const rows: { label: string; ok: boolean; hint: string }[] = [
-    { label: "Meta", ok: metaConfigured, hint: metaConfigured ? "configured" : "demo" },
+    { label: "Meta", ok: metaConfigured, hint: metaConfigured ? "configured" : "not configured" },
     { label: "Pair cache", ok: pairCached, hint: pairCached ? "cached" : "open a real match to warm cache" },
     { label: "Presence", ok: presenceOn, hint: presenceOn ? "on" : "off" },
     { label: "Accepted", ok: acceptedCount > 0, hint: acceptedCount > 0 ? `${acceptedCount} accepted` : "none yet" },
   ];
   return (
-    <section aria-label="Demo checklist" className="flex shrink-0 flex-col gap-2 rounded-[12px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
+    <section aria-label="Presenter checklist" className="flex shrink-0 flex-col gap-2 rounded-[12px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-heading text-lg leading-none tracking-[-0.02em]">Demo checklist</h2>
+        <h2 className="font-heading text-lg leading-none tracking-[-0.02em]">Presenter checklist</h2>
         <Button type="button" variant="ghost" className="h-9 w-auto px-3" onClick={onDismiss}>
           Dismiss
         </Button>
@@ -122,7 +119,10 @@ export function SignalApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [presence, setPresence] = useState<Presence>("invisible");
   const [people, setPeople] = useState<FieldPerson[]>([]);
+  const [directory, setDirectory] = useState<DirectoryPerson[]>([]);
+  const [viewerEmbeddingStatus, setViewerEmbeddingStatus] = useState<ViewerEmbeddingStatus>("ready");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [directoryId, setDirectoryId] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [explainError, setExplainError] = useState<string | null>(null);
   const [explainErrorKind, setExplainErrorKind] = useState<"match" | "presence" | "meta" | null>(null);
@@ -166,6 +166,8 @@ export function SignalApp() {
     if (cached) {
       setPresence(cached.presence);
       setPeople(cached.people);
+      setDirectory(cached.directory ?? []);
+      setViewerEmbeddingStatus(cached.viewerEmbeddingStatus ?? "ready");
       setConnections(cached.connections);
     }
     const foreground = !opts?.background && !cached;
@@ -188,21 +190,35 @@ export function SignalApp() {
       setLoadError("Could not load the event.");
       return;
     }
-    const discovery = discoveryResult.body as { people?: FieldPerson[]; presence?: Presence } | null;
-    const fetchedPeople = Array.isArray(discovery?.people) ? discovery.people : (cached?.people ?? []);
-    const fetchedPresence = discovery?.presence ?? cached?.presence ?? "invisible";
+    const discovery = discoveryResult.body as {
+      people?: unknown;
+      directory?: unknown;
+      presence?: unknown;
+      viewerEmbeddingStatus?: unknown;
+    } | null;
+    const snapshot = normalizeDiscovery(discovery ?? {});
+    const fetchedPeople = discoveryResult.ok ? snapshot.people : (cached?.people ?? []);
+    const fetchedDirectory = discoveryResult.ok ? snapshot.directory : (cached?.directory ?? []);
+    const fetchedPresence = discoveryResult.ok ? snapshot.presence : (cached?.presence ?? "invisible");
+    const fetchedEmbeddingStatus = discoveryResult.ok
+      ? snapshot.viewerEmbeddingStatus
+      : (cached?.viewerEmbeddingStatus ?? "ready");
     const connectionsBody = connectionsResult.body as { connections?: Connection[] } | null;
     const fetchedConnections = Array.isArray(connectionsBody?.connections)
       ? connectionsBody.connections
       : (cached?.connections ?? []);
     setCachedRoom<Connection>(eventId, {
       people: fetchedPeople,
+      directory: fetchedDirectory,
       connections: fetchedConnections,
       presence: fetchedPresence,
+      viewerEmbeddingStatus: fetchedEmbeddingStatus,
       at: Date.now(),
     });
     setPresence(fetchedPresence);
     setPeople(fetchedPeople);
+    setDirectory(fetchedDirectory);
+    setViewerEmbeddingStatus(fetchedEmbeddingStatus);
     setConnections(fetchedConnections);
     setLoadError(null);
     setRoomLoading(false);
@@ -224,11 +240,19 @@ export function SignalApp() {
 
   useEffect(() => {
     if (!session?.event || presence === "invisible") return;
+    // Fire-and-forget keepalive: never pile up overlapping beats. A beat that
+    // takes longer than the interval (slow backend) must not queue another
+    // full snapshot persist behind it — that backlog is what stalled discovery.
+    let inFlight = false;
     const timer = window.setInterval(() => {
+      if (document.visibilityState === "hidden" || inFlight) return;
+      inFlight = true;
       void fetch("/api/presence", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ eventId: session.event?.id, enabled: true, seeking: presence === "seeking" }),
+      }).finally(() => {
+        inFlight = false;
       });
     }, 20_000);
     return () => window.clearInterval(timer);
@@ -258,6 +282,8 @@ export function SignalApp() {
         // without clearing the current people.
         setPresence(cached.presence === "invisible" ? option.id : cached.presence);
         setPeople(cached.people);
+        setDirectory(cached.directory ?? []);
+        setViewerEmbeddingStatus(cached.viewerEmbeddingStatus ?? "ready");
         setConnections(cached.connections);
         setRoomLoading(false);
         void loadRoom(session.event.id, { background: true });
@@ -287,6 +313,7 @@ export function SignalApp() {
 
   async function openPerson(id: string | null, regenerate = false) {
     const seq = ++explainSeq.current;
+    setDirectoryId(null);
     if (!id || id === FIELD_SELF_ID) {
       setSelectedId(id);
       setExplanation(null);
@@ -325,13 +352,7 @@ export function SignalApp() {
         setExplanation(null);
         const kind = body.error === "match" ? "match" : body.error === "presence" ? "presence" : "meta";
         setExplainErrorKind(kind);
-        setExplainError(
-          kind === "match"
-            ? "Not enough evidence."
-            : kind === "presence"
-              ? "Turn on presence."
-              : "Meta returned no explanation.",
-        );
+        setExplainError(explainErrorCopy(kind));
         return;
       }
       setExplainErrorKind(null);
@@ -341,10 +362,22 @@ export function SignalApp() {
       if (explainSeq.current !== seq) return;
       setExplanation(null);
       setExplainErrorKind("meta");
-      setExplainError("Meta returned no explanation.");
+      setExplainError(explainErrorCopy("meta"));
     } finally {
       if (explainSeq.current === seq) setExplainPending(false);
     }
+  }
+
+  function openDirectoryPerson(id: string | null) {
+    // Directory rows open the public card only: no score, no reason,
+    // no explanation fetch, no connect action.
+    explainSeq.current += 1;
+    setSelectedId(null);
+    setExplanation(null);
+    setExplainError(null);
+    setExplainErrorKind(null);
+    setExplainPending(false);
+    setDirectoryId(id);
   }
 
   async function requestIntro() {
@@ -358,7 +391,7 @@ export function SignalApp() {
       const response = await fetch("/api/connections", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ profileId: selectedId, intro: trimmed, introSource: edited ? "user" : explanation.source }),
+        body: JSON.stringify({ profileId: selectedId, intro: trimmed, introSource: edited ? "user" : "model" }),
       });
       if (!response.ok) throw new Error("request");
       setRequestError(null);
@@ -368,19 +401,6 @@ export function SignalApp() {
     } finally {
       setRequestPending(false);
     }
-  }
-
-  async function resolve(connection: Connection, action: "accept" | "decline") {
-    await fetch("/api/connections", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        connectionId: connection.id,
-        action,
-        simulateDemo: connection.other.demo,
-      }),
-    });
-    await load();
   }
 
   if (!session) {
@@ -418,12 +438,16 @@ export function SignalApp() {
 
   const visible = presence !== "invisible";
   const selfSelected = selectedId === FIELD_SELF_ID;
-  const selected = people.find((person) => person.id === selectedId) ?? null;
+  const selected = visible ? (people.find((person) => person.id === selectedId) ?? null) : null;
   const detail = visible && selected && selected.recommendation ? { person: selected, recommendation: selected.recommendation } : null;
+  const directoryPerson = visible && !detail ? (directory.find((person) => person.id === directoryId) ?? null) : null;
   const relation = connections.find((item) => item.other.id === selectedId && item.status !== "declined");
   const recommendations = people.filter((person) => person.recommendation);
   const others = detail ? recommendations.filter((person) => person.id !== detail.person.id) : recommendations;
+  const embeddingPending = visible && viewerEmbeddingStatus === "pending";
   const roomState = resolveRoomState({ visible, loading: roomLoading, error: loadError, count: others.length });
+  const emptyRoom = visible && !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length === 0;
+  const noMatchesYet = visible && !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length > 0;
   const activeOption = PRESENCE_OPTIONS.find((option) => option.id === "active") ?? PRESENCE_OPTIONS[0];
   const traceChips = explanation
     ? [
@@ -552,12 +576,6 @@ export function SignalApp() {
           />
         </Suspense>
       ) : null}
-      {!session.metaConfigured ? (
-        <p className={cn(meta, "flex shrink-0 items-center gap-2")}>
-          <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--signal-strong)] dark:bg-signal" />
-          Demo · declared fields, not Meta
-        </p>
-      ) : null}
       {loadError ? (
         <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <p>{loadError}</p>
@@ -574,12 +592,13 @@ export function SignalApp() {
           people={visible ? people : []}
           selectedId={selectedId}
           loading={roomLoading}
+          embeddingPending={embeddingPending}
           onSelect={(id) => void openPerson(id === selectedId ? null : id)}
         />
 
-        <section className="flex min-h-0 flex-col gap-6 min-[720px]:overflow-y-auto">
+        <section className="flex min-h-0 flex-col gap-6 min-[720px]:overflow-y-auto" aria-label="Signals and people">
           <Crossfade
-            id={!visible ? "invisible" : selfSelected ? "self" : detail ? `person:${detail.person.id}` : "list"}
+            id={!visible ? "invisible" : selfSelected ? "self" : detail ? `person:${detail.person.id}` : directoryPerson ? `card:${directoryPerson.id}` : "list"}
             className="flex flex-col gap-6"
           >
           {!visible ? (
@@ -724,7 +743,7 @@ export function SignalApp() {
                     </div>
                     <p>
                       <span className="inline-flex rounded-full border border-border px-2 py-0.5 font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase">
-                        {explanation.source === "model" ? "Meta AI" : "Demo"}
+                        Meta AI
                       </span>
                     </p>
                   </div>
@@ -743,11 +762,6 @@ export function SignalApp() {
                   {!relation ? (
                     <Button type="button" className={actionSize} disabled={requestDisabled} onClick={() => void requestIntro()}>
                       Request connection
-                    </Button>
-                  ) : null}
-                  {relation?.status === "pending" && relation.other.demo ? (
-                    <Button type="button" className={actionSize} onClick={() => void resolve(relation, "accept")}>
-                      Simulate accept
                     </Button>
                   ) : null}
                   <Button type="button" variant="ghost" className={actionSize} onClick={() => void openPerson(detail.person.id, true)}>
@@ -812,36 +826,90 @@ export function SignalApp() {
             </article>
           ) : null}
 
+          {directoryPerson ? (
+            <article className="flex flex-col gap-4" aria-label="Public card">
+              <div className="flex flex-col gap-2">
+                <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] text-balance min-[720px]:text-[2.5rem]">
+                  {directoryPerson.displayName}
+                </h2>
+                <p className={cn(meta, "flex flex-wrap items-center gap-2")}>
+                  <span>{directoryPerson.role}</span>
+                  {directoryPerson.demo ? (
+                    <span className="rounded-full border border-border px-2 py-0.5 text-[0.65rem]">Demo</span>
+                  ) : null}
+                </p>
+              </div>
+              {directoryPerson.interests.length > 0 || directoryPerson.skills.length > 0 ? (
+                <dl className="flex flex-col divide-y divide-border text-sm">
+                  {directoryPerson.interests.length > 0 ? (
+                    <div className="grid grid-cols-[max-content_1fr] gap-x-4 py-2">
+                      <dt className="text-muted-foreground">Interests</dt>
+                      <dd>{directoryPerson.interests.join(", ")}</dd>
+                    </div>
+                  ) : null}
+                  {directoryPerson.skills.length > 0 ? (
+                    <div className="grid grid-cols-[max-content_1fr] gap-x-4 py-2">
+                      <dt className="text-muted-foreground">Skills</dt>
+                      <dd>{directoryPerson.skills.join(", ")}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              ) : null}
+              <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
+                <Link
+                  href={`/p/${directoryPerson.slug}`}
+                  className={cn(
+                    "inline-flex h-11 items-center gap-1.5 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-transform duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 min-[720px]:h-9",
+                    focusRing,
+                  )}
+                >
+                  View public card
+                  <ArrowUpRight aria-hidden="true" className="size-4" />
+                </Link>
+                <Button type="button" variant="ghost" className={actionSize} onClick={() => openDirectoryPerson(null)}>
+                  Back to signals
+                </Button>
+              </div>
+            </article>
+          ) : null}
+
           {visible ? (
-            <div className={cn("flex flex-col gap-3", (detail || selfSelected) && "min-[720px]:hidden")}>
+            <div className={cn("flex flex-col gap-3", (detail || selfSelected || directoryPerson) && "min-[720px]:hidden")}>
               <h2 className={meta}>{detail ? "More signals" : "Recommendations"}</h2>
-              {roomState === "loading" ? (
+              {roomState === "loading" || embeddingPending ? (
                 <div className="flex flex-col gap-2.5">
                   <div aria-hidden="true" className="flex animate-pulse flex-col gap-2.5">
                     <div className="h-2.5 w-3/4 rounded-full bg-surface-raised" />
                     <div className="h-2.5 w-full rounded-full bg-surface-raised" />
                     <div className="h-2.5 w-1/2 rounded-full bg-surface-raised" />
                   </div>
-                  <p role="status" className="sr-only">
-                    Loading the room.
+                  <p role="status" className={embeddingPending ? "text-sm text-muted-foreground" : "sr-only"}>
+                    {embeddingPending ? "Finding your people…" : "Loading the room."}
                   </p>
                 </div>
               ) : null}
-              {roomState === "empty" ? (
+              {!embeddingPending && roomState === "empty" && emptyRoom ? (
+                <p className="max-w-[40ch] text-sm text-muted-foreground">Nobody visible yet.</p>
+              ) : null}
+              {!embeddingPending && roomState === "empty" && noMatchesYet ? (
                 <p className="max-w-[40ch] text-sm text-muted-foreground">
-                  {detail ? "No more signals." : "Nobody visible yet."}
+                  No matches yet. Your profile is still being read — browse who else is here below.
                 </p>
+              ) : null}
+              {!embeddingPending && roomState === "empty" && detail && others.length === 0 ? (
+                <p className="max-w-[40ch] text-sm text-muted-foreground">No more signals.</p>
               ) : null}
               {roomState === "error" && others.length === 0 ? (
                 <p className="max-w-[40ch] text-sm text-muted-foreground">Could not refresh. Try again above.</p>
               ) : null}
-              {roomState === "success" || (roomState === "error" && others.length > 0) ? (
-                <ul className="flex flex-col divide-y divide-border">
+              {!embeddingPending && (roomState === "success" || (roomState === "error" && others.length > 0)) ? (
+                <ul className="flex flex-col divide-y divide-border" aria-label="Recommended people">
                   {others.map((person) => (
                     <li key={person.id}>
                       <button
                         type="button"
                         onClick={() => void openPerson(person.id)}
+                        aria-label={`${person.displayName}, ${person.role}${person.demo ? ", demo profile" : ""}. ${reasonOf(person)}`}
                         className={cn(
                           "group -mx-2 flex min-h-11 w-full items-center justify-between gap-4 rounded-md px-2 py-3 text-left text-sm transition-colors hover:bg-surface-raised",
                           focusRing,
@@ -850,7 +918,7 @@ export function SignalApp() {
                         <span className="flex min-w-0 flex-col gap-0.5">
                           <span className="font-medium underline-offset-4 group-hover:underline">
                             {person.displayName}
-                            {person.demo ? <span className="font-normal text-muted-foreground"> · demo</span> : null}
+                            {person.demo ? <span className="font-normal text-muted-foreground"> · Demo</span> : null}
                           </span>
                           <span className="truncate text-muted-foreground">{reasonOf(person)}</span>
                         </span>
@@ -865,6 +933,49 @@ export function SignalApp() {
                   ))}
                 </ul>
               ) : null}
+            </div>
+          ) : null}
+          {visible && !embeddingPending && directory.length > 0 ? (
+            <div className={cn("flex flex-col gap-3", (detail || selfSelected || directoryPerson) && "min-[720px]:hidden")}>
+              <h2 className={meta}>Also here</h2>
+              <ul className="flex flex-col divide-y divide-border" aria-label="Other attendees">
+                {directory.map((person) => (
+                  <li key={person.id}>
+                    <button
+                      type="button"
+                      onClick={() => openDirectoryPerson(person.id)}
+                      aria-label={`${person.displayName}, ${person.role}${person.demo ? ", demo profile" : ""}`}
+                      aria-pressed={directoryId === person.id}
+                      className={cn(
+                        "group -mx-2 flex min-h-11 w-full items-center justify-between gap-4 rounded-md px-2 py-3 text-left text-sm transition-colors hover:bg-surface-raised",
+                        focusRing,
+                      )}
+                    >
+                      <span className="flex min-w-0 items-start gap-2">
+                        <span
+                          aria-hidden="true"
+                          title={person.presence === "seeking" ? "Seeking intros" : "Active"}
+                          className={cn(
+                            "mt-1.5 size-1.5 shrink-0 rounded-full",
+                            person.presence === "seeking" ? "bg-[var(--signal-strong)] dark:bg-signal" : "bg-muted-foreground/50",
+                          )}
+                        />
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="font-medium underline-offset-4 group-hover:underline">
+                            {person.displayName}
+                            {person.demo ? <span className="font-normal text-muted-foreground"> · Demo</span> : null}
+                          </span>
+                          <span className="truncate text-muted-foreground">{person.role}</span>
+                        </span>
+                      </span>
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
           </Crossfade>

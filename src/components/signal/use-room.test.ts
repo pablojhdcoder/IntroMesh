@@ -52,6 +52,31 @@ describe("room cache", () => {
     expect(getCachedRoom("event-b")?.presence).toBe("seeking");
     expect(getCachedRoom("event-c")).toBeNull();
   });
+
+  it("round-trips the directory and embedding status with the roster", () => {
+    setCachedRoom("event-pending", {
+      people: [],
+      directory: [
+        {
+          id: "bea",
+          slug: "bea",
+          displayName: "Bea",
+          role: "Design",
+          demo: true,
+          presence: "active",
+          interests: ["typography"],
+          skills: ["figma"],
+        },
+      ],
+      connections: [],
+      presence: "active",
+      viewerEmbeddingStatus: "pending",
+      at: 3,
+    });
+    const cached = getCachedRoom("event-pending");
+    expect(cached?.directory?.map((person) => person.id)).toEqual(["bea"]);
+    expect(cached?.viewerEmbeddingStatus).toBe("pending");
+  });
 });
 
 describe("fetchJsonDeduped", () => {
