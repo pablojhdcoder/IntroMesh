@@ -1,6 +1,7 @@
 import { DEMO_EVENT_ID } from "@/domain/catalog";
 import { buildDemoCommunity } from "@/domain/demo-community";
 import { getStore } from "@/lib/store";
+import { EXTRA_EVENTS } from "@/lib/store/types";
 
 /**
  * Seeds Supabase with the demo community: the Meta Hackathon event plus the
@@ -24,19 +25,48 @@ async function main(): Promise<void> {
   const seeded = await store.update((database) => {
     const counts = { events: 0, profiles: 0, participations: 0 };
 
-    if (!database.events.some((event) => event.id === DEMO_EVENT_ID)) {
+    const meta = database.events.find((event) => event.id === DEMO_EVENT_ID);
+    if (!meta) {
       database.events.push({
         id: DEMO_EVENT_ID,
         name: "Meta Hackathon",
         demo: true,
-        description: "Demo fixture.",
+        description: "Meta Global AI Developer Hackathon — build with Muse Spark, Muse Image and SAM 3.1.",
         category: "hackathon",
-        startsAt: "2026-11-04T09:00:00.000Z",
+        startsAt: "2026-10-26T13:00:00.000Z",
         code: "META-HACK",
         status: "live",
         createdBy: null,
+        coverUrl: "/events/meta-hackathon-2026.svg",
       });
       counts.events = 1;
+    } else {
+      meta.name = "Meta Hackathon";
+      meta.description =
+        "Meta Global AI Developer Hackathon — build with Muse Spark, Muse Image and SAM 3.1.";
+      meta.category = "hackathon";
+      meta.startsAt = "2026-10-26T13:00:00.000Z";
+      meta.code = "META-HACK";
+      meta.status = "live";
+      meta.coverUrl = "/events/meta-hackathon-2026.svg";
+      counts.events = 1;
+    }
+    for (const extra of EXTRA_EVENTS) {
+      const existing = database.events.find((event) => event.id === extra.id);
+      if (!existing) {
+        database.events.push({ ...extra });
+        counts.events += 1;
+        continue;
+      }
+      existing.name = extra.name;
+      existing.demo = false;
+      existing.description = extra.description;
+      existing.category = extra.category;
+      existing.startsAt = extra.startsAt;
+      existing.code = extra.code;
+      existing.status = extra.status;
+      existing.coverUrl = extra.coverUrl;
+      counts.events += 1;
     }
 
     const byId = new Map(database.profiles.map((profile) => [profile.id, profile]));

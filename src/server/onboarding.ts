@@ -50,6 +50,7 @@ export function onboardingActions(store: Store) {
           code: `${slugify(name) || "event"}-${id.slice(-6)}`,
           status: "live" as const,
           createdBy: ownerId,
+          coverUrl: null,
         };
         database.events.push(event);
         return publicEvent(database, id);

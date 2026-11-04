@@ -17,6 +17,7 @@ export type EventRecord = {
   code: string;
   status: "upcoming" | "live" | "ended";
   createdBy: string | null;
+  coverUrl?: string | null;
 };
 
 export type GlobalIdentityRecord = {
@@ -133,6 +134,7 @@ function asEvent(event: Partial<EventRecord> & { id: string; name: string }): Ev
     code,
     status: event.status ?? "live",
     createdBy: event.createdBy ?? null,
+    coverUrl: event.coverUrl ?? null,
   };
 }
 
@@ -141,16 +143,82 @@ function demoEvent(): EventRecord {
     id: DEMO_EVENT_ID,
     name: "Meta Hackathon",
     demo: true,
-    description: "Demo fixture.",
+    description: "Meta Global AI Developer Hackathon — build with Muse Spark, Muse Image and SAM 3.1.",
     category: "hackathon",
     code: "META-HACK",
     status: "live",
+    startsAt: "2026-10-26T13:00:00.000Z",
+    coverUrl: "/events/meta-hackathon-2026.svg",
   });
 }
 
+export const EXTRA_EVENTS: EventRecord[] = [
+  asEvent({
+    id: "junction-2026",
+    name: "Junction 2026",
+    demo: false,
+    description: "Europe's largest hackathon: 48 hours in Espoo to build the next paradigm of technology.",
+    category: "hackathon",
+    startsAt: "2026-11-13T16:00:00.000Z",
+    code: "JUNCTION-2026",
+    status: "upcoming",
+    createdBy: null,
+    coverUrl: "/events/junction-2026.svg",
+  }),
+  asEvent({
+    id: "nasa-space-apps-2026",
+    name: "NASA Space Apps Challenge 2026",
+    demo: false,
+    description: "The largest annual global hackathon using NASA open data for Earth and space challenges.",
+    category: "hackathon",
+    startsAt: "2026-11-14T09:00:00.000Z",
+    code: "SPACE-APPS-2026",
+    status: "upcoming",
+    createdBy: null,
+    coverUrl: "/events/nasa-space-apps-2026.svg",
+  }),
+  asEvent({
+    id: "earthcode-2026",
+    name: "EarthCODE Hackathon 2026",
+    demo: false,
+    description: "Build open, reusable Earth observation workflows with ESA at ESRIN, Frascati.",
+    category: "hackathon",
+    startsAt: "2026-11-30T09:00:00.000Z",
+    code: "EARTHCODE-2026",
+    status: "upcoming",
+    createdBy: null,
+    coverUrl: "/events/earthcode-2026.svg",
+  }),
+  asEvent({
+    id: "ethconf-2027",
+    name: "ETHConf 2027",
+    demo: false,
+    description: "ETHGlobal flagship: builders shipping the decentralized future in New York City.",
+    category: "hackathon",
+    startsAt: "2027-06-14T09:00:00.000Z",
+    code: "ETHCONF-2027",
+    status: "upcoming",
+    createdBy: null,
+    coverUrl: "/events/ethconf-2027.svg",
+  }),
+  asEvent({
+    id: "wfeo-hackathon-2027",
+    name: "WFEO Hackathon 2027",
+    demo: false,
+    description: "Engineering students hack sustainable transport and cleaner mobility, online worldwide.",
+    category: "hackathon",
+    startsAt: "2027-11-20T09:00:00.000Z",
+    code: "WFEO-2027",
+    status: "upcoming",
+    createdBy: null,
+    coverUrl: "/events/wfeo-hackathon-2027.svg",
+  }),
+];
+
 export function hydrateDatabase(input: Partial<Database> | null | undefined): Database {
   const seeded = input?.profiles ? null : buildDemoCommunity();
-  const events = (input?.events ?? [demoEvent()]).map((event) => asEvent(event));
+  const baseEvents = input?.events ?? [demoEvent(), ...EXTRA_EVENTS];
+  const events = baseEvents.map((event) => asEvent(event));
   return {
     events,
     profiles: input?.profiles ?? seeded?.profiles ?? [],

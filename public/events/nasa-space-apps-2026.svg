@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="320" viewBox="0 0 800 320" role="img" aria-label="NASA Space Apps Challenge 2026 cover">
+  <rect width="800" height="320" fill="#070b1a"/>
+  <circle cx="660" cy="90" r="46" fill="#ffffff" opacity="0.92"/>
+  <circle cx="646" cy="80" r="46" fill="#070b1a" opacity="0.22"/>
+  <circle cx="180" cy="240" r="3" fill="#ffffff"/><circle cx="260" cy="70" r="2.5" fill="#ffffff"/><circle cx="420" cy="200" r="2" fill="#ffffff"/><circle cx="540" cy="250" r="3" fill="#ffffff"/><circle cx="340" cy="260" r="2" fill="#ffffff"/>
+  <text x="60" y="150" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="700" fill="#ffffff">NASA Space Apps</text>
+  <text x="60" y="192" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#8ee0b0">Challenge 2026 · Global · Nov 14–15</text>
+  <text x="60" y="224" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#9a958c">Open data · Earth &amp; space</text>
+</svg>

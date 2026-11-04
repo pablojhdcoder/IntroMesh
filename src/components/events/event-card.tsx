@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { cn } from "cn";
 
@@ -12,6 +13,7 @@ export type EventCardEvent = {
   status: string;
   demo?: boolean;
   attendees?: number;
+  coverUrl?: string | null;
 };
 
 export type EventCardProps = {
@@ -50,9 +52,21 @@ export function EventCard({ event, joined, action }: EventCardProps) {
   return (
     <article
       className={cn(
-        "flex w-full flex-col gap-3 rounded-[20px] border border-border bg-surface px-4 py-4 shadow-[var(--shadow-raise)] transition-[border-color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:-translate-y-px hover:border-foreground/30 motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        "flex w-full flex-col gap-3 overflow-hidden rounded-[20px] border border-border bg-surface shadow-[var(--shadow-raise)] transition-[border-color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:-translate-y-px hover:border-foreground/30 motion-reduce:transition-none motion-reduce:hover:translate-y-0",
       )}
     >
+      {event.coverUrl ? (
+        <div className="relative h-28 w-full overflow-hidden bg-surface-raised">
+          <Image
+            src={event.coverUrl}
+            alt={`${event.name} cover`}
+            width={800}
+            height={160}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ) : null}
+      <div className="flex w-full flex-col gap-3 px-4 py-4">
       <div className="flex w-full items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <span
@@ -96,6 +110,7 @@ export function EventCard({ event, joined, action }: EventCardProps) {
       ) : null}
       {action ? <div className="flex flex-col gap-2">{action}</div> : null}
       <span className={cn("sr-only", focusRing)} />
+      </div>
     </article>
   );
 }

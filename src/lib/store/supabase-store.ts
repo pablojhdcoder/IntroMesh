@@ -73,7 +73,7 @@ async function loadSnapshotCached(admin: Admin): Promise<Database> {
 // (match_reason, shared_signals, ...) that are rebuilt from `structured` on write
 // and never read. Vectors stay: discovery scoring reads them (see light readers).
 const EVENT_COLUMNS =
-  "id,name,demo,description,category,starts_at,code,status,created_by";
+  "id,name,demo,description,category,starts_at,code,status,created_by,cover_url";
 const PROFILE_COLUMNS =
   "id,slug,display_name,role,bio,interests,skills,projects,offers,seeking,goal,demo,presentation,created_at,avatar_url,profile_visibility,username";
 const ACCOUNT_COLUMNS = "user_id,username,password_hash,created_at,updated_at,last_login_at";
@@ -151,6 +151,7 @@ function mapEvent(row: Record<string, unknown>): EventRecord {
     code: String(row.code ?? row.id),
     status: (row.status as EventRecord["status"]) ?? "live",
     createdBy: row.created_by ? String(row.created_by) : null,
+    coverUrl: row.cover_url ? String(row.cover_url) : null,
   };
 }
 
@@ -529,6 +530,7 @@ async function persistSnapshot(admin: Admin, database: Database, dirty?: Set<Per
           code: event.code,
           status: event.status,
           created_by: event.createdBy,
+          cover_url: event.coverUrl ?? null,
         })),
         "id",
       );

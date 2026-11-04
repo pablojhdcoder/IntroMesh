@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="320" viewBox="0 0 800 320" role="img" aria-label="WFEO Hackathon 2027 cover">
+  <rect width="800" height="320" fill="#12325e"/>
+  <circle cx="640" cy="160" r="110" fill="none" stroke="#ffffff" stroke-width="10" opacity="0.35"/>
+  <circle cx="640" cy="160" r="72" fill="none" stroke="#ffffff" stroke-width="6" opacity="0.5"/>
+  <circle cx="640" cy="160" r="10" fill="#ffffff"/>
+  <text x="60" y="150" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="700" fill="#ffffff">WFEO Hackathon</text>
+  <text x="60" y="192" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#d6ff4a">2027 · Online worldwide</text>
+  <text x="60" y="224" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#c9d4e8">Nov 20 · Sustainable transport</text>
+</svg>

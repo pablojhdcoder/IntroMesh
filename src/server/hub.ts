@@ -12,6 +12,7 @@ function eventSummary(database: Database, eventId: string) {
     startsAt: event.startsAt,
     code: event.code,
     status: event.status,
+    coverUrl: event.coverUrl ?? null,
   };
 }
 

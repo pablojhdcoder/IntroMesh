@@ -13,6 +13,8 @@ In the Supabase dashboard open **SQL → New query**. Run these files **in order
 9. `supabase/migrations/0009_membership_visibility.sql`
 10. `supabase/migrations/0010_auth_accounts.sql` — accounts (@username + password hash), profiles.username
 11. `supabase/migrations/0011_drop_analytics.sql` — drops analytics_events (no code reads it)
+12. `supabase/migrations/0012_event_covers.sql` — events.cover_url (local public/events/*.svg)
+13. `supabase/migrations/0013_extra_events.sql` — Meta cover + 5 real rooms (demo=false, upcoming)
 
 Or from a shell with the [Supabase CLI](https://supabase.com/docs/guides/cli) linked to the project:
 

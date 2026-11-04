@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="320" viewBox="0 0 800 320" role="img" aria-label="Meta Hackathon cover">
+  <rect width="800" height="320" fill="#ffffff"/>
+  <rect x="0" y="0" width="800" height="8" fill="#0064E0"/>
+  <g transform="translate(80,110)">
+    <path d="M60 10 C 35 -8, 5 5, 5 45 C 5 85, 35 98, 60 80 C 75 70, 85 60, 95 45 C 105 60, 115 70, 130 80 C 155 98, 185 85, 185 45 C 185 5, 155 -8, 130 10 C 112 24, 102 36, 95 45 C 88 36, 78 24, 60 10 Z M60 28 C 70 36, 78 43, 85 52 C 78 61, 70 68, 60 76 C 44 86, 25 78, 25 45 C 25 12, 44 4, 60 28 Z M130 28 C 146 4, 165 12, 165 45 C 165 78, 146 86, 130 76 C 120 68, 112 61, 105 52 C 112 43, 120 36, 130 28 Z" fill="#0064E0"/>
+  </g>
+  <text x="300" y="150" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" fill="#0a0a0a">Meta Hackathon</text>
+  <text x="300" y="190" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#55534a">Global AI Developer Hackathon · 2026</text>
+  <text x="300" y="222" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#0064E0">Muse Spark · Muse Image · SAM 3.1</text>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="320" viewBox="0 0 800 320" role="img" aria-label="EarthCODE Hackathon 2026 cover">
+  <rect width="800" height="320" fill="#0c2a23"/>
+  <path d="M0 230 Q 200 170 400 210 T 800 190 V 320 H 0 Z" fill="#16a34a" opacity="0.35"/>
+  <path d="M0 250 Q 200 200 400 235 T 800 220 V 320 H 0 Z" fill="#d6ff4a" opacity="0.18"/>
+  <text x="60" y="150" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" fill="#ffffff">EarthCODE 2026</text>
+  <text x="60" y="192" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#d6ff4a">ESA ESRIN · Frascati · Nov 30–Dec 4</text>
+  <text x="60" y="224" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#c9c5bc">Open Earth observation workflows</text>
+</svg>
