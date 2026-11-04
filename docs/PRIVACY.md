@@ -21,7 +21,7 @@ Canonical profile text (the same global/context fields used for matching) is sen
 | Visible name, goal, declared interests and skills | Personal contact, notes, rejections, unsent introduction drafts |
 | Connection path (link or QR) | Keys, internal identifiers, service role |
 
-Organizers see aggregated metrics: registered members, mutual connections, most-declared topics. They do not see non-members or the content of introductions.
+Organizers see membership: registered members and mutual connections. They do not see non-members or the content of introductions.
 
 ## Server and secrets
 
@@ -29,9 +29,9 @@ Organizers see aggregated metrics: registered members, mutual connections, most-
 
 Meta logs may include HTTP status, error type, and latency. They do not include the prompt, the profile, or the key. The same applies to Azure OpenAI embedding calls: no profile text, key, or endpoint secrets in logs.
 
-## Analytics
+## Sharing
 
-Event aggregates only. No export of free-form profile text or messages. The `topic` field on analytics rows is a coarse aggregate label (the first declared interest at write time) used only for counts, never a person ranking.
+Sharing is client-only: copy link, QR image, and vCard download. Nothing is recorded or aggregated.
 
 ## Profile visibility
 
@@ -39,7 +39,7 @@ Event aggregates only. No export of free-form profile text or messages. The `top
 
 ## Membership is not public, and join is consent
 
-Joining an event is not published. Which events a person joined never appears on a public card, in discovery at another event, or in organizer aggregates.
+Joining an event is not published. Which events a person joined never appears on a public card or in discovery at another event.
 
 Joining an event is visibility at that event: `event_participations.status = joined` means the person appears in that event's discovery. Consent at one event says nothing at any other event.
 

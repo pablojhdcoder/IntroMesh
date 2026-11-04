@@ -35,7 +35,6 @@ flowchart TB
     F --> G["Reason + opener"]
     G --> H["Request / accept"]
     H --> I["Share card"]
-    I --> J["Intelligence"]
   end
 
   subgraph back ["Beneath"]
@@ -45,8 +44,6 @@ flowchart TB
     Dapi["GET /api/discovery"]
     Xapi["POST /api/affinity"]
     Capi["POST /api/connections"]
-    Sh["POST /api/share"]
-    Lapi["learnActions.intelligence"]
   end
 
   A --> S
@@ -55,8 +52,6 @@ flowchart TB
   D --> Dapi
   F --> Xapi
   H --> Capi
-  I --> Sh
-  J --> Lapi
 ```
 
 ---
@@ -154,7 +149,7 @@ Meta does not choose who appears. Embeddings only build the list on the write pa
 - Miss: atomic claim (`processing`, 30s lease, three attempts). Concurrent requests wait.
 - No-key or model failure → `error: "meta"`. No fabricated text is ever returned.
 - With key: `createStructuredResponse` (`src/lib/meta/client`). Prompt gets confirmed identities, intents, **stored evidence labels**, and already computed scores — not the embedding vector. Zod `match_explanation`. Ungrounded terms → reject, no invented fill-in.
-- Store completed explanation; analytics `profile_viewed` once per pair/event.
+- Store the completed explanation.
 - `regenerate: true` ignores a cache hit.
 
 ---
@@ -165,23 +160,19 @@ Meta does not choose who appears. Embeddings only build the list on the write pa
 
 **Beneath.** `POST /api/connections` → `connectActions`.
 
-- Request: row `pending`, `intro` + `introSource` (`model` | `user`), analytics `intro_requested`. Duplicate non-declined request is a no-op. `introSource` values other than `model`/`user` are rejected.
+- Request: row `pending`, `intro` + `introSource` (`model` | `user`). Duplicate non-declined request is a no-op. `introSource` values other than `model`/`user` are rejected.
 - Seeing a recommendation is not a relationship. Accept is independent of visibility.
 - Resolve: only `toId` may accept/decline. No simulated accept path.
-- Accept → `accepted` + `connection_accepted` analytics. Decline stays declined.
+- Accept → `accepted`. Decline stays declined.
 - No email, phone, or chat payload. Public slug is enough to meet in the hall.
 
 ---
 
-## 6. Learn — share and intelligence
+## 6. Learn — share
 
-**Front.** After accept: Copy link, QR, Save contact (.vcf). Public page `/p/[slug]`. Intelligence: counts and topics.
-
-**Beneath — share.** `POST /api/share` `{ method }` → `learnActions.share` (`share_link` | `share_qr` | `share_vcard`). QR image: `GET /api/profiles/[slug]/qr` (SVG, inverted in light).
+**Front.** After accept: Copy link, QR, Save contact (.vcf). Public page `/p/[slug]`. Sharing is client-only: copy to clipboard and QR image (`GET /api/profiles/[slug]/qr`, SVG, inverted in light). Nothing is tracked.
 
 **Beneath — public card.** `profileBySlug`. Only authorized public fields. Demo labeled. Connection still needs accept.
-
-**Beneath — intelligence.** Page `/intelligence` → `learnActions.intelligence` → `aggregateActivity`. Members = joined participations. Topics with fewer than 5 cases hidden (`suppressedTopics`). No intro text, no people ranking. Organizers do not get private profiles.
 
 ---
 
@@ -195,8 +186,8 @@ Meta does not choose who appears. Embeddings only build the list on the write pa
 | Save identity | Profile projection, embedding job | No |
 | See the room | Joined members + persisted top-8, deterministic layout | No |
 | Open a person | Cache + grounding | Yes, always when not cached; no key → 503 `meta` |
-| Request / accept | Connections + analytics | No |
-| Share / Intelligence | Analytics aggregates | No |
+| Request / accept | Connections | No |
+| Share | Copy link, QR, vCard (client-only) | No |
 
 Without `MODEL_API_KEY`, Meta-shaped UI is a badge or one line. No simulated model JSON.
 
@@ -214,8 +205,6 @@ Without `MODEL_API_KEY`, Meta-shaped UI is a badge or one line. No simulated mod
 | Field | `GET /api/discovery` | `discover` |
 | Person detail | `POST /api/affinity` | `explain` |
 | Intro | `POST /api/connections` | `connect` |
-| Link / QR / vCard | `POST /api/share` | `learn` |
-| `/intelligence` | server page | `learn` |
 | `/events` | server page | Event hub: My Events vs Discover (`EVENT_HUB.md`) |
 | `/events/[eventId]` | server page | Active event; the Signal Field scoped to this event |
 | `/profile` | server page | Own global identity: visibility, avatar, username |

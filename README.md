@@ -56,7 +56,7 @@ npm run worker:embeddings
 | `AZURE_OPENAI_DEPLOYMENT` | `text-embedding-3-small` deployment name. Server only |
 | `AZURE_OPENAI_API_VERSION` | Embedding provider API version. Server only |
 
-The full product journey (join → field → explanation → connection → intelligence) is in [docs/FLOW.md](docs/FLOW.md).
+The full product journey (join → field → explanation → connection → share) is in [docs/FLOW.md](docs/FLOW.md).
 
 ## Try the flow
 

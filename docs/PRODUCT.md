@@ -28,7 +28,7 @@ A networking event, mostly from a phone. The person joins a session, chooses vis
 
 ## Capabilities and Constraints
 
-Confirmed: contextual profiles, event membership with instant visibility, discovery, matching by goals, interests, and skills, Meta explanations, introductions, mutual connections, link, QR, vCard, and aggregated analytics.
+Confirmed: contextual profiles, event membership with instant visibility, discovery, matching by goals, interests, and skills, Meta explanations, introductions, mutual connections, link, QR, vCard. No analytics: sharing and room activity are never recorded.
 
 Constraints: do not simulate model output; no Meta Model API embeddings (undocumented); no automatic physical phone detection; no continuous precise location; no inferred sensitive attributes.
 

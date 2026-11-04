@@ -9,14 +9,14 @@ This document sets the hackathon boundaries. The journey is already in the app. 
 | Layer | Location | Responsibility |
 | --- | --- | --- |
 | UI | `src/app`, `src/components` (`onboarding/`, `signal/`, `share/`) | Screens and signal field. Does not call Meta or read secrets |
-| Use cases | `src/server` | Registration, discovery, explanation, connection, and analytics |
+| Use cases | `src/server` | Registration, discovery, explanation, and connection |
 | Domain | `src/domain` | Profile, scoring, and vectors. No network or disk |
 | Persistence | `src/lib/store`, `src/lib/supabase` | Supabase Postgres via service role on the server. Contract type is `Store` |
 | Session | `src/lib/session` | Signed profile cookie. Does not talk to Meta |
 | Meta | `src/lib/meta` | Client, schemas, errors, and a local request limit |
 | Embeddings I/O | `src/lib/embedding` | Azure OpenAI `text-embedding-3-small` (1536 dims) over HTTPS, processed inline with `after()`. Pure math stays in `src/domain/embedding` |
 
-Read the code in product order: `session` → `discover` → `explain` → `connect` → `learn`.
+Read the code in product order: `session` → `discover` → `explain` → `connect`.
 
 Client components import prepared types and data. Route Handlers and Server Actions are the only edge that talks to privileged Supabase or Meta.
 
@@ -29,8 +29,7 @@ Client components import prepared types and data. Route Handlers and Server Acti
 - Explanation: structured Meta text only for recommendations that already passed the filter.
 - Introduction: personalized draft, sent only if both sides accept.
 - Connection: mutual agreement.
-- Link, QR, and vCard as transport for the same public identifier.
-- Organizer analytics: aggregates, no private profiles.
+- Link, QR, and vCard as transport for the same public identifier. Sharing is client-only; nothing is tracked.
 
 ## Visibility, not proximity
 
