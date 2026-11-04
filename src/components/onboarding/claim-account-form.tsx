@@ -114,7 +114,6 @@ export function ClaimAccountForm({ onClaimed }: { onClaimed: () => void }) {
             minLength={3}
             maxLength={20}
             autoComplete="username"
-            placeholder="pablo"
             className="h-full w-full bg-transparent pr-3.5 outline-none placeholder:text-muted-foreground/60"
           />
         </span>

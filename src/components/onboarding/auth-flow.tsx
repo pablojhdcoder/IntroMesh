@@ -127,7 +127,7 @@ export function AuthFlow({ onAuthed }: { onAuthed: () => void }) {
             </h1>
             <p className="max-w-[42ch] text-[0.9375rem] leading-relaxed text-muted-foreground">
               {mode === "register"
-                ? "One handle for every event. Pick it once — it cannot change."
+                ? "One handle for every event."
                 : "Log in with your @ to find your events."}
             </p>
           </Crossfade>
@@ -170,7 +170,6 @@ export function AuthFlow({ onAuthed }: { onAuthed: () => void }) {
                 minLength={3}
                 maxLength={20}
                 autoComplete="username"
-                placeholder="pablo"
                 className="h-full w-full bg-transparent pr-3.5 outline-none placeholder:text-muted-foreground/60"
               />
             </span>

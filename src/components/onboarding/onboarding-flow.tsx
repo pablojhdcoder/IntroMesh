@@ -48,20 +48,20 @@ const stepMeta: Record<Step, { number: string; label: string; progress: string }
 };
 
 const ABOUT_PLACEHOLDER =
-  "Product engineer into realtime maps — currently shaping offline-first prototypes. I can help with demos and user tests. Looking for a designer who loves field research.";
+  "Software engineer with eight years shipping production systems. I can help with system design and fast prototypes. Looking for a co-founder to start an AI company.";
 
 const INSPIRATION_EXAMPLES = [
   {
-    label: "Engineer · maps",
-    text: "Product engineer into realtime maps — currently shaping offline-first prototypes. I can help with demos and user tests. Looking for a designer who loves field research and long walks.",
+    label: "Software engineer · AI startup",
+    text: "Software engineer with eight years shipping production systems — APIs, data pipelines, and the reliability work nobody notices until it breaks. I can help with system design, TypeScript, and getting a prototype in front of users fast. Looking for a co-founder to start an AI company with: someone product-minded who wants to talk to customers as much as build.",
   },
   {
     label: "Designer · civic tech",
     text: "Interaction designer working on civic dashboards. I can help with critique, Figma systems, and storytelling. Looking for engineers into data viz who want to demo something playful.",
   },
   {
-    label: "Founder · climate",
-    text: "Exploring a community solar idea — talking to installers and neighbors. I can help with pitches and user interviews. Looking for someone technical who cares about energy access.",
+    label: "Distributed systems enthusiast",
+    text: "Distributed systems enthusiast — the kind of person who reads Raft papers for fun and has strong opinions about queues, retries, and why replicas disagree at 3 a.m. Currently building a tiny consensus toy in Go just to watch it fail. I can help with architecture reviews and thinking through failure modes. Talk to me about CRDTs, event sourcing, or your worst outage story.",
   },
 ];
 
@@ -319,9 +319,6 @@ function OnboardingBody({
             >
               Continue without an event
             </Button>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              You can explore events later — your identity is already saved.
-            </p>
           </div>
         </div>
       ) : null}
@@ -368,7 +365,7 @@ function OnboardingBody({
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending}>
             {pending ? "Reading" : "Continue"}
           </Button>
-          <p className={badge}>{metaConfigured ? "Meta · once" : "No key · nothing simulated"}</p>
+          {!metaConfigured ? <p className={badge}>No key · nothing simulated</p> : null}
         </div>
       ) : null}
 
