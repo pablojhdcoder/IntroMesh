@@ -94,6 +94,7 @@ function JoinForm({
           onChange={(e) => setIntent(e.target.value)}
           rows={3}
           maxLength={500}
+          autoFocus
           className={field}
           placeholder="Meet people working on…"
         />
@@ -166,8 +167,6 @@ function EventHubInner({
     setExpandedId(null);
   }
 
-  const expandedEvent = expandedId ? baseEvents.find((item) => item.id === expandedId) ?? null : null;
-
   return (
     <div className="flex flex-col gap-12">
       <div className="flex flex-col gap-3">
@@ -230,10 +229,12 @@ function EventHubInner({
           canCreateEvent={canCreateEvent}
           selectedId={expandedId}
           pickLabel="Join"
+          renderExpanded={(cardEvent) => {
+            const full = baseEvents.find((item) => item.id === cardEvent.id);
+            if (!full || joinedIds.has(full.id)) return null;
+            return <JoinForm event={full} onDone={markJoined} />;
+          }}
         />
-        {expandedEvent && !joinedIds.has(expandedEvent.id) ? (
-          <JoinForm event={expandedEvent} onDone={markJoined} />
-        ) : null}
         {code ? <p className="sr-only">Shared link code: {code}</p> : null}
       </section>
     </div>

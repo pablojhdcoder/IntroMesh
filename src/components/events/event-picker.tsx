@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventCard, type EventCardEvent } from "@/components/events/event-card";
+import { Crossfade } from "@/components/ui/crossfade";
 import { cn } from "cn";
 
 export type { EventCardEvent };
@@ -14,6 +15,8 @@ export type EventPickerProps = {
   canCreateEvent: boolean;
   selectedId?: string | null;
   pickLabel?: string;
+  /** Rendered directly under the selected card (e.g. a join form). */
+  renderExpanded?: (event: EventCardEvent) => ReactNode;
 };
 
 const focusRing =
@@ -47,7 +50,7 @@ export function extractInviteCode(raw: string): string {
   return trimmed;
 }
 
-export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLabel = "Choose" }: EventPickerProps) {
+export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLabel = "Choose", renderExpanded }: EventPickerProps) {
   const [query, setQuery] = useState("");
   const [searched, setSearched] = useState<EventCardEvent[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -173,8 +176,9 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
         <ul className="flex flex-col gap-3" aria-label="Events">
           {visible.map((event) => {
             const isSelected = selectedId === event.id;
+            const expanded = isSelected && renderExpanded ? renderExpanded(event) : null;
             return (
-              <li key={event.id}>
+              <li key={event.id} className="flex flex-col">
                 <EventCard
                   event={event}
                   joined={isSelected}
@@ -184,6 +188,7 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
                       variant={isSelected ? "ghost" : "default"}
                       className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto"
                       aria-pressed={isSelected}
+                      aria-expanded={renderExpanded ? isSelected : undefined}
                       onClick={() => {
                         try {
                           onPick(event);
@@ -196,6 +201,7 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
                     </Button>
                   }
                 />
+                {expanded ? <Crossfade id={event.id}>{expanded}</Crossfade> : null}
               </li>
             );
           })}
@@ -207,14 +213,14 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
           Have a code or invite link?
         </label>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Ask the organizer for the event code, or paste the full invite link — we detect the code automatically.
+          Ask the organizer for the event code, or paste the full invite link.
         </p>
         <div className="flex flex-col gap-2 min-[720px]:flex-row">
           <input
             id="event-picker-code"
             value={code}
             onChange={(event) => setCode(event.target.value)}
-            placeholder="Paste code or full invite link — e.g. NOVA-42"
+            placeholder="Paste code or full invite link"
             className={cn(fieldInput, "min-h-11 flex-1", focusRing)}
           />
           <Button
@@ -233,18 +239,26 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
           </p>
         ) : null}
         {resolved ? (
-          <EventCard
-            event={resolved}
-            action={
-              <Button
-                type="button"
-                className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto"
-                onClick={() => onPick(resolved)}
-              >
-                {pickLabel}
-              </Button>
-            }
-          />
+          <div className="flex flex-col">
+            <EventCard
+              event={resolved}
+              joined={selectedId === resolved.id}
+              action={
+                <Button
+                  type="button"
+                  variant={selectedId === resolved.id ? "ghost" : "default"}
+                  className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto"
+                  aria-pressed={selectedId === resolved.id}
+                  onClick={() => onPick(resolved)}
+                >
+                  {selectedId === resolved.id ? "Selected" : pickLabel}
+                </Button>
+              }
+            />
+            {selectedId === resolved.id && renderExpanded ? (
+              <Crossfade id={resolved.id}>{renderExpanded(resolved)}</Crossfade>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
