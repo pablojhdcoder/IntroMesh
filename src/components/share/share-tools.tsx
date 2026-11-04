@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Check, Link2, Contact } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProfileQr } from "@/components/share/profile-qr";
 
 const action = "h-11 w-full min-[720px]:h-9 min-[720px]:w-auto";
 const ghostAction = "h-11 min-[720px]:h-9";
@@ -13,17 +13,25 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
   const url = typeof window === "undefined" ? `/u/${slug}` : `${window.location.origin}/u/${slug}`;
 
   async function track(method: "link" | "qr" | "vcard") {
-    await fetch("/api/share", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ method }),
-    });
+    try {
+      await fetch("/api/share", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ method }),
+      });
+    } catch {
+      // Analytics is best-effort; never block the share action.
+    }
   }
 
   async function copyLink() {
-    await navigator.clipboard.writeText(url);
+    try {
+      await navigator.clipboard.writeText(url);
+      setMessage("Link copied.");
+    } catch {
+      setMessage("Could not copy the link. Copy it from the address bar instead.");
+    }
     await track("link");
-    setMessage("Link copied.");
   }
 
   async function downloadVCard() {
@@ -40,16 +48,9 @@ export function ShareTools({ slug, name }: { slug: string; name: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">Share your card</p>
+      <h2 className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">Share your card</h2>
       <div className="w-fit rounded-[20px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
-        <Image
-          src={`/api/profiles/${slug}/qr`}
-          alt={`QR code for ${name}'s profile`}
-          width={144}
-          height={144}
-          unoptimized
-          className="h-36 w-36 rounded-[8px] invert dark:invert-0"
-        />
+        <ProfileQr slug={slug} name={name} size={152} />
       </div>
       <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:flex-wrap min-[720px]:items-center">
         <Button type="button" className={action} onClick={() => void copyLink()}>

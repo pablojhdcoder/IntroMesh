@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProfileHero } from "@/components/profile/profile-hero";
 import { ProfileSections, type ProfileLike } from "@/components/profile/profile-view";
 import { ScanConnect } from "@/components/share/scan-connect";
 import { ShareTools } from "@/components/share/share-tools";
@@ -41,6 +42,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </p>
       ) : null}
 
+      <ProfileHero profile={profile} />
+
       <ProfileSections profile={profile} />
 
       {!isOwner ? (
@@ -49,7 +52,17 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </div>
       ) : null}
 
-      {isOwner ? (
+      {isOwner && profile.profileVisibility === "private" ? (
+        <p role="status" className="w-full rounded-md bg-surface px-3 py-2 text-sm text-muted-foreground">
+          Your profile is private, so your card and QR code are hidden. Make it public in{" "}
+          <Link href="/profile#edit" className="font-medium text-foreground underline underline-offset-4">
+            My Profile
+          </Link>{" "}
+          to share it again.
+        </p>
+      ) : null}
+
+      {isOwner && profile.profileVisibility !== "private" ? (
         <div className="w-full border-t border-border pt-8">
           <ShareTools slug={profile.slug} name={profile.displayName} />
         </div>

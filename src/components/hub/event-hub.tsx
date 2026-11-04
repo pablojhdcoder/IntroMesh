@@ -117,12 +117,10 @@ function EventHubInner({
   myEvents,
   initialEvents,
   canCreateEvent,
-  identityName,
 }: {
   myEvents: MyEventItem[];
   initialEvents: HubEvent[];
   canCreateEvent: boolean;
-  identityName: string;
 }) {
   const searchParams = useSearchParams();
   const [joinedIds, setJoinedIds] = useState<Set<string>>(() => new Set(myEvents.map((item) => item.eventId)));
@@ -177,7 +175,7 @@ function EventHubInner({
           Events
         </h1>
         <p className="max-w-[52ch] text-[0.9375rem] leading-relaxed text-muted-foreground">
-          {identityName ? `Signed in as ${identityName}. ` : ""}Pick a room to enter, or join a new one.
+          Pick a room to enter, or join a new one.
         </p>
       </div>
 
@@ -246,7 +244,6 @@ export function EventHub(props: {
   myEvents: MyEventItem[];
   initialEvents: HubEvent[];
   canCreateEvent: boolean;
-  identityName: string;
 }) {
   return (
     <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">Loading events…</p>}>

@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/nav/app-nav";
 import { ProfileEditor } from "@/components/profile/profile-editor";
+import { ProfileHero } from "@/components/profile/profile-hero";
 import { ProfileSections, type ProfileLike } from "@/components/profile/profile-view";
-import { ShareTools } from "@/components/share/share-tools";
+import { ShowCard } from "@/components/profile/show-card";
 import { EventCard } from "@/components/events/event-card";
 import type { HubEvent } from "@/components/hub/event-hub";
 import { service, viewerId } from "@/lib/http";
@@ -41,8 +42,23 @@ export default async function ProfilePage() {
 
   return (
     <main className="flex min-h-full flex-col">
-      <AppNav active="profile" slug={profile.slug} />
+      <AppNav active="profile" handle={profile.username ?? profile.slug} />
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-12 px-4 py-6 sm:px-8 min-[720px]:py-12">
+        <ProfileHero
+          profile={profile}
+          stats={{ connections: acceptedCount, events: myEvents.length }}
+          actions={
+            <Link
+              href="#edit"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring min-[720px]:min-h-9"
+            >
+              Edit profile
+            </Link>
+          }
+        />
+
+        <ShowCard profile={profile} />
+
         <ProfileSections profile={profile} />
 
         <section className="flex flex-col gap-3 border-t border-border pt-6" aria-label="Your events">
@@ -89,11 +105,7 @@ export default async function ProfilePage() {
           </p>
         </section>
 
-        <div className="border-t border-border pt-8">
-          <ShareTools slug={profile.slug} name={profile.displayName} />
-        </div>
-
-        <div className="border-t border-border pt-8">
+        <div id="edit" className="border-t border-border pt-8">
           <ProfileEditor profile={profile} />
         </div>
       </div>

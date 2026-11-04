@@ -33,13 +33,12 @@ export default async function EventsPage() {
 
   return (
     <main className="flex min-h-full flex-col">
-      <AppNav active="events" slug={session.profile.slug} />
+      <AppNav active="events" handle={session.profile.username ?? session.profile.slug} />
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-8 min-[720px]:py-12">
         <EventHub
           myEvents={myEvents}
           initialEvents={initialEvents}
           canCreateEvent={session.canCreateEvent ?? false}
-          identityName={session.profile.displayName}
         />
       </div>
     </main>

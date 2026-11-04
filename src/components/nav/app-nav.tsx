@@ -5,16 +5,24 @@ import { ThemeSwitch } from "@/components/theme-switch";
 const LINKS = [
   { id: "events", label: "Events", href: "/events" },
   { id: "connections", label: "Connections", href: "/connections" },
-  { id: "profile", label: "My Profile", href: "/profile" },
 ] as const;
 
-export type AppNavActive = (typeof LINKS)[number]["id"];
+export type AppNavActive = (typeof LINKS)[number]["id"] | "profile";
 
 const focusRing =
   "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none";
 
-export function AppNav({ active, slug }: { active?: AppNavActive; slug?: string }) {
+function cleanHandle(value?: string | null): string | null {
+  if (!value) return null;
+  const cleaned = value.trim().replace(/^@+/, "");
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+export function AppNav({ active, slug, handle }: { active?: AppNavActive; slug?: string; handle?: string | null }) {
   void slug;
+  const profileHandle = cleanHandle(handle) ?? cleanHandle(slug);
+  const profileLabel = profileHandle ? `@${profileHandle}` : "My Profile";
+  const isProfileActive = active === "profile";
   return (
     <header className="w-full border-b border-border">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-8">
@@ -44,6 +52,22 @@ export function AppNav({ active, slug }: { active?: AppNavActive; slug?: string 
                 </Link>
               );
             })}
+            <Link
+              href="/profile"
+              aria-current={isProfileActive ? "page" : undefined}
+              aria-label="My profile"
+              title={profileHandle ? `My profile — @${profileHandle}` : "My profile"}
+              className={cn(
+                "inline-flex min-h-11 max-w-36 items-center gap-1.5 rounded-full border border-border px-3 text-sm transition-colors min-[720px]:min-h-9",
+                isProfileActive
+                  ? "border-foreground/40 font-medium text-foreground"
+                  : "text-muted-foreground hover:border-foreground/25 hover:text-foreground",
+                focusRing,
+              )}
+            >
+              <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--signal-vivid)] dark:bg-signal" />
+              <span className="truncate font-mono text-[0.8125rem] tracking-tight">{profileLabel}</span>
+            </Link>
           </nav>
           <ThemeSwitch />
         </div>

@@ -1,6 +1,3 @@
-import Image from "next/image";
-import { goalLabel } from "@/domain/catalog";
-
 export type ProfileLike = {
   id?: string;
   displayName: string;
@@ -24,17 +21,6 @@ const meta = "font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-f
 const chip =
   "inline-flex items-center rounded-full border border-border px-3 py-1 text-sm";
 
-function initialsOf(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
-}
-
 function Chips({ label, values }: { label: string; values: string[] }) {
   if (values.length === 0) return null;
   return (
@@ -55,42 +41,6 @@ export function ProfileSections({ profile }: { profile: ProfileLike }) {
   const presentation = profile.presentation;
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col items-start gap-4">
-        {profile.avatarUrl ? (
-          <Image
-            src={profile.avatarUrl}
-            alt={`Profile photo of ${profile.displayName}`}
-            width={80}
-            height={80}
-            unoptimized
-            className="size-20 rounded-full border border-border object-cover"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="flex size-20 items-center justify-center rounded-full bg-signal font-heading text-3xl text-[#14160c]"
-          >
-            {initialsOf(profile.displayName)}
-          </div>
-        )}
-        <div className="flex flex-col gap-2">
-          <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] text-balance min-[720px]:text-[3.25rem]">
-            {profile.displayName}
-          </h1>
-          {profile.username ? (
-            <p className={meta}>@{profile.username}</p>
-          ) : null}
-          {profile.role ? (
-            <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">{profile.role}</p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            {profile.goal ? <span className={chip}>{goalLabel(profile.goal)}</span> : null}
-            {profile.demo ? <span className={chip}>Demo</span> : null}
-            {profile.profileVisibility === "private" ? <span className={chip}>Private</span> : null}
-          </div>
-        </div>
-      </section>
-
       {presentation ? (
         <section className="flex flex-col gap-2" aria-label="About">
           <h2 className="font-heading text-xl leading-tight tracking-[-0.01em]">{presentation.headline}</h2>

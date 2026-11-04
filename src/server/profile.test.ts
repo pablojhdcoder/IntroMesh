@@ -79,6 +79,7 @@ describe("profileActions.publicProfile", () => {
       avatarUrl: "https://example.com/ada.png",
       isOwner: false,
       connectionCount: 2,
+      profileVisibility: "public",
     });
     expect(result).not.toHaveProperty("originalDescription");
     expect(result).not.toHaveProperty("intents");
@@ -96,7 +97,7 @@ describe("profileActions.publicProfile", () => {
     expect(await profileActions(store).publicProfile("bob-u2", "u1")).toBeNull();
     expect(await profileActions(store).publicProfile("bob-u2", null)).toBeNull();
     const own = await profileActions(store).publicProfile("bob-u2", "u2");
-    expect(own).toMatchObject({ id: "u2", isOwner: true });
+    expect(own).toMatchObject({ id: "u2", isOwner: true, profileVisibility: "private" });
   });
 });
 

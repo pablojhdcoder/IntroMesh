@@ -20,6 +20,7 @@ export function profileActions(store: Store) {
         username: profile.username ?? profile.slug,
         isOwner,
         connectionCount,
+        profileVisibility: visibility,
       };
     },
 

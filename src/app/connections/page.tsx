@@ -25,13 +25,14 @@ type ConnectionItem = Awaited<ReturnType<ReturnType<typeof service>["connections
 
 export default async function ConnectionsPage() {
   const id = await viewerId();
+  const session = id ? await service().session(id) : null;
   const connections = (id ? await service().connections(id) : []) as ConnectionItem[];
   const accepted = connections.filter((item) => item.status === "accepted");
   const pending = connections.filter((item) => item.status === "pending");
 
   return (
     <main className="flex min-h-full flex-col">
-      <AppNav active="connections" />
+      <AppNav active="connections" handle={session?.profile?.username ?? session?.profile?.slug ?? null} />
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-12 px-4 py-6 sm:px-8 min-[720px]:py-12">
         <div className="flex flex-col gap-3">
           <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] text-balance min-[720px]:text-[3.25rem]">
