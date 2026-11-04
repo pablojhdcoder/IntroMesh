@@ -114,6 +114,96 @@ export function initialNodePosition(
   return { x: worldX(point.x, width), y: worldY(point.y), z: Math.round(z * 1000) / 1000 };
 }
 
+/** Radios de mundo de las esferas 3D. La raíz y cada persona deben caber sin solaparse. */
+export const GALAXY_ROOT_RADIUS = 18;
+export const GALAXY_HOT_RADIUS = 10;
+export const GALAXY_COLD_RADIUS = 6;
+
+/** Holgura mínima entre superficies de esferas vecinas. */
+const GALAXY_GAP = 18;
+/** Órbita mínima: raíz + recomendada + holgura, con margen para la etiqueta. */
+const GALAXY_MIN_ORBIT = 72;
+/** Aplastado vertical de la órbita, el mismo 0.82 del plano del servidor. */
+const GALAXY_SQUASH = 0.82;
+/** La profundidad del dato (0.4–1.6 / −0.5…−1.2) escalada a mundo. */
+const GALAXY_Z_SCALE = 14;
+
+export type GalaxyPosition = { id: string; x: number; y: number; z: number };
+
+/**
+ * Layout determinista de la galaxia 3D, sin física: garantiza por
+ * construcción que ninguna esfera toca la raíz ni a otra, haya 1, 2 o 30
+ * personas, vengan o no en las mismas coordenadas del servidor (el centro
+ * 50/50 incluido). Conserva la dirección angular del dato, separa los
+ * ángulos que colisionan repartiéndolos en orden circular y agranda la
+ * órbita cuando el anillo no da para la separación mínima. El resultado
+ * va en el mismo orden de entrada.
+ */
+export function galaxyLayout(people: readonly FieldPoint[]): GalaxyPosition[] {
+  if (people.length === 0) return [];
+  const count = people.length;
+  // Cuerda que deben respetar dos vecinas: las dos esferas más grandes + holgura.
+  const minChord = GALAXY_HOT_RADIUS * 2 + GALAXY_GAP;
+  // Órbita necesaria para que `count` nodos quepan en el anillo aplastado.
+  const ringOrbit = count > 1 ? minChord / (2 * Math.sin(Math.PI / count) * GALAXY_SQUASH) : 0;
+  const orbit = Math.max(GALAXY_MIN_ORBIT, ringOrbit);
+  const minAngle = 2 * Math.asin(clamp(minChord / (2 * orbit * GALAXY_SQUASH), 0, 1));
+
+  const draft = people.map((point, index) => {
+    const dx = point.x - 50;
+    const dy = point.y - 50;
+    const angle =
+      Math.hypot(dx, dy) < 1e-6 ? hashUnit(`${point.id}:angle`) * Math.PI * 2 : Math.atan2(-dy, dx);
+    return { point, index, angle };
+  });
+  const sorted = [...draft].sort((a, b) => a.angle - b.angle || a.index - b.index);
+  // Empuja cada ángulo hasta respetar la separación mínima; si la vuelta
+  // completa desborda, reparte en ranuras uniformes en el mismo orden.
+  let overflow = false;
+  for (let step = 1; step < sorted.length; step += 1) {
+    const minimum = sorted[step - 1].angle + minAngle;
+    if (sorted[step].angle < minimum) sorted[step].angle = minimum;
+  }
+  if (sorted.length > 1 && sorted[sorted.length - 1].angle > sorted[0].angle + Math.PI * 2 - minAngle) {
+    overflow = true;
+  }
+  if (overflow) {
+    const start = sorted[0].angle;
+    sorted.forEach((entry, step) => {
+      entry.angle = start + (step * Math.PI * 2) / sorted.length;
+    });
+  }
+
+  const range = scoreRange(people);
+  const positions = new Array<GalaxyPosition>(count);
+  for (const entry of sorted) {
+    const { point } = entry;
+    const jitter = (hashUnit(`${point.id}:orbit`) - 0.5) * 8;
+    const radial = orbit + (point.score === null ? 10 : -6) + jitter;
+    const z = depthFor(point, range) * GALAXY_Z_SCALE;
+    positions[entry.index] = {
+      id: point.id,
+      x: round(Math.cos(entry.angle) * radial),
+      y: round(Math.sin(entry.angle) * radial * GALAXY_SQUASH),
+      z: round(z),
+    };
+  }
+  return positions;
+}
+
+/**
+ * Distancia de cámara que encuadra una esfera de alcance `extent` (centro
+ * en el origen) con el FOV vertical por defecto de la escena (50°),
+ * respetando la proporción del contenedor: en vertical manda el ancho.
+ */
+export function galaxyOverviewDistance(extent: number, aspect: number, fovDegrees = 50): number {
+  const safeExtent = Number.isFinite(extent) && extent > 0 ? extent : GALAXY_ROOT_RADIUS;
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+  const tanVertical = Math.tan(((fovDegrees * Math.PI) / 180) / 2);
+  const tanLimiting = Math.min(tanVertical, tanVertical * safeAspect);
+  return Math.round(((safeExtent / tanLimiting) * 1.04 + GALAXY_ROOT_RADIUS) * 10) / 10;
+}
+
 /**
  * Recorte móvil: las recomendaciones de mayor score y, si no está entre
  * ellas, la seleccionada. Nunca añade a nadie que no venga en `people`.

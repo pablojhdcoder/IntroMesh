@@ -5,6 +5,11 @@ import {
   depthFor,
   easeOut,
   fieldWidth,
+  GALAXY_COLD_RADIUS,
+  GALAXY_HOT_RADIUS,
+  GALAXY_ROOT_RADIUS,
+  galaxyLayout,
+  galaxyOverviewDistance,
   hashUnit,
   initialNodePosition,
   mixRgba,
@@ -100,6 +105,76 @@ describe("initialNodePosition", () => {
     expect(a.z).toBeLessThan(0);
     expect(b.z).toBeLessThan(0);
     expect(a.z).not.toBe(b.z);
+  });
+});
+
+describe("galaxyLayout", () => {
+  const radiusOf = (score: number | null) => (score === null ? GALAXY_COLD_RADIUS : GALAXY_HOT_RADIUS);
+  const distance = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) =>
+    Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+
+  it("con una sola persona en el centro no la mete dentro del nodo raíz", () => {
+    const [only] = galaxyLayout([{ id: "solo", x: 50, y: 50, score: 9 }]);
+    expect(distance(only, { x: 0, y: 0, z: 0 })).toBeGreaterThanOrEqual(GALAXY_ROOT_RADIUS + GALAXY_HOT_RADIUS + 12);
+  });
+
+  it("con dos personas en las mismas coordenadas del servidor no colapsan", () => {
+    const laid = galaxyLayout([
+      { id: "a", x: 50, y: 50, score: 9 },
+      { id: "b", x: 50, y: 50, score: 8 },
+    ]);
+    expect(distance(laid[0], laid[1])).toBeGreaterThanOrEqual(GALAXY_HOT_RADIUS * 2 + 8);
+    for (const point of laid) {
+      expect(distance(point, { x: 0, y: 0, z: 0 })).toBeGreaterThanOrEqual(GALAXY_ROOT_RADIUS + GALAXY_HOT_RADIUS + 12);
+    }
+  });
+
+  it("mantiene la separación con muchos nodos, también repetidos", () => {
+    const many = Array.from({ length: 30 }, (_, index) => ({
+      id: `p-${index}`,
+      x: 50,
+      y: 50,
+      score: index % 3 === 0 ? null : 10 - (index % 5),
+    }));
+    const laid = galaxyLayout(many);
+    expect(laid.map((point) => point.id)).toEqual(many.map((point) => point.id));
+    for (let i = 0; i < laid.length; i += 1) {
+      expect(distance(laid[i], { x: 0, y: 0, z: 0 })).toBeGreaterThanOrEqual(
+        GALAXY_ROOT_RADIUS + radiusOf(many[i].score) + 8,
+      );
+      for (let j = i + 1; j < laid.length; j += 1) {
+        expect(distance(laid[i], laid[j])).toBeGreaterThanOrEqual(radiusOf(many[i].score) + radiusOf(many[j].score) + 4);
+      }
+    }
+  });
+
+  it("es determinista y respeta la dirección del servidor", () => {
+    const input = [
+      { id: "right", x: 78, y: 50, score: 9 },
+      { id: "left", x: 22, y: 50, score: 9 },
+    ];
+    expect(galaxyLayout(input)).toEqual(galaxyLayout([...input].reverse()).reverse());
+    const laid = galaxyLayout(input);
+    expect(laid[0].x).toBeGreaterThan(0);
+    expect(laid[1].x).toBeLessThan(0);
+  });
+
+  it("sin personas no devuelve nada", () => {
+    expect(galaxyLayout([])).toEqual([]);
+  });
+});
+
+describe("galaxyOverviewDistance", () => {
+  it("encuadra el alcance completo y se aleja más en vertical que en horizontal", () => {
+    const portrait = galaxyOverviewDistance(100, 0.5);
+    const landscape = galaxyOverviewDistance(100, 2);
+    expect(portrait).toBeGreaterThan(landscape);
+    expect(landscape).toBeGreaterThan(100);
+  });
+
+  it("con alcance cero devuelve una distancia segura", () => {
+    expect(galaxyOverviewDistance(0, 1)).toBeGreaterThan(0);
+    expect(galaxyOverviewDistance(Number.NaN, Number.NaN)).toBeGreaterThan(0);
   });
 });
 

@@ -18,7 +18,13 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import SpriteText from "three-spritetext";
 import { FIELD_SELF_ID, type FieldPerson } from "@/components/signal/signal-field";
-import { initialNodePosition } from "@/components/signal/signal-field-layout";
+import {
+  GALAXY_COLD_RADIUS,
+  GALAXY_HOT_RADIUS,
+  GALAXY_ROOT_RADIUS,
+  galaxyLayout,
+  galaxyOverviewDistance,
+} from "@/components/signal/signal-field-layout";
 
 const ORIGIN = FIELD_SELF_ID;
 
@@ -207,29 +213,37 @@ export function SignalGalaxy({
       nodeCache.set(id, init);
       return init;
     };
-    const nodes: GraphNode[] = [reuse(ORIGIN, { id: ORIGIN, name: "You", kind: "root", val: 18, fx: 0, fy: 0, fz: 0 })];
+    const nodes: GraphNode[] = [
+      reuse(ORIGIN, { id: ORIGIN, name: "You", kind: "root", val: GALAXY_ROOT_RADIUS, fx: 0, fy: 0, fz: 0 }),
+    ];
     const links: GraphLink[] = [];
-    for (const person of people) {
-      const hot = person.recommendation !== null;
-      // Deterministic seed from server coordinates: a brand-new node starts
-      // where the data says it belongs, so the sim resumes instead of jumping
-      // from a random position. Returning nodes keep their runtime x/y/z.
-      const seed = initialNodePosition({
+    // Deterministic pinned layout (no force physics): galaxyLayout guarantees
+    // every sphere clears the root and each other for any roster size, so
+    // nodes can never collapse into "You" — with 2 nodes or with 30.
+    const layout = galaxyLayout(
+      people.map((person) => ({
         id: person.id,
         x: person.x,
         y: person.y,
         score: person.recommendation?.score ?? null,
-      });
+      })),
+    );
+    for (const [index, person] of people.entries()) {
+      const hot = person.recommendation !== null;
+      const seed = layout[index];
       nodes.push(
         reuse(person.id, {
           id: person.id,
           name: person.demo ? `${person.displayName} · demo` : person.displayName,
           kind: hot ? "hot" : "cold",
-          val: hot ? 10 : 6,
+          val: hot ? GALAXY_HOT_RADIUS : GALAXY_COLD_RADIUS,
           demo: person.demo,
           x: seed.x,
           y: seed.y,
           z: seed.z,
+          fx: seed.x,
+          fy: seed.y,
+          fz: seed.z,
         }),
       );
       links.push({ source: ORIGIN, target: person.id, hot });
@@ -307,23 +321,35 @@ export function SignalGalaxy({
   }, [graphData, ready, reducedMotion, size.height, size.width, theme]);
 
   // One-shot overview fit per genuine roster. Guarded by rosterSig (not by
-  // graphData identity, size jitter, or theme), skipped for the origin-only
-  // placeholder, and skipped when the roster matches the last fitted one —
-  // so invisible → visible with a cached roster never re-runs layout/camera.
-  // The delay is short on purpose: nodes start from deterministic seeds and
-  // warmup ticks, so the layout is already stable after a couple of frames.
+  // graphData identity, size jitter, or theme) and skipped when the roster
+  // matches the last fitted one — so invisible → visible with a cached
+  // roster never re-runs layout/camera. Positions are pinned, so the fit
+  // is exact from the first frame, root-only roster included.
   useEffect(() => {
     if (!ready || size.width === 0 || size.height === 0) return;
-    if (graphData.nodes.length <= 1) return;
+    if (graphData.nodes.length === 0) return;
     if (fittedSig.current === rosterSig) return;
     fittedSig.current = rosterSig;
     const graph = graphRef.current;
     if (!graph) return;
     const frame = window.setTimeout(() => {
       if (focusedId.current) return;
-      graph.zoomToFit(0, 8);
-      const fitted = readCamera(graph);
-      const pose = { x: fitted.x * 0.2 + 36, y: fitted.y * 0.25 + 28, z: fitted.z };
+      // Analytic framing from the pinned layout, never zoomToFit on live
+      // simulation positions: the extent is known before the first frame,
+      // so the root-only and two-node rosters frame exactly like any other.
+      const extent =
+        Math.max(
+          ...graphData.nodes.map(
+            (node) => Math.hypot(node.x ?? 0, node.y ?? 0, node.z ?? 0) + node.val,
+          ),
+        ) + 16;
+      const distance = galaxyOverviewDistance(extent, size.width / size.height);
+      const direction = Math.hypot(0.3, 0.22, 1);
+      const pose = {
+        x: (0.3 / direction) * distance,
+        y: (0.22 / direction) * distance,
+        z: (1 / direction) * distance,
+      };
       overviewPose.current = pose;
       graph.cameraPosition(pose, { x: 0, y: 0, z: 0 }, reducedMotion ? 0 : 800);
     }, 150);
@@ -387,7 +413,7 @@ export function SignalGalaxy({
   }, [reducedMotion, stopOverview]);
 
   const focusNode = useCallback(
-    (node: { id?: string; x?: number; y?: number; z?: number }) => {
+    (node: { id?: string; x?: number; y?: number; z?: number; val?: number }) => {
       const graph = graphRef.current;
       if (!graph || !node.id || node.x === undefined) return;
       focusedId.current = node.id;
@@ -397,7 +423,9 @@ export function SignalGalaxy({
       const controls = graph.controls() as OrbitControls;
       controls.autoRotate = false;
       controls.target.set(look.x, look.y, look.z);
-      const distance = 72;
+      // Far enough that the sphere and its label fit: the root (r=18) at the
+      // old fixed 72 filled the frame exactly like the collapsed overview.
+      const distance = Math.max(64, (node.val ?? GALAXY_HOT_RADIUS) * 6.5);
       graph.cameraPosition(
         { x: look.x + distance * 0.35, y: look.y + distance * 0.22, z: look.z + distance },
         look,
