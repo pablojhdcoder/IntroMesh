@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn } from "cn";
 import { ThemeSwitch } from "@/components/theme-switch";
+import { LogoutButton } from "@/components/nav/logout-button";
 
 const LINKS = [
   { id: "events", label: "Events", href: "/events" },
@@ -69,6 +70,7 @@ export function AppNav({ active, slug, handle }: { active?: AppNavActive; slug?:
               <span className="truncate font-mono text-[0.8125rem] tracking-tight">{profileLabel}</span>
             </Link>
           </nav>
+          <LogoutButton />
           <ThemeSwitch />
         </div>
       </div>
