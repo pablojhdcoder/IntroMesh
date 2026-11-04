@@ -50,7 +50,7 @@ export default async function IntelligencePage() {
         </div>
         <div className="h-1 overflow-hidden rounded-full bg-surface-raised" aria-hidden="true">
           <div
-            className="h-full rounded-full bg-[var(--signal-strong)] transition-[width] duration-300 dark:bg-signal"
+            className="h-full rounded-full bg-[var(--signal-vivid)] transition-[width] duration-300 dark:bg-signal"
             style={{ width: `${acceptedPercent}%` }}
           />
         </div>

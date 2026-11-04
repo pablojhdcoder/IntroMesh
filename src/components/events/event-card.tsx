@@ -71,7 +71,7 @@ export function EventCard({ event, joined, action }: EventCardProps) {
         <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
           {event.status === "live" ? (
             <span className="flex items-center gap-1.5 font-mono text-[0.65rem] font-medium tracking-[0.08em] text-foreground uppercase">
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--signal-strong)] dark:bg-signal" />
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--signal-vivid)] dark:bg-signal" />
               Live
             </span>
           ) : (

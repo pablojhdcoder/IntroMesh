@@ -68,13 +68,13 @@ type Palette = {
 
 const PALETTE: Record<"light" | "dark", Palette> = {
   light: {
-    root: 0x4c6610,
-    hot: 0x5c7a12,
+    root: 0x16a34a,
+    hot: 0x22c55e,
     cold: 0x8a877c,
     label: "#16180f",
-    linkHot: "rgba(92, 122, 18, 0.8)",
+    linkHot: "rgba(22, 163, 74, 0.85)",
     linkCold: "rgba(96, 90, 72, 0.26)",
-    particle: "#4c6610",
+    particle: "#16a34a",
   },
   dark: {
     root: 0xd6ff4a,

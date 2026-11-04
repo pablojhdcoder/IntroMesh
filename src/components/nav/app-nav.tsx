@@ -22,7 +22,7 @@ export function AppNav({ active, slug }: { active?: AppNavActive; slug?: string 
           href="/events"
           className={cn("inline-flex min-h-11 items-center gap-2.5 font-heading text-xl leading-none tracking-[-0.02em]", focusRing)}
         >
-          <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-signal" />
+          <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-[var(--signal-vivid)] dark:bg-signal" />
           IntroMesh
         </Link>
         <div className="flex items-center gap-1 sm:gap-2">

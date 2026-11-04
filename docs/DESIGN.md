@@ -46,7 +46,8 @@ Semantic names (`--background`, `--foreground`, `--surface`, `--border`, `--sign
 | `--muted` | `#55534a` | Secondary text. Lives in CSS as `--muted-foreground`. ≥4.5:1 on `#f6f4ef` |
 | `--line` | `rgb(22 24 15 / 0.12)` | Borders. Lives in CSS as `--border`; inputs use `rgb(22 24 15 / 0.20)` |
 | `--signal` | `#d6ff4a` | Primary action, with text `#14160c` |
-| `--signal-strong` | `#4c6610` | Brand, focus (`--ring`), active node and active edge on warm paper |
+| `--signal-strong` | `#4c6610` | Brand, active node and active edge on warm paper |
+| `--signal-vivid` | `#16a34a` | Graphic marks that must pop on paper: dots, progress bars, focus (`--ring`), affinity border, 3D hot nodes, password-check badges |
 | `--signal-dim` | `rgb(76 102 16 / 0.12)` | Soft path hint |
 | `--danger` | `#b42318` | Error. Lives in CSS as `--destructive` |
 | `--success` | `#1f7a4a` | Success |
@@ -64,6 +65,7 @@ Semantic names (`--background`, `--foreground`, `--surface`, `--border`, `--sign
 | `--line` | `rgb(244 241 234 / 0.12)` | Borders. Lives in CSS as `--border` |
 | `--signal` | `#d6ff4a` | Connection accent. One dominant use per view |
 | `--signal-strong` | `#d6ff4a` | Same signal: on black the lime already contrasts |
+| `--signal-vivid` | `#d6ff4a` | Same signal: no separate vivid needed on black |
 | `--signal-dim` | `rgb(214 255 74 / 0.16)` | Halo or path hint |
 | `--danger` | `#ff6b5a` | Error. Lives in CSS as `--destructive` |
 | `--success` | `#8ee0b0` | Success and accepted connection |
@@ -126,7 +128,7 @@ shadcn/ui is the base. Restyle it with these tokens. Do not mix other component 
 
 ## Accessibility
 
-- Primary text contrast on canvas above 7:1 (`#16180f` on `#f6f4ef`). Accent `#d6ff4a` on `#14160c` exceeds 4.5:1 for controls. In light, focus uses `--signal-strong` (`#4c6610`) and secondary text uses `#55534a`, chosen to stay above 4.5:1 on warm paper `#f6f4ef`.
+- Primary text contrast on canvas above 7:1 (`#16180f` on `#f6f4ef`). Accent `#d6ff4a` on `#14160c` exceeds 4.5:1 for controls. In light, focus uses `--signal-vivid` (`#16a34a`, ≥3:1 on paper and surface) and secondary text uses `#55534a`, chosen to stay above 4.5:1 on warm paper `#f6f4ef`.
 - Visible focus with a 2px `--ring` (`--signal-strong`) and 2px offset.
 - Every action works with the keyboard. The network has a list alternative.
 - Lucide icons accompany text, except when `aria-label` names the action.
