@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Crossfade } from "@/components/ui/crossfade";
 import { ThemeSwitch } from "@/components/theme-switch";
+import { EventCard } from "@/components/events/event-card";
 import { EventPicker, type EventCardEvent } from "@/components/events/event-picker";
 
 type EventCard = EventCardEvent & { code: string };
@@ -46,26 +47,23 @@ const stepMeta: Record<Step, { number: string; label: string; progress: string }
   intent: { number: "05", label: "Intent", progress: "100%" },
 };
 
-const STARTER_CHIPS = [
-  "I work on…",
-  "I'm building…",
-  "I'm good at…",
-  "I can help with…",
-  "I want to meet…",
-  "Talk to me about…",
-];
-
-const ABOUT_GUIDE = [
-  "What do you do?",
-  "What are you building right now?",
-  "Your strongest skills and tools",
-  "What you can help others with",
-  "Who you want to meet",
-  "Topics you love talking about · languages",
-];
-
 const ABOUT_PLACEHOLDER =
-  "I work on a realtime collaboration tool for hackathon teams. I'm building offline-first sync and a matchmaking view. I'm good at TypeScript, prototyping, and running user tests. I can help with frontend architecture and demo prep. I want to meet backend engineers and designers who love events. Talk to me about travel, bouldering, and Spanish cinema — I speak English and Spanish.";
+  "Product engineer into realtime maps — currently shaping offline-first prototypes. I can help with demos and user tests. Looking for a designer who loves field research.";
+
+const INSPIRATION_EXAMPLES = [
+  {
+    label: "Engineer · maps",
+    text: "Product engineer into realtime maps — currently shaping offline-first prototypes. I can help with demos and user tests. Looking for a designer who loves field research and long walks.",
+  },
+  {
+    label: "Designer · civic tech",
+    text: "Interaction designer working on civic dashboards. I can help with critique, Figma systems, and storytelling. Looking for engineers into data viz who want to demo something playful.",
+  },
+  {
+    label: "Founder · climate",
+    text: "Exploring a community solar idea — talking to installers and neighbors. I can help with pitches and user interviews. Looking for someone technical who cares about energy access.",
+  },
+];
 
 function blankIdentity(name: string): Identity {
   return {
@@ -175,13 +173,13 @@ function OnboardingBody({
 
   const displayName = accountUsername ?? draft?.displayName ?? "";
 
-  async function normalize(regenerate = false) {
+  async function normalize() {
     setPending(true);
     setError(null);
     const response = await fetch("/api/identity", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "normalize", displayName, description, regenerate }),
+      body: JSON.stringify({ action: "normalize", displayName, description }),
     });
     const body = await response.json();
     setPending(false);
@@ -255,7 +253,7 @@ function OnboardingBody({
       className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-6 sm:px-8 min-[720px]:py-12"
       onSubmit={(event) => {
         event.preventDefault();
-        if (step === "identity") void normalize(false);
+        if (step === "identity") void normalize();
         if (step === "review") void confirm();
         if (step === "intent") void join();
       }}
@@ -275,8 +273,8 @@ function OnboardingBody({
             </h1>
             <p className="max-w-[42ch] text-[0.9375rem] leading-relaxed text-muted-foreground">
               {step === "identity" ? (accountUsername ? `Posting as @${accountUsername} · one identity for every event.` : "One identity for every event.") : null}
-              {step === "review" ? (manual ? "No Meta response. Review before saving." : "Review, then save.") : null}
-              {step === "event" ? "Choose an event." : null}
+              {step === "review" ? (manual ? "Review your details before saving." : "Check the details before saving.") : null}
+              {step === "event" ? "Pick one to join — or continue without an event." : null}
               {step === "intent" ? "What would make this event useful." : null}
             </p>
           </Crossfade>
@@ -305,39 +303,31 @@ function OnboardingBody({
 
       <Crossfade id={step} className="flex flex-col gap-6">
       {step === "event" ? (
-        <EventPicker
-          events={events}
-          onPick={pickEvent}
-          canCreateEvent={canCreateEvent}
-          selectedId={selected?.id ?? null}
-        />
+        <div className="flex flex-col gap-4">
+          <EventPicker
+            events={events}
+            onPick={pickEvent}
+            canCreateEvent={canCreateEvent}
+            selectedId={selected?.id ?? null}
+          />
+          <div className="flex flex-col gap-2 border-t border-border pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto"
+              onClick={onSaved}
+            >
+              Continue without an event
+            </Button>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              You can explore events later — your identity is already saved.
+            </p>
+          </div>
+        </div>
       ) : null}
 
       {step === "identity" ? (
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2 rounded-[12px] border border-border bg-surface p-4">
-            <p className={badge}>Tell Meta about you</p>
-            <ul className="grid gap-1.5 text-sm leading-relaxed text-foreground min-[720px]:grid-cols-2">
-              {ABOUT_GUIDE.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span aria-hidden="true" className="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--signal-vivid)] dark:bg-signal" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex flex-wrap gap-1.5" aria-label="Sentence starters">
-              {STARTER_CHIPS.map((starter) => (
-                <button
-                  key={starter}
-                  type="button"
-                  onClick={() => setDescription((current) => `${current.trimEnd()}${current.trim() ? " " : ""}${starter} `)}
-                  className="inline-flex h-8 items-center rounded-full border border-border px-2.5 text-[0.8125rem] leading-relaxed text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground"
-                >
-                  {starter}
-                </button>
-              ))}
-            </div>
-          </div>
           <label className={field}>
             About you
             <textarea
@@ -352,11 +342,29 @@ function OnboardingBody({
             />
           </label>
           <div className="flex items-center justify-between gap-4">
-            <p id="about-hint" className="text-sm text-muted-foreground">More detail = better matches.</p>
+            <p id="about-hint" className="text-sm text-muted-foreground">A few honest lines beat a long list — what you do, what you can offer, who you want to meet.</p>
             <p id="about-count" className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground tabular-nums">
               {description.trim().length}/2000
             </p>
           </div>
+          <details className="rounded-[12px] border border-border bg-surface p-4">
+            <summary className="cursor-pointer text-sm font-medium text-foreground">Need inspiration? See 3 examples</summary>
+            <ul className="mt-3 flex flex-col gap-3">
+              {INSPIRATION_EXAMPLES.map((example) => (
+                <li key={example.label} className="flex flex-col gap-2 rounded-[8px] bg-background p-3">
+                  <p className={badge}>{example.label}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{example.text}</p>
+                  <button
+                    type="button"
+                    onClick={() => setDescription(example.text)}
+                    className="self-start text-sm font-medium text-foreground underline underline-offset-4"
+                  >
+                    Use this example
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending}>
             {pending ? "Reading" : "Continue"}
           </Button>
@@ -394,7 +402,7 @@ function OnboardingBody({
             </div>
           </div>
           <p className={badge}>
-            {manual ? "Manual · No Meta response. Nothing was invented." : "Muse Spark · editable before saving"}
+            {manual ? "Manual · No Meta response. Nothing was invented." : "Review before saving"}
           </p>
           <IdentityPreview identity={identity} editing={editing} onChange={setIdentity} />
           <div className="flex flex-col gap-2 min-[720px]:flex-row">
@@ -405,24 +413,28 @@ function OnboardingBody({
               Edit my profile
             </Button>
           </div>
-          <button type="button" className="text-left text-sm text-muted-foreground underline-offset-4 hover:underline" onClick={() => void normalize(true)}>
-            Regenerate from the description
-          </button>
         </div>
       ) : null}
 
       {step === "intent" ? (
         <div className="flex flex-col gap-4">
           {selected ? (
-            <p className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">{selected.name}</p>
+            <div className="flex flex-col gap-2">
+              <p className={badge}>You&apos;re joining</p>
+              <EventCard event={selected} joined />
+            </div>
           ) : null}
           <label className={field}>
-            This event
+            What would make this event useful for you?
             <textarea
               className={textarea}
               value={intent}
               onChange={(event) => setIntent(event.target.value)}
-              placeholder="I'm looking to meet potential co-founders, discover interesting AI projects, find people to collaborate with and explore new opportunities."
+              placeholder={
+                selected
+                  ? `At ${selected.name} I want to meet people who…`
+                  : "I want to meet people who…"
+              }
             />
           </label>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending || !selected}>

@@ -22,6 +22,31 @@ const fieldInput =
   "h-11 rounded-[12px] border border-border bg-surface px-3.5 font-sans text-[1rem] text-foreground transition-colors hover:border-foreground/25 motion-reduce:transition-none";
 const meta = "font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
 
+export function extractInviteCode(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : null;
+  if (withProtocol) {
+    try {
+      const url = new URL(withProtocol);
+      const fromParams =
+        url.searchParams.get("code") ?? url.searchParams.get("event") ?? url.searchParams.get("invite");
+      if (fromParams?.trim()) return fromParams.trim();
+    } catch {
+      // Fall through to plain-code handling below.
+    }
+  }
+  const queryMatch = trimmed.match(/[?&](?:code|event|invite)=([^&\s#]+)/i);
+  if (queryMatch?.[1]) {
+    try {
+      return decodeURIComponent(queryMatch[1]).trim();
+    } catch {
+      return queryMatch[1].trim();
+    }
+  }
+  return trimmed;
+}
+
 export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLabel = "Choose" }: EventPickerProps) {
   const [query, setQuery] = useState("");
   const [searched, setSearched] = useState<EventCardEvent[] | null>(null);
@@ -70,7 +95,7 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
   }, [query]);
 
   async function findByCode() {
-    const trimmed = code.trim();
+    const trimmed = extractInviteCode(code);
     if (!trimmed) return;
     setCodePending(true);
     setCodeError(null);
@@ -179,14 +204,17 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
 
       <div className="flex flex-col gap-3 border-t border-border pt-6">
         <label htmlFor="event-picker-code" className={meta}>
-          Code or link
+          Have a code or invite link?
         </label>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Ask the organizer for the event code, or paste the full invite link — we detect the code automatically.
+        </p>
         <div className="flex flex-col gap-2 min-[720px]:flex-row">
           <input
             id="event-picker-code"
             value={code}
             onChange={(event) => setCode(event.target.value)}
-            placeholder="Event code"
+            placeholder="Paste code or full invite link — e.g. NOVA-42"
             className={cn(fieldInput, "min-h-11 flex-1", focusRing)}
           />
           <Button
