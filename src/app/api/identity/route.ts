@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     const body = bodySchema.parse(await request.json());
     if (body.action === "normalize") {
       const result = await service().normalizeIdentity(await viewerId(), body.displayName, body.description, body.regenerate);
+      if ("error" in result && result.error === "profile") return json(result, 401);
       if ("userId" in result) await writeProfileId(result.userId);
       if ("error" in result) return json(result, 503);
       return json(result);

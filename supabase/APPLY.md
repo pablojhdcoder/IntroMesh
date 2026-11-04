@@ -6,6 +6,12 @@ In the Supabase dashboard open **SQL → New query**. Run these files **in order
 2. `supabase/migrations/0002_demo_seed.sql` — Meta Hackathon event + 28 demo profiles with presence
 3. `supabase/migrations/0003_intelligence.sql` — identities, participations, pgvector, recommendations
 4. `supabase/migrations/0004_store_parity.sql` — columns the app store needs + advisory locks
+5. `supabase/migrations/0005_production_matching.sql`
+6. `supabase/migrations/0006_azure_embeddings_1536.sql`
+7. `supabase/migrations/0007_multi_event.sql`
+8. `supabase/migrations/0008_presence_single_status.sql`
+9. `supabase/migrations/0009_membership_visibility.sql`
+10. `supabase/migrations/0010_auth_accounts.sql` — accounts (@username + password hash), profiles.username
 
 Or from a shell with the [Supabase CLI](https://supabase.com/docs/guides/cli) linked to the project:
 

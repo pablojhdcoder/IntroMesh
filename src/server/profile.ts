@@ -17,7 +17,7 @@ export function profileActions(store: Store) {
       return {
         ...toSharedCard(profile),
         avatarUrl: profile.avatarUrl ?? null,
-        username: profile.slug,
+        username: profile.username ?? profile.slug,
         isOwner,
         connectionCount,
       };

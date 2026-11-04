@@ -47,6 +47,7 @@ export type StoredProfile = ProfileInput & {
   demo: boolean;
   presentation: Presentation | null;
   createdAt: string;
+  username?: string | null;
   avatarUrl?: string | null;
   profileVisibility?: "public" | "private";
 };
@@ -67,6 +68,7 @@ export type PublicProfile = Pick<
   | "demo"
   | "presentation"
 > & {
+  username?: string | null;
   avatarUrl?: string | null;
   profileVisibility?: "public" | "private";
 };
@@ -74,12 +76,13 @@ export type PublicProfile = Pick<
 export type SharedCard = Pick<
   PublicProfile,
   "id" | "slug" | "displayName" | "role" | "interests" | "skills" | "projects" | "goal" | "demo" | "presentation"
->;
+> & { username?: string | null };
 
 export function toSharedCard(profile: StoredProfile): SharedCard {
   return {
     id: profile.id,
     slug: profile.slug,
+    username: profile.username ?? null,
     displayName: profile.displayName,
     role: profile.role,
     interests: profile.interests,
@@ -95,6 +98,7 @@ export function toPublicProfile(profile: StoredProfile): PublicProfile {
   return {
     id: profile.id,
     slug: profile.slug,
+    username: profile.username ?? null,
     displayName: profile.displayName,
     role: profile.role,
     interests: profile.interests,

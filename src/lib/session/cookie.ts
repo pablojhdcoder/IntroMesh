@@ -31,7 +31,19 @@ export async function writeProfileId(id: string): Promise<void> {
   jar.set(COOKIE, sealProfileId(id, sessionSecret()), {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
+export async function clearProfileId(): Promise<void> {
+  const jar = await cookies();
+  jar.set(COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
   });
 }

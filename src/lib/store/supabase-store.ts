@@ -9,6 +9,7 @@ import type { Presentation, StoredProfile } from "@/domain/profile";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   hydrateDatabase,
+  type AccountRecord,
   type ConnectionRecord,
   type Database,
   type EventRecord,
@@ -75,7 +76,8 @@ async function loadSnapshotCached(admin: Admin): Promise<Database> {
 const EVENT_COLUMNS =
   "id,name,demo,description,category,starts_at,code,status,created_by";
 const PROFILE_COLUMNS =
-  "id,slug,display_name,role,bio,interests,skills,projects,offers,seeking,goal,demo,presentation,created_at,avatar_url,profile_visibility";
+  "id,slug,display_name,role,bio,interests,skills,projects,offers,seeking,goal,demo,presentation,created_at,avatar_url,profile_visibility,username";
+const ACCOUNT_COLUMNS = "user_id,username,password_hash,created_at,updated_at,last_login_at";
 const LINK_COLUMNS = "profile_id,label,url";
 const CONNECTION_COLUMNS = "id,event_id,from_id,to_id,status,intro,intro_source,created_at,accepted_at";
 const ANALYTICS_COLUMNS = "id,event_id,type,topic,at";
@@ -121,6 +123,7 @@ function mapProfile(row: Record<string, unknown>, links: { label: string; url: s
   return {
     id: String(row.id),
     slug: String(row.slug),
+    username: row.username ? String(row.username) : null,
     displayName: String(row.display_name),
     role: String(row.role),
     bio: String(row.bio ?? ""),
@@ -150,6 +153,17 @@ function mapEvent(row: Record<string, unknown>): EventRecord {
     code: String(row.code ?? row.id),
     status: (row.status as EventRecord["status"]) ?? "live",
     createdBy: row.created_by ? String(row.created_by) : null,
+  };
+}
+
+function mapAccountRow(row: Record<string, unknown>): AccountRecord {
+  return {
+    userId: String(row.user_id),
+    username: String(row.username),
+    passwordHash: String(row.password_hash),
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+    updatedAt: String(row.updated_at ?? new Date().toISOString()),
+    lastLoginAt: row.last_login_at ? String(row.last_login_at) : null,
   };
 }
 
@@ -338,6 +352,7 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     events,
     profiles,
     links,
+    accounts,
     connections,
     analytics,
     identities,
@@ -351,6 +366,7 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     admin.from("events").select(EVENT_COLUMNS),
     admin.from("profiles").select(PROFILE_COLUMNS),
     admin.from("profile_links").select(LINK_COLUMNS),
+    admin.from("accounts").select(ACCOUNT_COLUMNS),
     admin.from("connections").select(CONNECTION_COLUMNS),
     admin.from("analytics_events").select(ANALYTICS_COLUMNS),
     admin.from("global_identities").select(IDENTITY_COLUMNS),
@@ -367,6 +383,12 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
       "Missing engine_metrics. Apply supabase/migrations/0004_store_parity.sql in the Supabase SQL editor (see supabase/APPLY.md).",
     );
   }
+  // Accounts table ships with migration 0010; older projects without it read
+  // as zero accounts instead of failing the whole snapshot.
+  const accountsRows =
+    accounts.error?.code === "PGRST205" || accounts.error?.code === "42P01"
+      ? []
+      : ((accounts.data ?? []) as Record<string, unknown>[]);
   const errors = [
     events.error,
     profiles.error,
@@ -403,6 +425,7 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     profiles: (profiles.data ?? []).map((row) =>
       mapProfile(row as Record<string, unknown>, linksByProfile.get(String(row.id)) ?? []),
     ),
+    accounts: accountsRows.map((row) => mapAccountRow(row)),
     connections: (connections.data ?? []).map((row) => mapConnectionRow(row as unknown as Record<string, unknown>)),
     analytics: (analytics.data ?? []).map((row) => mapAnalyticsRow(row as unknown as Record<string, unknown>)),
     identities: (identities.data ?? []).map((row) => mapIdentityRow(row as unknown as Record<string, unknown>)),
@@ -465,6 +488,7 @@ async function replaceTable(
 type PersistedCollection =
   | "events"
   | "profiles"
+  | "accounts"
   | "connections"
   | "analytics"
   | "identities"
@@ -478,6 +502,7 @@ function snapshotSignatures(database: Database): Record<PersistedCollection, str
   return {
     events: JSON.stringify(database.events),
     profiles: JSON.stringify(database.profiles),
+    accounts: JSON.stringify(database.accounts),
     connections: JSON.stringify(database.connections),
     analytics: JSON.stringify(database.analytics),
     identities: JSON.stringify(database.identities),
@@ -534,6 +559,7 @@ async function persistSnapshot(admin: Admin, database: Database, dirty?: Set<Per
         database.profiles.map((profile) => ({
           id: profile.id,
           slug: profile.slug,
+          username: profile.username ?? null,
           display_name: profile.displayName,
           role: profile.role,
           bio: profile.bio,
@@ -572,6 +598,22 @@ async function persistSnapshot(admin: Admin, database: Database, dirty?: Set<Per
     const schedule = (key: PersistedCollection, write: () => Promise<void>): void => {
       if (isDirty(key)) pending.push(write());
     };
+
+    schedule("accounts", () =>
+      replaceTable(
+        admin,
+        "accounts",
+        database.accounts.map((item) => ({
+          user_id: item.userId,
+          username: item.username,
+          password_hash: item.passwordHash,
+          created_at: item.createdAt,
+          updated_at: item.updatedAt,
+          last_login_at: item.lastLoginAt,
+        })),
+        "user_id",
+      ),
+    );
 
     schedule("connections", () =>
       replaceTable(
@@ -800,12 +842,13 @@ function emptyRows() {
 async function readSessionSnapshot(profileId: string | null): Promise<Database> {
   const admin = getAdmin();
   const scoped = Boolean(profileId && SAFE_ID.test(profileId));
-  const [events, profiles, links, identities, participations] = await Promise.all([
+  const [events, profiles, links, identities, participations, accounts] = await Promise.all([
     admin.from("events").select(EVENT_COLUMNS),
     scoped ? admin.from("profiles").select(PROFILE_COLUMNS).eq("id", profileId).limit(1) : emptyRows(),
     scoped ? admin.from("profile_links").select(LINK_COLUMNS).eq("profile_id", profileId) : emptyRows(),
     scoped ? admin.from("global_identities").select(IDENTITY_COLUMNS).eq("user_id", profileId) : emptyRows(),
     scoped ? admin.from("event_participations").select(PARTICIPATION_COLUMNS).eq("user_id", profileId) : emptyRows(),
+    scoped ? admin.from("accounts").select(ACCOUNT_COLUMNS).eq("user_id", profileId).limit(1) : emptyRows(),
   ]);
   throwOnErrors(
     [events.error, profiles.error, links.error, identities.error, participations.error].filter(
@@ -818,8 +861,10 @@ async function readSessionSnapshot(profileId: string | null): Promise<Database> 
     list.push({ label: String(row.label), url: String(row.url) });
     linksByProfile.set(String(row.profile_id), list);
   }
+  const accountRows = accounts.error ? [] : ((accounts.data ?? []) as Record<string, unknown>[]);
   return hydrateDatabase({
     events: ((events.data ?? []) as Record<string, unknown>[]).map(mapEvent),
+    accounts: accountRows.map(mapAccountRow),
     profiles: ((profiles.data ?? []) as Record<string, unknown>[]).map((row) =>
       mapProfile(row, linksByProfile.get(String(row.id)) ?? []),
     ),

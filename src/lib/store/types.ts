@@ -88,6 +88,15 @@ export type ConnectionRecord = {
   acceptedAt: string | null;
 };
 
+export type AccountRecord = {
+  userId: string;
+  username: string;
+  passwordHash: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt: string | null;
+};
+
 export type AffinityCacheRecord = {
   key: string;
   value: GroundedExplanation;
@@ -99,6 +108,7 @@ export type Database = {
   connections: ConnectionRecord[];
   analytics: AnalyticsRecord[];
   affinity: AffinityCacheRecord[];
+  accounts: AccountRecord[];
   identities: GlobalIdentityRecord[];
   participations: ParticipationRecord[];
   embeddings: EmbeddingRecord[];
@@ -149,6 +159,7 @@ export function hydrateDatabase(input: Partial<Database> | null | undefined): Da
     connections: input?.connections ?? [],
     analytics: input?.analytics ?? seeded?.analytics ?? [],
     affinity: input?.affinity ?? [],
+    accounts: input?.accounts ?? [],
     identities: input?.identities ?? [],
     participations: (input?.participations ?? seeded?.participations ?? []).map((item) => ({
       ...item,

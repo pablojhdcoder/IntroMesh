@@ -19,6 +19,7 @@ export function sessionActions(store: Store) {
     async session(profileId: string | null) {
       const database = await readForSession(store, profileId);
       const profile = database.profiles.find((item) => item.id === profileId) ?? null;
+      const account = profileId ? (database.accounts.find((item) => item.userId === profileId) ?? null) : null;
       const identity = profileId ? (database.identities.find((item) => item.userId === profileId) ?? null) : null;
       const legacy = Boolean(profile && !profile.demo && !identity);
       const confirmed = Boolean((identity?.status === "confirmed" && identity.confirmed) || legacy);
@@ -59,6 +60,7 @@ export function sessionActions(store: Store) {
         : [];
       return {
         profile: confirmed && profile ? toPublicProfile(profile) : null,
+        account: account ? { username: account.username } : null,
         needsSetup: !ready,
         identityConfirmed: confirmed,
         draft:
@@ -82,10 +84,16 @@ export function sessionActions(store: Store) {
       return store.update((database) => {
         const existing = database.profiles.find((item) => item.id === profileId && !item.demo);
         const id = existing?.id ?? `user-${newId()}`;
+        const account = database.accounts.find((item) => item.userId === id) ?? null;
+        const username = account?.username ?? existing?.username ?? null;
+        const slug =
+          existing?.slug ??
+          (username && !existing ? username : `${slugify(parsed.displayName)}-${id.slice(5, 13)}`);
         const profile: StoredProfile = {
           ...parsed,
           id,
-          slug: existing?.slug ?? `${slugify(parsed.displayName)}-${id.slice(5, 13)}`,
+          slug,
+          username,
           demo: false,
           presentation: presentation ?? existing?.presentation ?? null,
           createdAt: existing?.createdAt ?? new Date().toISOString(),
