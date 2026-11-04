@@ -7,6 +7,7 @@ import {
   fieldWidth,
   GALAXY_COLD_RADIUS,
   GALAXY_HOT_RADIUS,
+  GALAXY_LINK_DISTANCE,
   GALAXY_ROOT_RADIUS,
   galaxyFrameInset,
   galaxyLayout,
@@ -162,6 +163,12 @@ describe("galaxyLayout", () => {
 
   it("sin personas no devuelve nada", () => {
     expect(galaxyLayout([])).toEqual([]);
+  });
+
+  it("siembra dentro de la órbita de enlace para que la física expanda, no colapse", () => {
+    expect(GALAXY_LINK_DISTANCE).toBe(120);
+    const [only] = galaxyLayout([{ id: "solo", x: 50, y: 50, score: 9 }]);
+    expect(Math.hypot(only.x, only.y, only.z)).toBeLessThan(GALAXY_LINK_DISTANCE);
   });
 });
 

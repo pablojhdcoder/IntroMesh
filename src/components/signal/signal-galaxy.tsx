@@ -22,6 +22,7 @@ import { FIELD_SELF_ID, type FieldPerson } from "@/components/signal/signal-fiel
 import {
   GALAXY_COLD_RADIUS,
   GALAXY_HOT_RADIUS,
+  GALAXY_LINK_DISTANCE,
   GALAXY_ROOT_RADIUS,
   galaxyFrameInset,
   galaxyLayout,
@@ -227,9 +228,10 @@ export function SignalGalaxy({
       reuse(ORIGIN, { id: ORIGIN, name: "You", kind: "root", val: GALAXY_ROOT_RADIUS, fx: 0, fy: 0, fz: 0 }),
     ];
     const links: GraphLink[] = [];
-    // Deterministic pinned layout (no force physics): galaxyLayout guarantees
-    // every sphere clears the root and each other for any roster size, so
-    // nodes can never collapse into "You" — with 2 nodes or with 30.
+    // Deterministic seeds, live physics: galaxyLayout guarantees every sphere
+    // starts clear of the root and each other for any roster size, then the
+    // charge/link simulation takes over and puts them in orbit — nodes move
+    // and push each other apart, but never start collapsed into "You".
     const layout = galaxyLayout(
       people.map((person) => ({
         id: person.id,
@@ -251,9 +253,6 @@ export function SignalGalaxy({
           x: seed.x,
           y: seed.y,
           z: seed.z,
-          fx: seed.x,
-          fy: seed.y,
-          fz: seed.z,
         }),
       );
       links.push({ source: ORIGIN, target: person.id, hot });
@@ -321,10 +320,12 @@ export function SignalGalaxy({
   useEffect(() => {
     const graph = graphRef.current;
     if (!graph || !ready || size.width === 0 || size.height === 0) return;
+    // Reference physics: strong charge repulsion so nodes that drift together
+    // push apart, and a long link so everyone orbits the root at a distance.
     const charge = graph.d3Force("charge") as { strength?: (value: number) => void } | undefined;
-    charge?.strength?.(-420);
+    charge?.strength?.(-400);
     const link = graph.d3Force("link") as { distance?: (value: number) => void } | undefined;
-    link?.distance?.(110);
+    link?.distance?.(GALAXY_LINK_DISTANCE);
     const renderer = graph.renderer() as WebGLRenderer;
     renderer.toneMappingExposure = theme === "dark" ? 1.2 : 1.05;
     if (keyLight.current) keyLight.current.intensity = theme === "dark" ? 2.35 : 1.6;
@@ -354,8 +355,9 @@ export function SignalGalaxy({
   // One-shot overview fit per genuine roster. Guarded by rosterSig (not by
   // graphData identity, size jitter, or theme) and skipped when the roster
   // matches the last fitted one — so invisible → visible with a cached
-  // roster never re-runs layout/camera. Positions are pinned, so the fit
-  // is exact from the first frame, root-only roster included.
+  // roster never re-runs layout/camera. Seeds are deterministic and the
+  // settled orbit is known, so the fit holds from the first frame,
+  // root-only roster included.
   useEffect(() => {
     if (!ready || size.width === 0 || size.height === 0) return;
     if (graphData.nodes.length === 0) return;
@@ -366,16 +368,22 @@ export function SignalGalaxy({
     if (!graph) return;
     const frame = window.setTimeout(() => {
       if (focusedId.current) return;
-      // Analytic framing from the pinned layout, never zoomToFit on live
-      // simulation positions: the extent is known before the first frame,
-      // so the root-only and two-node rosters frame exactly like any other.
+      // Analytic framing, never zoomToFit on live simulation positions: the
+      // physics settles everyone on the link orbit, so the extent is the
+      // larger of the seed spread and that orbit — known before the first
+      // frame, so root-only and two-node rosters frame exactly like any
+      // other even while nodes are still moving.
       // Aspect is the free rectangle left by the overlay, not the canvas.
-      const extent =
+      const seedExtent =
         Math.max(
           ...graphData.nodes.map(
             (node) => Math.hypot(node.x ?? 0, node.y ?? 0, node.z ?? 0) + node.val,
           ),
         ) + 16;
+      const extent =
+        graphData.nodes.length > 1
+          ? Math.max(seedExtent, GALAXY_LINK_DISTANCE + GALAXY_HOT_RADIUS + 16)
+          : seedExtent;
       const distance = galaxyOverviewDistance(extent, frameWidth / frameHeight);
       const direction = Math.hypot(0.3, 0.22, 1);
       const pose = {

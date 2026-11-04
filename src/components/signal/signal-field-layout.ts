@@ -118,6 +118,8 @@ export function initialNodePosition(
 export const GALAXY_ROOT_RADIUS = 18;
 export const GALAXY_HOT_RADIUS = 10;
 export const GALAXY_COLD_RADIUS = 6;
+/** Distancia de reposo del enlace raíz→persona en la simulación de fuerzas. */
+export const GALAXY_LINK_DISTANCE = 120;
 
 /** Holgura mínima entre superficies de esferas vecinas. */
 const GALAXY_GAP = 18;
@@ -131,13 +133,15 @@ const GALAXY_Z_SCALE = 14;
 export type GalaxyPosition = { id: string; x: number; y: number; z: number };
 
 /**
- * Layout determinista de la galaxia 3D, sin física: garantiza por
- * construcción que ninguna esfera toca la raíz ni a otra, haya 1, 2 o 30
- * personas, vengan o no en las mismas coordenadas del servidor (el centro
- * 50/50 incluido). Conserva la dirección angular del dato, separa los
- * ángulos que colisionan repartiéndolos en orden circular y agranda la
- * órbita cuando el anillo no da para la separación mínima. El resultado
- * va en el mismo orden de entrada.
+ * Semilla determinista de la galaxia 3D: la posición inicial de cada nodo
+ * antes de que la simulación de fuerzas (charge/link) lo ponga a orbitar.
+ * Garantiza por construcción que ninguna esfera nace tocando la raíz ni a
+ * otra, haya 1, 2 o 30 personas, vengan o no en las mismas coordenadas
+ * del servidor (el centro 50/50 incluido) — la física expande desde ahí,
+ * nunca tiene que rescatar un colapso. Conserva la dirección angular del
+ * dato, separa los ángulos que colisionan repartiéndolos en orden
+ * circular y agranda la órbita cuando el anillo no da para la separación
+ * mínima. El resultado va en el mismo orden de entrada.
  */
 export function galaxyLayout(people: readonly FieldPoint[]): GalaxyPosition[] {
   if (people.length === 0) return [];
