@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, Contact, Link2, X } from "lucide-react";
+import { Check, Link2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileQr } from "@/components/share/profile-qr";
 import type { ProfileLike } from "@/components/profile/profile-view";
@@ -68,76 +68,23 @@ export function ShowCardFace({ profile }: { profile: ProfileLike }) {
         <p className={`${metaOnCard} text-background/70 dark:text-muted-foreground`}>Scan to connect</p>
       </div>
 
-      {profile.interests.length > 0 ? (
-        <ul className="flex flex-wrap gap-2" aria-label="Interests">
-          {profile.interests.slice(0, 3).map((interest) => (
-            <li
-              key={interest}
-              className="inline-flex min-h-8 items-center rounded-full border border-background/25 px-3 py-1 text-sm dark:border-border"
-            >
-              {interest}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
       <p className={`${metaOnCard} mt-auto text-background/70 dark:text-muted-foreground`}>/u/{profile.slug}</p>
     </article>
   );
 }
 
-async function trackShare(method: "link" | "qr" | "vcard") {
-  try {
-    await fetch("/api/share", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ method }),
-    });
-  } catch {
-    // Analytics is best-effort; never block the share action.
-  }
-}
+import { useCopyLink, CopyAnnouncer } from "@/components/share/use-copy-link";
 
 export function ProfileCardActions({ profile }: { profile: ProfileLike }) {
-  const [message, setMessage] = useState<string | null>(null);
-  const copied = message === "Link copied.";
-  const url = typeof window === "undefined" ? `/u/${profile.slug}` : `${window.location.origin}/u/${profile.slug}`;
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(url);
-      setMessage("Link copied.");
-    } catch {
-      setMessage("Could not copy the link. Copy it from the card address instead.");
-    }
-    await trackShare("link");
-  }
+  const { copyLink, copied, failed } = useCopyLink(profile.slug);
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex w-full flex-col gap-2 min-[720px]:flex-row min-[720px]:flex-wrap">
-        <Button type="button" className="h-11 min-[720px]:h-9" onClick={() => void copyLink()}>
-          {copied ? <Check aria-hidden="true" /> : <Link2 aria-hidden="true" />}
-          Copy link
-        </Button>
-        <Button
-          asChild
-          variant="outline"
-          className="h-11 min-[720px]:h-9"
-          onClick={() => void trackShare("vcard")}
-        >
-          <a href={`/api/profiles/${profile.slug}/vcard`} download={`${profile.slug}.vcf`}>
-            <Contact aria-hidden="true" />
-            Save contact (.vcf)
-          </a>
-        </Button>
-      </div>
-      {message ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
-          {copied ? <Check aria-hidden="true" className="size-4 shrink-0 text-foreground" /> : null}
-          {message}
-        </p>
-      ) : null}
+      <Button type="button" className="h-11 w-full min-[720px]:h-9" onClick={() => void copyLink()}>
+        {copied ? <Check aria-hidden="true" /> : failed ? <X aria-hidden="true" /> : <Link2 aria-hidden="true" />}
+        {copied ? "Copied" : failed ? "Couldn't copy" : "Copy link"}
+      </Button>
+      <CopyAnnouncer copied={copied} failed={failed} />
     </div>
   );
 }
@@ -158,7 +105,6 @@ export function PresentCardOverlay({
     closeRef.current?.focus();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    void trackShare("qr");
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();

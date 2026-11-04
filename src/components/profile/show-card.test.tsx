@@ -23,18 +23,23 @@ describe("ShowCardFace", () => {
     expect(html).toContain("QR code for Ada Lovelace&#x27;s profile");
     expect(html).toContain("/api/profiles/ada/qr");
     expect(html).toContain("/u/ada");
-    expect(html).not.toContain("extra");
+    expect(html).not.toContain("drones");
+    expect(html).not.toContain("Interests");
   });
 });
 
 describe("ProfileManager", () => {
-  it("renders Show my card and Edit profile actions without a segmented control", () => {
+  it("renders the details inside the card and no sections below it", () => {
     const html = renderToStaticMarkup(createElement(ProfileManager, { profile, connectionsCount: 2 }));
     expect(html).toContain("Show my card");
     expect(html).toContain("Edit profile");
+    expect(html).toContain("Interests");
+    expect(html).toContain("View connections");
     expect(html).not.toContain('aria-label="Profile view"');
     // Details are visible by default; the editor is not rendered until requested.
     expect(html).not.toContain('aria-label="Edit profile"');
+    // No visible copy status: feedback lives on the Copy link button itself.
+    expect(html).not.toContain("Link copied");
   });
 
   it("does not render events on the profile", () => {
