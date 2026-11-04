@@ -11,7 +11,8 @@
     "test": "vitest run",
     "verify:meta": "tsx scripts/verify-meta-api.ts",
     "worker:embeddings": "tsx --import ./scripts/node-preload.ts scripts/embedding-worker.ts",
-    "backfill:embeddings": "tsx --import ./scripts/node-preload.ts scripts/backfill-embeddings.ts"
+    "backfill:embeddings": "tsx --import ./scripts/node-preload.ts scripts/backfill-embeddings.ts",
+    "seed:supabase": "tsx --import ./scripts/node-preload.ts scripts/seed-supabase.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
