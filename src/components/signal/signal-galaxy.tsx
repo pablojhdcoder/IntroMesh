@@ -9,6 +9,7 @@ import {
   Group,
   Mesh,
   MeshPhysicalMaterial,
+  type PerspectiveCamera,
   PMREMGenerator,
   SphereGeometry,
   SRGBColorSpace,
@@ -22,6 +23,7 @@ import {
   GALAXY_COLD_RADIUS,
   GALAXY_HOT_RADIUS,
   GALAXY_ROOT_RADIUS,
+  galaxyFrameInset,
   galaxyLayout,
   galaxyOverviewDistance,
 } from "@/components/signal/signal-field-layout";
@@ -123,13 +125,21 @@ function glass(color: number, selected: boolean, kind: Kind): MeshPhysicalMateri
 export function SignalGalaxy({
   people,
   selectedId,
+  hoveredId = null,
   onSelect,
+  onHover,
+  railCollapsed = false,
+  sheetExpanded = false,
   reducedMotion,
   ready,
 }: {
   people: FieldPerson[];
   selectedId: string | null;
+  hoveredId?: string | null;
   onSelect: (id: string | null) => void;
+  onHover?: (id: string | null) => void;
+  railCollapsed?: boolean;
+  sheetExpanded?: boolean;
   reducedMotion: boolean;
   /** False while the roster is still initial/loading: mount nothing until data is final. */
   ready: boolean;
@@ -260,15 +270,18 @@ export function SignalGalaxy({
   const nodeObject = useCallback(
     (node: GraphNode) => {
       const selected = node.id === selectedId;
-      const cacheKey = `${theme}|${node.id}|${node.kind}|${node.val}|${selected ? 1 : 0}`;
+      const hovered = node.id === hoveredId;
+      const highlighted = selected || hovered;
+      const cacheKey = `${theme}|${node.id}|${node.kind}|${node.val}|${highlighted ? 1 : 0}`;
       const cached = objectCache.current.get(cacheKey);
       if (cached) return cached;
       const group = new Group();
+      if (hovered && !selected) group.scale.setScalar(1.12);
       const color = node.kind === "root" ? palette.root : node.kind === "hot" ? palette.hot : palette.cold;
-      const mesh = new Mesh(sphere(node.val), glass(color, selected, node.kind));
+      const mesh = new Mesh(sphere(node.val), glass(color, highlighted, node.kind));
       group.add(mesh);
 
-      if (node.name && (node.kind !== "cold" || selected)) {
+      if (node.name && (node.kind !== "cold" || highlighted)) {
         const label = new SpriteText(node.name);
         label.color = palette.label;
         label.fontWeight = "600";
@@ -282,8 +295,26 @@ export function SignalGalaxy({
       objectCache.current.set(cacheKey, group);
       return group;
     },
-    [palette, selectedId, theme],
+    [hoveredId, palette, selectedId, theme],
   );
+
+  // The overlay (rail on desktop, sheet on mobile) steals one edge of the
+  // fullscreen field: render through a view offset so the scene centers in
+  // the free rectangle and no node hides under the panel.
+  const inset = galaxyFrameInset(size, { railCollapsed, sheetExpanded });
+  const frameWidth = Math.max(1, size.width - inset.right);
+  const frameHeight = Math.max(1, size.height - inset.bottom);
+  const frameKey = `${size.width >= 720 ? "d" : "m"}:${railCollapsed ? 1 : 0}:${sheetExpanded ? 1 : 0}`;
+  useEffect(() => {
+    const graph = graphRef.current;
+    if (!graph || !ready || size.width === 0 || size.height === 0) return;
+    const camera = graph.camera() as PerspectiveCamera;
+    if (inset.right > 0 || inset.bottom > 0) {
+      camera.setViewOffset(size.width, size.height, 0, 0, frameWidth, frameHeight);
+    } else {
+      camera.clearViewOffset();
+    }
+  }, [frameHeight, frameWidth, inset.bottom, inset.right, ready, size.height, size.width]);
 
   // Styling + forces only: re-applies on theme/motion/data change but never
   // moves the camera, so theme toggles and roster refreshes don't jump.
@@ -328,8 +359,9 @@ export function SignalGalaxy({
   useEffect(() => {
     if (!ready || size.width === 0 || size.height === 0) return;
     if (graphData.nodes.length === 0) return;
-    if (fittedSig.current === rosterSig) return;
-    fittedSig.current = rosterSig;
+    const fitSig = `${rosterSig}|${frameKey}`;
+    if (fittedSig.current === fitSig) return;
+    fittedSig.current = fitSig;
     const graph = graphRef.current;
     if (!graph) return;
     const frame = window.setTimeout(() => {
@@ -337,13 +369,14 @@ export function SignalGalaxy({
       // Analytic framing from the pinned layout, never zoomToFit on live
       // simulation positions: the extent is known before the first frame,
       // so the root-only and two-node rosters frame exactly like any other.
+      // Aspect is the free rectangle left by the overlay, not the canvas.
       const extent =
         Math.max(
           ...graphData.nodes.map(
             (node) => Math.hypot(node.x ?? 0, node.y ?? 0, node.z ?? 0) + node.val,
           ),
         ) + 16;
-      const distance = galaxyOverviewDistance(extent, size.width / size.height);
+      const distance = galaxyOverviewDistance(extent, frameWidth / frameHeight);
       const direction = Math.hypot(0.3, 0.22, 1);
       const pose = {
         x: (0.3 / direction) * distance,
@@ -354,7 +387,7 @@ export function SignalGalaxy({
       graph.cameraPosition(pose, { x: 0, y: 0, z: 0 }, reducedMotion ? 0 : 800);
     }, 150);
     return () => window.clearTimeout(frame);
-  }, [graphData, ready, reducedMotion, rosterSig, size.height, size.width]);
+  }, [frameHeight, frameKey, frameWidth, graphData, ready, reducedMotion, rosterSig, size.height, size.width]);
 
   const stopOverview = useCallback(() => {
     if (overviewFrame.current === null) return;
@@ -439,6 +472,20 @@ export function SignalGalaxy({
     [reducedMotion, stopOverview],
   );
 
+  // Selection from the rail drives the camera too: focus the chosen node,
+  // and return to the overview when the selection clears. Graph clicks set
+  // focusedId first, so this never double-animates.
+  useEffect(() => {
+    if (!ready) return;
+    if (!selectedId) {
+      if (focusedId.current) showOverview();
+      return;
+    }
+    if (focusedId.current === selectedId) return;
+    const node = graphData.nodes.find((item) => item.id === selectedId);
+    if (node) focusNode(node);
+  }, [focusNode, graphData, ready, selectedId, showOverview]);
+
   const nodeVal = useCallback((node: GraphNode) => node.val, []);
   const nodeLabel = useCallback(() => "", []);
   const linkColor = useCallback((link: GraphLink) => (link.hot ? palette.linkHot : palette.linkCold), [palette]);
@@ -456,6 +503,14 @@ export function SignalGalaxy({
       onSelect(node.id);
     },
     [focusNode, onSelect, selectedId, showOverview],
+  );
+
+  const onNodeHover = useCallback(
+    (node: GraphNode | null) => {
+      onHover?.(node?.id ?? null);
+      if (wrapRef.current) wrapRef.current.style.cursor = node ? "pointer" : "";
+    },
+    [onHover],
   );
 
   const mounted = ready && size.width > 0 && size.height > 0;
@@ -476,6 +531,7 @@ export function SignalGalaxy({
           nodeThreeObjectExtend={false}
           nodeLabel={nodeLabel}
           onNodeClick={onNodeClick}
+          onNodeHover={onNodeHover}
           linkColor={linkColor}
           linkWidth={linkWidth}
           linkOpacity={0.9}

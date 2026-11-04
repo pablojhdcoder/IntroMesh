@@ -48,13 +48,22 @@ const readServer = () => false;
 export function SignalField({
   people,
   selectedId,
+  hoveredId = null,
   onSelect,
+  onHover,
+  railCollapsed = false,
+  sheetExpanded = false,
   loading = false,
   embeddingPending = false,
 }: {
   people: FieldPerson[];
   selectedId: string | null;
+  hoveredId?: string | null;
   onSelect: (id: string | null) => void;
+  onHover?: (id: string | null) => void;
+  /** Overlay geometry so the overview frames the free rectangle, not the panel. */
+  railCollapsed?: boolean;
+  sheetExpanded?: boolean;
   loading?: boolean;
   /** Embeddings not ready: skeleton, never fake nodes. */
   embeddingPending?: boolean;
@@ -77,9 +86,19 @@ export function SignalField({
       role="group"
       aria-label="Attendee field"
       aria-busy={loading || embeddingPending}
-      className="relative h-[28rem] w-full min-h-0 touch-manipulation min-[720px]:h-full"
+      className="relative h-full w-full min-h-0 touch-manipulation"
     >
-      <SignalGalaxy people={shown} selectedId={selectedId} onSelect={onSelect} reducedMotion={reducedMotion} ready={ready} />
+      <SignalGalaxy
+        people={shown}
+        selectedId={selectedId}
+        hoveredId={hoveredId}
+        onSelect={onSelect}
+        onHover={onHover}
+        railCollapsed={railCollapsed}
+        sheetExpanded={sheetExpanded}
+        reducedMotion={reducedMotion}
+        ready={ready}
+      />
       {pending ? (
         <div role="status" className="absolute inset-0 grid place-items-center">
           <div className="flex w-full max-w-[16rem] flex-col items-center gap-3 px-6">

@@ -8,6 +8,7 @@ import {
   GALAXY_COLD_RADIUS,
   GALAXY_HOT_RADIUS,
   GALAXY_ROOT_RADIUS,
+  galaxyFrameInset,
   galaxyLayout,
   galaxyOverviewDistance,
   hashUnit,
@@ -175,6 +176,30 @@ describe("galaxyOverviewDistance", () => {
   it("con alcance cero devuelve una distancia segura", () => {
     expect(galaxyOverviewDistance(0, 1)).toBeGreaterThan(0);
     expect(galaxyOverviewDistance(Number.NaN, Number.NaN)).toBeGreaterThan(0);
+  });
+});
+
+describe("galaxyFrameInset", () => {
+  it("en desktop reserva el ancho del rail y libera todo al colapsarlo", () => {
+    expect(galaxyFrameInset({ width: 1440, height: 900 }, { railCollapsed: false, sheetExpanded: false })).toEqual({
+      right: 412,
+      bottom: 0,
+    });
+    expect(galaxyFrameInset({ width: 1440, height: 900 }, { railCollapsed: true, sheetExpanded: false }).right).toBeLessThan(100);
+  });
+
+  it("en móvil reserva el alto del bottom sheet según su estado", () => {
+    const peek = galaxyFrameInset({ width: 390, height: 844 }, { railCollapsed: false, sheetExpanded: false });
+    const open = galaxyFrameInset({ width: 390, height: 844 }, { railCollapsed: false, sheetExpanded: true });
+    expect(peek.right).toBe(0);
+    expect(open.bottom).toBeGreaterThan(peek.bottom);
+    expect(open.bottom).toBeLessThan(844);
+  });
+
+  it("nunca deja un área visible negativa", () => {
+    const inset = galaxyFrameInset({ width: 320, height: 480 }, { railCollapsed: false, sheetExpanded: true });
+    expect(320 - inset.right).toBeGreaterThan(0);
+    expect(480 - inset.bottom).toBeGreaterThan(0);
   });
 });
 

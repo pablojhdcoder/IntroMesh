@@ -191,6 +191,32 @@ export function galaxyLayout(people: readonly FieldPoint[]): GalaxyPosition[] {
   return positions;
 }
 
+/** Ancho del rail flotante (380) + márgenes (16+16) que el grafo debe liberar. */
+export const GALAXY_RAIL_INSET = 412;
+/** Franja del rail colapsado (56) + márgenes. */
+export const GALAXY_RAIL_COLLAPSED_INSET = 88;
+/** Alto reservado en móvil con el bottom sheet en peek / expandido. */
+export const GALAXY_SHEET_PEEK_INSET = 196;
+export const GALAXY_SHEET_OPEN_RATIO = 0.6;
+
+/**
+ * Espacio que la UI superpuesta roba al grafo a pantalla completa. El
+ * encuadre y el centro visual se calculan sobre el rectángulo libre, así
+ * ningún nodo queda bajo el rail (desktop) ni bajo el sheet (móvil).
+ */
+export function galaxyFrameInset(
+  size: { width: number; height: number },
+  ui: { railCollapsed: boolean; sheetExpanded: boolean },
+): { right: number; bottom: number } {
+  const width = Number.isFinite(size.width) && size.width > 0 ? size.width : 0;
+  const height = Number.isFinite(size.height) && size.height > 0 ? size.height : 0;
+  if (width >= MOBILE_BREAKPOINT) {
+    return { right: Math.min(ui.railCollapsed ? GALAXY_RAIL_COLLAPSED_INSET : GALAXY_RAIL_INSET, Math.max(0, width - 120)), bottom: 0 };
+  }
+  const bottom = ui.sheetExpanded ? height * GALAXY_SHEET_OPEN_RATIO : GALAXY_SHEET_PEEK_INSET;
+  return { right: 0, bottom: Math.min(bottom, Math.max(0, height - 160)) };
+}
+
 /**
  * Distancia de cámara que encuadra una esfera de alcance `extent` (centro
  * en el origen) con el FOV vertical por defecto de la escena (50°),

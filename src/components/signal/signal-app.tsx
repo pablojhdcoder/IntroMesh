@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -14,7 +14,7 @@ import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signa
 import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { SignalIntro } from "@/components/signal/signal-intro";
-import { PersonCard } from "@/components/events/person-card";
+import { SignalRail, type RailStatus } from "@/components/signal/signal-rail";
 import { ArrowUpRight, Check, Copy, Info, LogOut, RefreshCw } from "lucide-react";
 import {
   clearRoomCache,
@@ -22,7 +22,6 @@ import {
   fetchJsonDeduped,
   getCachedRoom,
   normalizeDiscovery,
-  resolveRoomState,
   setCachedRoom,
   type DirectoryPerson,
   type ViewerEmbeddingStatus,
@@ -123,7 +122,7 @@ function PresenterChecklist({
           <li key={row.label} className="flex items-center gap-2 text-sm">
             <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">{row.label}</span>
             <span aria-hidden="true" className={row.ok ? "text-[var(--signal-vivid)] dark:text-signal" : "text-muted-foreground"}>
-              {row.ok ? "✓" : "·"}
+              {row.ok ? "âœ“" : "Â·"}
             </span>
             <span className="sr-only">{row.ok ? "ready" : "pending"}</span>
             <span className="text-xs text-muted-foreground">{row.hint}</span>
@@ -141,6 +140,9 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   const [directory, setDirectory] = useState<DirectoryPerson[]>([]);
   const [viewerEmbeddingStatus, setViewerEmbeddingStatus] = useState<ViewerEmbeddingStatus>("ready");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [railCollapsed, setRailCollapsed] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const [directoryId, setDirectoryId] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [explainError, setExplainError] = useState<string | null>(null);
@@ -331,6 +333,11 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
 
   async function openPerson(id: string | null, regenerate = false) {
     const seq = ++explainSeq.current;
+    // A selection reveals the rail/sheet: the detail lives inside it.
+    if (id) {
+      setRailCollapsed(false);
+      setSheetExpanded(true);
+    }
     setDirectoryId(null);
     if (!id || id === FIELD_SELF_ID) {
       setSelectedId(id);
@@ -389,6 +396,10 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   function openDirectoryPerson(id: string | null) {
     // Directory rows open the public card only: no score, no reason,
     // no explanation fetch, no connect action.
+    if (id) {
+      setRailCollapsed(false);
+      setSheetExpanded(true);
+    }
     explainSeq.current += 1;
     setSelectedId(null);
     setExplanation(null);
@@ -464,17 +475,15 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   const directoryPerson = !detail ? (directory.find((person) => person.id === directoryId) ?? null) : null;
   const relation = connections.find((item) => item.other.id === selectedId && item.status !== "declined");
   const recommendations = people.filter((person) => person.recommendation);
-  const others = detail ? recommendations.filter((person) => person.id !== detail.person.id) : recommendations;
   const embeddingPending = viewerEmbeddingStatus === "pending";
-  const roomState = resolveRoomState({ loading: roomLoading, error: loadError, count: recommendations.length });
   const emptyRoom = !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length === 0;
   const noMatchesYet = !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length > 0;
   const memberCount = recommendations.length + directory.length;
   const traceChips = explanation
     ? [
-        ...explanation.citedGoals.slice(0, 2).map((value) => ({ label: `Cited · goal: ${value}`, key: `goal-${value}` })),
-        ...explanation.citedInterests.slice(0, 2).map((value) => ({ label: `Cited · interest: ${value}`, key: `interest-${value}` })),
-        ...explanation.citedSkills.slice(0, 2).map((value) => ({ label: `Cited · skill: ${value}`, key: `skill-${value}` })),
+        ...explanation.citedGoals.slice(0, 2).map((value) => ({ label: `Cited Â· goal: ${value}`, key: `goal-${value}` })),
+        ...explanation.citedInterests.slice(0, 2).map((value) => ({ label: `Cited Â· interest: ${value}`, key: `interest-${value}` })),
+        ...explanation.citedSkills.slice(0, 2).map((value) => ({ label: `Cited Â· skill: ${value}`, key: `skill-${value}` })),
         ...explanation.complement.slice(0, 2).map((value) => ({ label: `Complements: ${value}`, key: `complement-${value}` })),
       ].slice(0, 6)
     : [];
@@ -488,6 +497,21 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   const pairCached = !!explanation && !explainPending;
   const acceptedCount = connections.filter((item) => item.status === "accepted").length;
 
+  const railStatus: RailStatus = embeddingPending
+    ? "pending"
+    : roomLoading
+      ? "loading"
+      : loadError && recommendations.length === 0
+        ? "error"
+        : emptyRoom
+          ? "empty-room"
+          : noMatchesYet
+            ? "no-matches"
+            : "ready";
+  const railNotice =
+    loadError && recommendations.length > 0 ? "Could not refresh â€” showing the last known room." : null;
+  const showingDetail = Boolean(selfSelected || detail || directoryPerson);
+
   async function copyIntro(text: string) {
     if (!text) return;
     try {
@@ -496,18 +520,22 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
       setCopiedIntro(true);
     } catch {
       setCopiedIntro(false);
-      setCopyError("Copy failed — select the text manually.");
+      setCopyError("Copy failed â€” select the text manually.");
     }
   }
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-8 min-[720px]:h-svh min-[720px]:gap-6 min-[720px]:overflow-hidden">
-      <header className="relative flex shrink-0 flex-col gap-3 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between">
-        <div className="flex flex-col gap-2 pr-16 min-[720px]:pr-0">
-          <h1 className="flex items-center gap-2.5 font-heading text-[2.25rem] leading-none tracking-[-0.02em]">
-            <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-[var(--signal-vivid)] dark:bg-signal" />
-            IntroMesh
-          </h1>
+    <div className="relative h-svh w-full overflow-hidden bg-background text-foreground">
+      <div className="absolute top-3 left-3 z-20 flex w-[min(25rem,calc(100%-1.5rem))] flex-col gap-3 min-[720px]:top-4 min-[720px]:left-4">
+      <header className="flex flex-col gap-3 rounded-[20px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="flex items-center gap-2.5 font-heading text-[2rem] leading-none tracking-[-0.02em]">
+              <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-[var(--signal-vivid)] dark:bg-signal" />
+              IntroMesh
+            </h1>
+            <ThemeSwitch />
+          </div>
           <p className="flex max-w-[36ch] flex-wrap items-center gap-2">
             <span className={meta}>{activeEvent?.name}</span>
             {activeEvent?.demo ? (
@@ -554,9 +582,8 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
             ) : null}
           </div>
         </div>
-        <div className="flex flex-col gap-2 min-[720px]:items-end">
-          <ThemeSwitch className="absolute top-0 right-0 min-[720px]:static" />
-          <div className="flex items-center justify-between gap-2 min-[720px]:justify-end">
+        <div className="flex flex-col gap-2 border-t border-border pt-3">
+          <div className="flex flex-wrap items-center gap-1">
             <button
               type="button"
               onClick={() => setShowIntro(true)}
@@ -580,7 +607,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
               )}
             >
               <LogOut aria-hidden="true" className="size-4" />
-              {leavePending ? "Leaving…" : "Leave event"}
+              {leavePending ? "Leavingâ€¦" : "Leave event"}
             </button>
             <button
               type="button"
@@ -635,9 +662,25 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 items-stretch gap-6 min-[720px]:grid-cols-[minmax(0,1.3fr)_minmax(16rem,0.7fr)] min-[720px]:gap-8">
-        {showIntro && session.profile ? (
-          <div className="flex flex-col gap-6 min-[720px]:col-span-2">
+      </div>
+
+      <div className="absolute inset-0">
+        <SignalField
+          people={people}
+          selectedId={selectedId}
+          hoveredId={hoveredId}
+          loading={roomLoading}
+          embeddingPending={embeddingPending}
+          onSelect={(id) => void openPerson(id === selectedId ? null : id)}
+          onHover={setHoveredId}
+          railCollapsed={railCollapsed}
+          sheetExpanded={sheetExpanded}
+        />
+      </div>
+
+      {showIntro && session.profile ? (
+        <div className="absolute inset-0 z-30 overflow-y-auto p-3 min-[720px]:p-6">
+          <div className="mx-auto flex min-h-full w-full max-w-2xl items-center justify-center">
             <SignalIntro
               displayName={nameOf(session.profile)}
               role={session.profile.role}
@@ -645,26 +688,47 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
               onSkip={dismissIntro}
             />
           </div>
-        ) : (
-          <>
-        <SignalField
-          people={people}
+        </div>
+      ) : (
+        <SignalRail
+          recommendations={recommendations}
+          directory={directory}
           selectedId={selectedId}
-          loading={roomLoading}
-          embeddingPending={embeddingPending}
-          onSelect={(id) => void openPerson(id === selectedId ? null : id)}
-        />
-
-        <section className="flex min-h-0 flex-col gap-6 min-[720px]:overflow-y-auto" aria-label="Signals and people">
-          <Crossfade
-            id={selfSelected ? "self" : detail ? `person:${detail.person.id}` : directoryPerson ? `card:${directoryPerson.id}` : "list"}
-            className="flex flex-col gap-6"
-          >
+          directoryId={directoryId}
+          hoveredId={hoveredId}
+          onSelectPerson={(id) => void openPerson(id === selectedId ? null : id)}
+          onSelectDirectory={(id) => openDirectoryPerson(id === directoryId ? null : id)}
+          onHover={setHoveredId}
+          displayName={nameOf}
+          reasonOf={reasonOf}
+          recommendationTags={tagsOfRecommendation}
+          directoryTags={tagsOfDirectory}
+          detailLabel={
+            selfSelected && session.profile
+              ? nameOf(session.profile)
+              : detail
+                ? nameOf(detail.person)
+                : directoryPerson
+                  ? nameOf(directoryPerson)
+                  : null
+          }
+          onBack={() => void openPerson(null)}
+          collapsed={railCollapsed}
+          onToggleCollapsed={() => setRailCollapsed((value) => !value)}
+          sheetExpanded={sheetExpanded}
+          onToggleSheet={() => setSheetExpanded((value) => !value)}
+          status={railStatus}
+          notice={railNotice}
+          onJoinDifferent={() => void leaveEvent()}
+          joinPending={leavePending}
+          detail={
+            showingDetail ? (
+              <div className="flex flex-col gap-6">
           {selfSelected && session.profile ? (
             <article className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] min-[720px]:text-[2.5rem]">{nameOf(session.profile)}</h2>
-                <p className={meta}>{session.profile.role} · You</p>
+                <p className={meta}>{session.profile.role} Â· You</p>
               </div>
               <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
                 <dt className="text-muted-foreground">Interests</dt>
@@ -684,7 +748,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                 <p className={cn(meta, "flex flex-wrap items-center gap-2")}>
                   <span>
                     {detail.person.role}
-                    {detail.recommendation.shared.goals[0] ? ` · ${detail.recommendation.shared.goals[0]}` : ""}
+                    {detail.recommendation.shared.goals[0] ? ` Â· ${detail.recommendation.shared.goals[0]}` : ""}
                   </span>
                   {detail.person.demo ? (
                     <span className="rounded-full border border-border px-2 py-0.5 text-[0.65rem]">Demo</span>
@@ -704,7 +768,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                 <p>
                   <span className="inline-flex rounded-full border border-border px-2 py-0.5 font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase">
                     {detail.recommendation.confidence === "low"
-                      ? "Low confidence · not a fact"
+                      ? "Low confidence Â· not a fact"
                       : detail.recommendation.confidence === "medium"
                         ? "Medium confidence"
                         : "High confidence"}
@@ -911,89 +975,11 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
               </div>
             </article>
           ) : null}
-
-          <div className={cn("flex flex-col gap-3", (detail || selfSelected || directoryPerson) && "min-[720px]:hidden")}>
-            <h2 className={meta}>{detail ? "More signals" : "Recommendations"}</h2>
-            {roomState === "loading" || embeddingPending ? (
-              <div className="flex flex-col gap-2.5">
-                <div aria-hidden="true" className="flex animate-pulse flex-col gap-2.5">
-                  <div className="h-2.5 w-3/4 rounded-full bg-surface-raised" />
-                  <div className="h-2.5 w-full rounded-full bg-surface-raised" />
-                  <div className="h-2.5 w-1/2 rounded-full bg-surface-raised" />
-                </div>
-                <p role="status" className={embeddingPending ? "text-sm text-muted-foreground" : "sr-only"}>
-                  {embeddingPending ? "Finding your people…" : "Loading the room."}
-                </p>
               </div>
-            ) : null}
-            {!embeddingPending && roomState === "empty" && emptyRoom ? (
-              <div className="flex flex-col items-start gap-3">
-                <p className="max-w-[40ch] text-sm text-muted-foreground">You&apos;re the first one here. Share the event link and this room fills up as people register.</p>
-                <Button type="button" className={actionSize} disabled={leavePending} onClick={() => void leaveEvent()}>
-                  {leavePending ? "Leaving…" : "Join a different event"}
-                </Button>
-              </div>
-            ) : null}
-            {!embeddingPending && roomState === "empty" && noMatchesYet ? (
-              <div className="flex flex-col items-start gap-3">
-                <p className="max-w-[40ch] text-sm text-muted-foreground">
-                  No close matches yet — everyone going is listed below.
-                </p>
-                <Button type="button" className={actionSize} disabled={leavePending} onClick={() => void leaveEvent()}>
-                  {leavePending ? "Leaving…" : "Join a different event"}
-                </Button>
-              </div>
-            ) : null}
-            {!embeddingPending && roomState === "empty" && detail && others.length === 0 ? (
-              <p className="max-w-[40ch] text-sm text-muted-foreground">No more signals.</p>
-            ) : null}
-            {roomState === "error" && others.length === 0 ? (
-              <p className="max-w-[40ch] text-sm text-muted-foreground">Could not refresh. Try again above.</p>
-            ) : null}
-            {!embeddingPending && (roomState === "success" || (roomState === "error" && others.length > 0)) ? (
-              <ul className="flex flex-col gap-3" aria-label="Recommended people">
-                {others.map((person) => (
-                  <li key={person.id}>
-                    <PersonCard
-                      name={nameOf(person)}
-                      role={person.role}
-                      slug={person.slug}
-                      demo={person.demo}
-                      reason={reasonOf(person)}
-                      tags={tagsOfRecommendation(person)}
-                      selected={selectedId === person.id}
-                      onSelect={() => void openPerson(person.id)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-          {!embeddingPending && directory.length > 0 ? (
-            <div className={cn("flex flex-col gap-3", (detail || selfSelected || directoryPerson) && "min-[720px]:hidden")}>
-              <h2 className={meta}>Everyone going</h2>
-              <ul className="flex flex-col gap-3" aria-label="Everyone going">
-                {directory.map((person) => (
-                  <li key={person.id}>
-                    <PersonCard
-                      name={nameOf(person)}
-                      role={person.role}
-                      slug={person.slug}
-                      demo={person.demo}
-                      tags={tagsOfDirectory(person)}
-                      selected={directoryId === person.id}
-                      onSelect={() => openDirectoryPerson(person.id)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          </Crossfade>
-        </section>
-          </>
-        )}
-      </div>
+            ) : null
+          }
+        />
+      )}
     </div>
   );
 }
