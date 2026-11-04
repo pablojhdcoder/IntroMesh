@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-switch";
 import { readTheme } from "@/lib/theme-server";
@@ -26,8 +25,6 @@ export const metadata: Metadata = {
   description: "In-person networking. Discover, understand, and connect.",
 };
 
-const themeScript = `(function(){try{var m=document.cookie.match(/(?:^|; )intromesh-theme=(light|dark)(?:;|$)/);var dark=m&&m[1]==="dark";document.documentElement.classList.toggle("dark",Boolean(dark));}catch(e){}})();`;
-
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const theme = await readTheme();
 
@@ -38,9 +35,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
-        <Script id="intromesh-theme" strategy="beforeInteractive">
-          {themeScript}
-        </Script>
         <ThemeProvider theme={theme}>{children}</ThemeProvider>
       </body>
     </html>
