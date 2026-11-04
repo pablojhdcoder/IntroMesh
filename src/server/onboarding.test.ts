@@ -308,3 +308,65 @@ describe("joinEvent", () => {
     expect("event" in resolved && resolved.event?.attendees).toBe(2);
   });
 });
+
+describe("confirmIdentity with accounts", () => {
+  it("overrides the payload name with the account username", async () => {
+    const database = baseDatabase();
+    database.profiles = [];
+    database.accounts.push({
+      userId: "u1",
+      username: "manuel",
+      passwordHash: "hash",
+      createdAt: new Date(NOW).toISOString(),
+      updatedAt: new Date(NOW).toISOString(),
+      lastLoginAt: null,
+    });
+    database.identities = [
+      {
+        userId: "u1",
+        displayName: "manuel",
+        originalDescription: "I build AI products.",
+        inputHash: sha256("I build AI products."),
+        generated: identity,
+        confirmed: null,
+        revision: 0,
+        status: "generated",
+        source: "model",
+        updatedAt: new Date(NOW).toISOString(),
+      },
+    ];
+    const store = fakeStore(database);
+    const result = await onboardingActions(store).confirmIdentity("u1", {
+      ...identity,
+      display_name: "Someone Else",
+    });
+    expect(result).toMatchObject({ profileId: "u1" });
+    expect(database.identities.find((item) => item.userId === "u1")?.displayName).toBe("manuel");
+    const profile = database.profiles.find((item) => item.id === "u1");
+    expect(profile?.displayName).toBe("manuel");
+    expect(profile?.username).toBe("manuel");
+    expect(profile?.slug).toBe("manuel");
+  });
+
+  it("keeps the payload name for legacy profiles without an account", async () => {
+    const database = baseDatabase();
+    database.identities = [
+      {
+        userId: "u1",
+        displayName: "Ada",
+        originalDescription: "I build AI products.",
+        inputHash: sha256("I build AI products."),
+        generated: identity,
+        confirmed: null,
+        revision: 0,
+        status: "generated",
+        source: "model",
+        updatedAt: new Date(NOW).toISOString(),
+      },
+    ];
+    const store = fakeStore(database);
+    await onboardingActions(store).confirmIdentity("u1", identity);
+    const profile = database.profiles.find((item) => item.id === "u1");
+    expect(profile?.displayName).toBe("Ada");
+  });
+});

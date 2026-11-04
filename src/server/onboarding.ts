@@ -66,8 +66,9 @@ export function onboardingActions(store: Store) {
     },
 
     async normalizeIdentity(profileId: string | null, displayName: string, description: string, regenerate = false) {
+      if (!profileId) return { error: "profile" as const };
       const draft = identityDraftSchema.parse({ displayName, description });
-      const userId = profileId ?? `user-${newId()}`;
+      const userId = profileId;
       const prepared = await store.update((database) => {
         const current = database.identities.find((item) => item.userId === userId) ?? null;
         if (!shouldNormalize(current, draft.description, regenerate)) {
@@ -137,10 +138,16 @@ export function onboardingActions(store: Store) {
     },
 
     async confirmIdentity(profileId: string, identity: StructuredIdentity) {
-      const confirmed = cleanIdentity(structuredIdentitySchema.parse(identity), identity.display_name);
+      const parsed = structuredIdentitySchema.parse(identity);
       return store.update((database) => {
         const record = database.identities.find((item) => item.userId === profileId);
         if (!record) return { error: "identity" as const };
+        const existing = database.profiles.find((item) => item.id === profileId && !item.demo);
+        const account = database.accounts.find((item) => item.userId === profileId) ?? null;
+        // The @ is the identity: the account username wins over any name in
+        // the payload. Legacy profiles without an account keep their name.
+        const effectiveName = (account?.username ?? existing?.username ?? parsed.display_name).trim();
+        const confirmed = cleanIdentity(parsed, effectiveName || parsed.display_name);
         const edited = JSON.stringify(confirmed) !== JSON.stringify(record.generated);
         record.confirmed = confirmed;
         record.displayName = confirmed.display_name.trim() || record.displayName;
@@ -153,11 +160,14 @@ export function onboardingActions(store: Store) {
           identity: confirmed,
           intent: "",
         });
-        const existing = database.profiles.find((item) => item.id === profileId && !item.demo);
+        const username = account?.username ?? existing?.username ?? null;
         const profile = {
           ...profileInput,
           id: profileId,
-          slug: existing?.slug ?? `${slugify(profileInput.displayName) || "persona"}-${profileId.slice(-8)}`,
+          slug:
+            existing?.slug ??
+            (username && !existing ? username : `${slugify(profileInput.displayName) || "persona"}-${profileId.slice(-8)}`),
+          username,
           demo: false,
           presentation: existing?.presentation ?? null,
           createdAt: existing?.createdAt ?? new Date().toISOString(),

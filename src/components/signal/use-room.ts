@@ -17,6 +17,7 @@ export type ViewerEmbeddingStatus = "ready" | "pending";
 export type DirectoryPerson = {
   id: string;
   slug: string;
+  username: string | null;
   displayName: string;
   role: string;
   demo: boolean;
@@ -38,6 +39,7 @@ function asStringList(value: unknown): string[] {
 type RawPerson = {
   id?: unknown;
   slug?: unknown;
+  username?: unknown;
   displayName?: unknown;
   role?: unknown;
   demo?: unknown;
@@ -82,6 +84,7 @@ function toFieldPerson(raw: RawPerson): FieldPerson {
   return {
     id: typeof raw.id === "string" ? raw.id : "",
     slug: typeof raw.slug === "string" ? raw.slug : "",
+    username: typeof raw.username === "string" && raw.username.length > 0 ? raw.username : null,
     displayName: typeof raw.displayName === "string" ? raw.displayName : "Attendee",
     role: typeof raw.role === "string" ? raw.role : "",
     demo: raw.demo === true,
@@ -96,6 +99,7 @@ function toDirectoryPerson(raw: RawPerson): DirectoryPerson {
   return {
     id: typeof raw.id === "string" ? raw.id : "",
     slug: typeof raw.slug === "string" ? raw.slug : "",
+    username: typeof raw.username === "string" && raw.username.length > 0 ? raw.username : null,
     displayName: typeof raw.displayName === "string" ? raw.displayName : "Attendee",
     role: typeof raw.role === "string" ? raw.role : "",
     demo: raw.demo === true,

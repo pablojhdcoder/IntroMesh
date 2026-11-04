@@ -13,6 +13,7 @@ export const FIELD_SELF_ID = "__origin";
 export type FieldPerson = {
   id: string;
   slug: string;
+  username: string | null;
   displayName: string;
   role: string;
   demo: boolean;

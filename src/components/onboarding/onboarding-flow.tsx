@@ -30,7 +30,7 @@ export type OnboardingDraft = {
   identity: Identity | null;
 };
 
-type Step = "event" | "identity" | "intent" | "review";
+type Step = "identity" | "review" | "event" | "intent";
 
 const field =
   "flex flex-col gap-2 font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
@@ -40,11 +40,32 @@ const textarea =
   "min-h-36 rounded-[12px] border border-border bg-surface px-3.5 py-3 font-sans text-[1rem] leading-relaxed normal-case tracking-normal text-foreground transition-colors hover:border-foreground/25";
 const badge = "font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase";
 const stepMeta: Record<Step, { number: string; label: string; progress: string }> = {
-  event: { number: "01", label: "Event", progress: "25%" },
-  identity: { number: "02", label: "Identity", progress: "50%" },
-  review: { number: "03", label: "Review", progress: "75%" },
-  intent: { number: "04", label: "Intent", progress: "100%" },
+  identity: { number: "02", label: "About you", progress: "40%" },
+  review: { number: "03", label: "Review", progress: "60%" },
+  event: { number: "04", label: "Event", progress: "80%" },
+  intent: { number: "05", label: "Intent", progress: "100%" },
 };
+
+const STARTER_CHIPS = [
+  "I work on…",
+  "I'm building…",
+  "I'm good at…",
+  "I can help with…",
+  "I want to meet…",
+  "Talk to me about…",
+];
+
+const ABOUT_GUIDE = [
+  "What do you do?",
+  "What are you building right now?",
+  "Your strongest skills and tools",
+  "What you can help others with",
+  "Who you want to meet",
+  "Topics you love talking about · languages",
+];
+
+const ABOUT_PLACEHOLDER =
+  "I work on a realtime collaboration tool for hackathon teams. I'm building offline-first sync and a matchmaking view. I'm good at TypeScript, prototyping, and running user tests. I can help with frontend architecture and demo prep. I want to meet backend engineers and designers who love events. Talk to me about travel, bouldering, and Spanish cinema — I speak English and Spanish.";
 
 function blankIdentity(name: string): Identity {
   return {
@@ -68,12 +89,14 @@ export function OnboardingFlow({
   identityConfirmed,
   canCreateEvent,
   draft,
+  accountUsername,
   onSaved,
 }: {
   metaConfigured: boolean;
   identityConfirmed: boolean;
   canCreateEvent: boolean;
   draft: { displayName: string; description: string; identity: Identity | null } | null;
+  accountUsername: string | null;
   onSaved: () => void;
 }) {
   return (
@@ -83,6 +106,7 @@ export function OnboardingFlow({
         identityConfirmed={identityConfirmed}
         canCreateEvent={canCreateEvent}
         draft={draft}
+        accountUsername={accountUsername}
         onSaved={onSaved}
       />
     </Suspense>
@@ -94,19 +118,20 @@ function OnboardingBody({
   identityConfirmed,
   canCreateEvent,
   draft,
+  accountUsername,
   onSaved,
 }: {
   metaConfigured: boolean;
   identityConfirmed: boolean;
   canCreateEvent: boolean;
   draft: { displayName: string; description: string; identity: Identity | null } | null;
+  accountUsername: string | null;
   onSaved: () => void;
 }) {
   const params = useSearchParams();
-  const [step, setStep] = useState<Step>(identityConfirmed ? "event" : draft?.identity ? "review" : "event");
+  const [step, setStep] = useState<Step>(identityConfirmed ? "event" : draft?.identity ? "review" : "identity");
   const [events, setEvents] = useState<EventCard[]>([]);
   const [selected, setSelected] = useState<EventCard | null>(null);
-  const [name, setName] = useState(draft?.displayName ?? "");
   const [description, setDescription] = useState(draft?.description ?? "");
   const [intent, setIntent] = useState("");
   const [identity, setIdentity] = useState<Identity | null>(draft?.identity ?? null);
@@ -134,8 +159,10 @@ function OnboardingBody({
           setError(body.error === "ended" ? "This event is no longer available." : "I cannot find that event.");
           return;
         }
+        // Preselect only: identity always comes first, so a newcomer stays
+        // in the identity step and lands on intent after confirming.
         setSelected(body.event as EventCard);
-        setStep(identityConfirmed ? "intent" : "identity");
+        if (identityConfirmed) setStep("intent");
       })
       .catch(() => setError("I cannot find that event."));
   }, [identityConfirmed, params]);
@@ -143,8 +170,10 @@ function OnboardingBody({
   function pickEvent(event: EventCardEvent) {
     setSelected(event as EventCard);
     setError(null);
-    setStep(identityConfirmed ? "intent" : "identity");
+    setStep("intent");
   }
+
+  const displayName = accountUsername ?? draft?.displayName ?? "";
 
   async function normalize(regenerate = false) {
     setPending(true);
@@ -152,13 +181,13 @@ function OnboardingBody({
     const response = await fetch("/api/identity", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "normalize", displayName: name, description, regenerate }),
+      body: JSON.stringify({ action: "normalize", displayName, description, regenerate }),
     });
     const body = await response.json();
     setPending(false);
     if (!response.ok) {
       setManual(true);
-      setIdentity(blankIdentity(name));
+      setIdentity(blankIdentity(displayName || "member"));
       setEditing(true);
       setError("Meta is unavailable. You can complete the identity by hand. No profile was invented.");
       setStep("review");
@@ -177,14 +206,14 @@ function OnboardingBody({
     const response = await fetch("/api/identity", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "confirm", identity: { ...identity, display_name: name || identity.display_name } }),
+      body: JSON.stringify({ action: "confirm", identity: { ...identity, display_name: displayName || identity.display_name } }),
     });
     setPending(false);
     if (!response.ok) {
       setError("The identity was not saved.");
       return;
     }
-    setStep("intent");
+    setStep(selected ? "intent" : "event");
   }
 
   async function join() {
@@ -234,21 +263,21 @@ function OnboardingBody({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <p className="mb-4 flex items-center gap-2 font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--signal-strong)] dark:bg-signal" />
+            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--signal-vivid)] dark:bg-signal" />
             IntroMesh — {stepMeta[step].label}
           </p>
           <Crossfade id={step} className="flex flex-col gap-3">
             <h1 className="font-heading text-[2rem] leading-none tracking-[-0.03em] text-balance min-[720px]:text-[3.25rem]">
-              {step === "event" ? "Where are you going?" : null}
-              {step === "identity" ? "Let's get to know you." : null}
-              {step === "intent" ? "What brings you here?" : null}
+              {step === "identity" ? "Tell us about you." : null}
               {step === "review" ? "Your identity" : null}
+              {step === "event" ? "Where are you going?" : null}
+              {step === "intent" ? "What brings you here?" : null}
             </h1>
             <p className="max-w-[42ch] text-[0.9375rem] leading-relaxed text-muted-foreground">
-              {step === "event" ? "Choose an event." : null}
-              {step === "identity" ? "One description." : null}
-              {step === "intent" ? "What would make this event useful." : null}
+              {step === "identity" ? (accountUsername ? `Posting as @${accountUsername} · one identity for every event.` : "One identity for every event.") : null}
               {step === "review" ? (manual ? "No Meta response. Review before saving." : "Review, then save.") : null}
+              {step === "event" ? "Choose an event." : null}
+              {step === "intent" ? "What would make this event useful." : null}
             </p>
           </Crossfade>
         </div>
@@ -268,7 +297,7 @@ function OnboardingBody({
           aria-valuenow={Number.parseInt(stepMeta[step].progress, 10)}
         >
           <div
-            className="h-px bg-[var(--signal-strong)] transition-[width] duration-300 dark:bg-signal"
+            className="h-px bg-[var(--signal-vivid)] transition-[width] duration-300 dark:bg-signal"
             style={{ width: stepMeta[step].progress }}
           />
         </div>
@@ -286,24 +315,48 @@ function OnboardingBody({
 
       {step === "identity" ? (
         <div className="flex flex-col gap-4">
-          {selected ? (
-            <p className="font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase">{selected.name}</p>
-          ) : null}
-          <label className={field}>
-            Name
-            <input className={input} value={name} onChange={(event) => setName(event.target.value)} required />
-          </label>
+          <div className="flex flex-col gap-2 rounded-[12px] border border-border bg-surface p-4">
+            <p className={badge}>Tell Meta about you</p>
+            <ul className="grid gap-1.5 text-sm leading-relaxed text-foreground min-[720px]:grid-cols-2">
+              {ABOUT_GUIDE.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <span aria-hidden="true" className="mt-2 size-1.5 shrink-0 rounded-full bg-[var(--signal-vivid)] dark:bg-signal" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap gap-1.5" aria-label="Sentence starters">
+              {STARTER_CHIPS.map((starter) => (
+                <button
+                  key={starter}
+                  type="button"
+                  onClick={() => setDescription((current) => `${current.trimEnd()}${current.trim() ? " " : ""}${starter} `)}
+                  className="inline-flex h-8 items-center rounded-full border border-border px-2.5 text-[0.8125rem] leading-relaxed text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground"
+                >
+                  {starter}
+                </button>
+              ))}
+            </div>
+          </div>
           <label className={field}>
             About you
             <textarea
               className={textarea}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Role, what you’re building, who you want to meet."
+              placeholder={ABOUT_PLACEHOLDER}
               required
               minLength={20}
+              maxLength={2000}
+              aria-describedby="about-hint about-count"
             />
           </label>
+          <div className="flex items-center justify-between gap-4">
+            <p id="about-hint" className="text-sm text-muted-foreground">More detail = better matches.</p>
+            <p id="about-count" className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground tabular-nums">
+              {description.trim().length}/2000
+            </p>
+          </div>
           <Button type="submit" className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto" disabled={pending}>
             {pending ? "Reading" : "Continue"}
           </Button>

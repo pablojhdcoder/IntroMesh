@@ -5,6 +5,7 @@ export type ProfileLike = {
   id?: string;
   displayName: string;
   slug: string;
+  username?: string | null;
   role: string;
   interests: string[];
   skills: string[];
@@ -74,12 +75,11 @@ export function ProfileSections({ profile }: { profile: ProfileLike }) {
         )}
         <div className="flex flex-col gap-2">
           <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] text-balance min-[720px]:text-[3.25rem]">
-            {profile.displayName}
+            {profile.username ? `@${profile.username}` : profile.displayName}
           </h1>
-          <p className={meta}>
-            @{profile.slug}
-            {profile.role ? ` · ${profile.role}` : ""}
-          </p>
+          {profile.role ? (
+            <p className={meta}>{profile.role}</p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             {profile.goal ? <span className={chip}>{goalLabel(profile.goal)}</span> : null}
             {profile.demo ? <span className={chip}>Demo</span> : null}

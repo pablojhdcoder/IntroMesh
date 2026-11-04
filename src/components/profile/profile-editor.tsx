@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { ClaimAccountForm } from "@/components/onboarding/claim-account-form";
 import type { ProfileLike } from "@/components/profile/profile-view";
 
 const meta = "font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
@@ -23,7 +24,6 @@ function splitList(value: string): string[] {
 
 export function ProfileEditor({ profile }: { profile: ProfileLike & { goal: string } }) {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState(profile.displayName);
   const [role, setRole] = useState(profile.role);
   const [interests, setInterests] = useState(profile.interests.join(", "));
   const [skills, setSkills] = useState(profile.skills.join(", "));
@@ -46,7 +46,7 @@ export function ProfileEditor({ profile }: { profile: ProfileLike & { goal: stri
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           profile: {
-            displayName: displayName.trim(),
+            displayName: profile.username ?? profile.displayName,
             role: role.trim(),
             bio: "",
             interests: splitList(interests),
@@ -83,10 +83,15 @@ export function ProfileEditor({ profile }: { profile: ProfileLike & { goal: stri
     <form onSubmit={(event) => void save(event)} className="flex flex-col gap-4" aria-label="Edit profile">
       <h2 className="font-heading text-xl leading-none tracking-[-0.02em]">Edit profile</h2>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="profile-name" className={meta}>Display name</label>
-        <input id="profile-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required minLength={2} maxLength={60} className={field} />
-      </div>
+      {profile.username ? (
+        <p className={meta}>Posting as @{profile.username}</p>
+      ) : null}
+
+      {!profile.username && !profile.demo ? (
+        <div className="rounded-[12px] border border-border bg-surface p-4">
+          <ClaimAccountForm onClaimed={() => router.refresh()} />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="profile-role" className={meta}>Role</label>

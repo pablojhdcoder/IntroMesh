@@ -8,6 +8,7 @@ import type { PublicProfile, SharedCard } from "@/domain/profile";
 import type { GroundedExplanation } from "@/domain/ground";
 import { Button } from "@/components/ui/button";
 import { Crossfade } from "@/components/ui/crossfade";
+import { AuthFlow } from "@/components/onboarding/auth-flow";
 import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding/onboarding-flow";
 import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal/signal-field";
 import { ShareTools } from "@/components/share/share-tools";
@@ -41,6 +42,7 @@ type Connection = {
 
 type Session = {
   profile: PublicProfile | null;
+  account: { username: string } | null;
   needsSetup: boolean;
   identityConfirmed?: boolean;
   canCreateEvent?: boolean;
@@ -59,6 +61,11 @@ type Session = {
 const meta = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
 const actionSize = "h-11 w-full min-[720px]:h-9 min-[720px]:w-auto";
 const focusRing = "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none";
+
+/** The @ is the visible identity: username wins, legacy names stay as-is. */
+function nameOf(person: { username?: string | null; displayName: string }): string {
+  return person.username ? `@${person.username}` : person.displayName;
+}
 
 function evidenceOf(recommendation: NonNullable<FieldPerson["recommendation"]>) {
   return [
@@ -115,7 +122,7 @@ function PresenterChecklist({
         {rows.map((row) => (
           <li key={row.label} className="flex items-center gap-2 text-sm">
             <span className="font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase">{row.label}</span>
-            <span aria-hidden="true" className={row.ok ? "text-[var(--signal-strong)] dark:text-signal" : "text-muted-foreground"}>
+            <span aria-hidden="true" className={row.ok ? "text-[var(--signal-vivid)] dark:text-signal" : "text-muted-foreground"}>
               {row.ok ? "✓" : "·"}
             </span>
             <span className="sr-only">{row.ok ? "ready" : "pending"}</span>
@@ -419,7 +426,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
       <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-4 px-4 py-6 sm:px-8">
         <div className="flex flex-col gap-4">
           <p className="flex items-center gap-2.5 font-heading text-[2rem] leading-none tracking-[-0.02em]">
-            <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-signal" />
+            <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-[var(--signal-vivid)] dark:bg-signal" />
             IntroMesh
           </p>
           <div aria-hidden="true" className="flex animate-pulse flex-col gap-2.5">
@@ -435,6 +442,9 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
       </div>
     );
   }
+  if (!session.profile && !session.account) {
+    return <AuthFlow onAuthed={() => void load()} />;
+  }
   if (!session.profile || (session.needsSetup && !eventIdProp)) {
     return (
       <OnboardingFlow
@@ -442,6 +452,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
         identityConfirmed={session.identityConfirmed ?? false}
         canCreateEvent={session.canCreateEvent ?? false}
         draft={session.draft ?? null}
+        accountUsername={session.account?.username ?? null}
         onSaved={() => void load()}
       />
     );
@@ -494,7 +505,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
       <header className="relative flex shrink-0 flex-col gap-3 min-[720px]:flex-row min-[720px]:items-start min-[720px]:justify-between">
         <div className="flex flex-col gap-2 pr-16 min-[720px]:pr-0">
           <h1 className="flex items-center gap-2.5 font-heading text-[2.25rem] leading-none tracking-[-0.02em]">
-            <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-signal" />
+            <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-[var(--signal-vivid)] dark:bg-signal" />
             IntroMesh
           </h1>
           <p className="flex max-w-[36ch] flex-wrap items-center gap-2">
@@ -571,6 +582,23 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
               <LogOut aria-hidden="true" className="size-4" />
               {leavePending ? "Leaving…" : "Leave event"}
             </button>
+            <button
+              type="button"
+              onClick={() =>
+                void fetch("/api/auth/logout", { method: "POST" }).finally(() => {
+                  clearRoomCache();
+                  router.replace("/");
+                  void load();
+                })
+              }
+              aria-label="Log out"
+              className={cn(
+                "inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground min-[720px]:h-9",
+                focusRing,
+              )}
+            >
+              Log out
+            </button>
             <Link
               href="/intelligence"
               className={cn(
@@ -611,7 +639,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
         {showIntro && session.profile ? (
           <div className="flex flex-col gap-6 min-[720px]:col-span-2">
             <SignalIntro
-              displayName={session.profile.displayName}
+              displayName={nameOf(session.profile)}
               role={session.profile.role}
               onDone={dismissIntro}
               onSkip={dismissIntro}
@@ -635,7 +663,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
           {selfSelected && session.profile ? (
             <article className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] min-[720px]:text-[2.5rem]">{session.profile.displayName}</h2>
+                <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] min-[720px]:text-[2.5rem]">{nameOf(session.profile)}</h2>
                 <p className={meta}>{session.profile.role} · You</p>
               </div>
               <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
@@ -652,7 +680,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
           {detail ? (
             <article className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
-                <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] text-balance min-[720px]:text-[2.5rem]">{detail.person.displayName}</h2>
+                <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] text-balance min-[720px]:text-[2.5rem]">{nameOf(detail.person)}</h2>
                 <p className={cn(meta, "flex flex-wrap items-center gap-2")}>
                   <span>
                     {detail.person.role}
@@ -719,7 +747,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                   </div>
                 ) : null}
                 {explanation ? (
-                  <div className="flex flex-col gap-3 border-l-2 border-[var(--signal-strong)] pl-4 dark:border-signal">
+                  <div className="flex flex-col gap-3 border-l-2 border-[var(--signal-vivid)] pl-4 dark:border-signal">
                     <p className="max-w-[52ch] text-[0.9375rem] leading-normal">{explanation.summary}</p>
                     {traceChips.length > 0 ? (
                       <ul aria-label="Evidence trace" className="flex flex-wrap gap-1.5">
@@ -792,7 +820,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                   <div className="flex flex-col gap-3 rounded-[12px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
                     <h3 className="font-heading text-xl leading-none tracking-[-0.02em]">Meet now</h3>
                     <p className="flex max-w-[52ch] items-start gap-2 text-sm">
-                      <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--signal-strong)] dark:text-signal" />
+                      <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--signal-vivid)] dark:text-signal" />
                       <span>Connection accepted{relation.intro ? `. ${relation.intro}.` : "."}</span>
                     </p>
                     {meetIntro ? (
@@ -830,7 +858,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                       </ul>
                     ) : null}
                     <p className="max-w-[52ch] text-sm text-muted-foreground">Share your card so they can find you in the room.</p>
-                    <ShareTools slug={session.profile.slug} name={session.profile.displayName} />
+                    <ShareTools slug={session.profile.slug} name={nameOf(session.profile)} />
                   </div>
                 </Crossfade>
               ) : null}
@@ -841,7 +869,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
             <article className="flex flex-col gap-4" aria-label="Public card">
               <div className="flex flex-col gap-2">
                 <h2 className="font-heading text-[2rem] leading-[0.95] tracking-[-0.03em] text-balance min-[720px]:text-[2.5rem]">
-                  {directoryPerson.displayName}
+                  {nameOf(directoryPerson)}
                 </h2>
                 <p className={cn(meta, "flex flex-wrap items-center gap-2")}>
                   <span>{directoryPerson.role}</span>
@@ -927,7 +955,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                 {others.map((person) => (
                   <li key={person.id}>
                     <PersonCard
-                      name={person.displayName}
+                      name={nameOf(person)}
                       role={person.role}
                       slug={person.slug}
                       demo={person.demo}
@@ -948,7 +976,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                 {directory.map((person) => (
                   <li key={person.id}>
                     <PersonCard
-                      name={person.displayName}
+                      name={nameOf(person)}
                       role={person.role}
                       slug={person.slug}
                       demo={person.demo}

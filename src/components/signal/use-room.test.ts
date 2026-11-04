@@ -53,6 +53,7 @@ describe("room cache", () => {
         {
           id: "bea",
           slug: "bea",
+          username: null,
           displayName: "Bea",
           role: "Design",
           demo: true,
