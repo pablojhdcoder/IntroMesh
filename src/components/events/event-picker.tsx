@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventCard, type EventCardEvent } from "@/components/events/event-card";
@@ -17,6 +17,8 @@ export type EventPickerProps = {
   pickLabel?: string;
   /** Rendered directly under the selected card (e.g. a join form). */
   renderExpanded?: (event: EventCardEvent) => ReactNode;
+  /** Ids to hide from the discovery list (e.g. already-joined events). */
+  excludedIds?: Set<string> | readonly string[];
 };
 
 const focusRing =
@@ -50,11 +52,13 @@ export function extractInviteCode(raw: string): string {
   return trimmed;
 }
 
-export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLabel = "Choose", renderExpanded }: EventPickerProps) {
+export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLabel = "Choose", renderExpanded, excludedIds }: EventPickerProps) {
   const [query, setQuery] = useState("");
   const [searched, setSearched] = useState<EventCardEvent[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+
+  const excluded = useMemo(() => new Set(excludedIds ?? []), [excludedIds]);
 
   const [code, setCode] = useState("");
   const [resolved, setResolved] = useState<EventCardEvent | null>(null);
@@ -68,7 +72,7 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
 
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const visible = query.trim() ? (searched ?? []) : events;
+  const visible = (query.trim() ? (searched ?? []) : events).filter((event) => !excluded.has(event.id));
 
   function handleQueryChange(value: string) {
     setQuery(value);
@@ -238,7 +242,7 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
             {codeError}
           </p>
         ) : null}
-        {resolved ? (
+        {resolved && !excluded.has(resolved.id) ? (
           <div className="flex flex-col">
             <EventCard
               event={resolved}

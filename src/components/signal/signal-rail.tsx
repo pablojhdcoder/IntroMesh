@@ -57,8 +57,7 @@ export function SignalRail({
   onToggleSheet,
   status,
   notice,
-  onJoinDifferent,
-  joinPending,
+  onBrowseEvents,
 }: {
   recommendations: FieldPerson[];
   directory: DirectoryPerson[];
@@ -81,8 +80,7 @@ export function SignalRail({
   onToggleSheet: () => void;
   status: RailStatus;
   notice: string | null;
-  onJoinDifferent: () => void;
-  joinPending: boolean;
+  onBrowseEvents: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const [tab, setTab] = useState<"top" | "everyone">("top");
@@ -338,8 +336,8 @@ export function SignalRail({
                                 : "No close matches yet — everyone going is under Everyone."}
                         </p>
                         {status === "empty-room" || status === "no-matches" ? (
-                          <Button type="button" disabled={joinPending} onClick={onJoinDifferent}>
-                            {joinPending ? "Leaving…" : "Join a different event"}
+                          <Button type="button" onClick={onBrowseEvents}>
+                            Browse events
                           </Button>
                         ) : null}
                       </div>

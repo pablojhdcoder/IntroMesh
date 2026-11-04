@@ -15,9 +15,8 @@ import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { SignalIntro } from "@/components/signal/signal-intro";
 import { SignalRail, type RailStatus } from "@/components/signal/signal-rail";
-import { ArrowUpRight, Check, Copy, Info, LogOut, RefreshCw } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Info, RefreshCw } from "lucide-react";
 import {
-  clearRoomCache,
   explainErrorCopy,
   fetchJsonDeduped,
   getCachedRoom,
@@ -172,7 +171,6 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   }, [copiedIntro]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [leavePending, setLeavePending] = useState(false);
   const [roomLoading, setRoomLoading] = useState(true);
   const roomRequest = useRef(0);
   const explainSeq = useRef(0);
@@ -292,43 +290,6 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   async function retryRoom() {
     if (!activeEventId) return;
     await loadRoom(activeEventId);
-  }
-
-  async function leaveEvent() {
-    const eventId = activeEventId;
-    if (!eventId || leavePending) return;
-    roomRequest.current += 1;
-    explainSeq.current += 1;
-    setLeavePending(true);
-    setLoadError(null);
-    try {
-      const response = await fetch("/api/participation", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "leave", eventId }),
-      });
-      if (!response.ok) throw new Error("leave");
-      clearRoomCache();
-      explanationCache.current.clear();
-      setPeople([]);
-      setDirectory([]);
-      setConnections([]);
-      setSelectedId(null);
-      setDirectoryId(null);
-      setExplanation(null);
-      setExplainError(null);
-      setExplainErrorKind(null);
-      setViewerEmbeddingStatus("ready");
-      if (eventIdProp) {
-        router.push("/events");
-        return;
-      }
-      await load();
-    } catch {
-      setLoadError("Could not leave the event. Try again.");
-    } finally {
-      setLeavePending(false);
-    }
   }
 
   async function openPerson(id: string | null, regenerate = false) {
@@ -596,46 +557,6 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
               <Info aria-hidden="true" className="size-4" />
               Replay intro
             </button>
-            <button
-              type="button"
-              onClick={() => void leaveEvent()}
-              disabled={leavePending}
-              aria-label={leavePending ? "Leaving event" : "Leave event"}
-              className={cn(
-                "inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground disabled:opacity-50 min-[720px]:h-9",
-                focusRing,
-              )}
-            >
-              <LogOut aria-hidden="true" className="size-4" />
-              {leavePending ? "Leavingâ€¦" : "Leave event"}
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                void fetch("/api/auth/logout", { method: "POST" }).finally(() => {
-                  clearRoomCache();
-                  router.replace("/");
-                  void load();
-                })
-              }
-              aria-label="Log out"
-              className={cn(
-                "inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground min-[720px]:h-9",
-                focusRing,
-              )}
-            >
-              Log out
-            </button>
-            <Link
-              href="/intelligence"
-              className={cn(
-                "inline-flex h-11 items-center gap-1 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground min-[720px]:h-9",
-                focusRing,
-              )}
-            >
-              Intelligence
-              <ArrowUpRight aria-hidden="true" className="size-4" />
-            </Link>
           </div>
         </div>
       </header>
@@ -719,8 +640,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
           onToggleSheet={() => setSheetExpanded((value) => !value)}
           status={railStatus}
           notice={railNotice}
-          onJoinDifferent={() => void leaveEvent()}
-          joinPending={leavePending}
+          onBrowseEvents={() => router.push("/events")}
           detail={
             showingDetail ? (
               <div className="flex flex-col gap-6">

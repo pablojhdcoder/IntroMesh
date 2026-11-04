@@ -11,7 +11,15 @@ export async function GET(request: Request) {
     if ("error" in resolved) return json(resolved, resolved.error === "ended" ? 410 : 404);
     return json(resolved);
   }
-  return json({ events: await service().listEvents(url.searchParams.get("q") ?? "") });
+  const query = url.searchParams.get("q") ?? "";
+  const viewer = await viewerId();
+  if (viewer) {
+    const discovered = (await service().discoverEvents(viewer, query)) as unknown as (Record<string, unknown> & {
+      joined?: boolean;
+    })[];
+    return json({ events: discovered.filter((event) => !event.joined) });
+  }
+  return json({ events: await service().listEvents(query) });
 }
 
 const createSchema = z.object({

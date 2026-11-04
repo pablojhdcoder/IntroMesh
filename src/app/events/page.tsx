@@ -28,7 +28,10 @@ export default async function EventsPage() {
     event: item.event,
   }));
 
-  const rawDiscover = (await service().listEvents("")) as unknown as HubEvent[];
+  const rawDiscover = (await service().discoverEvents(id, "")) as unknown as (HubEvent & { joined?: boolean })[];
+  // Pass the full list; EventHub filters out joinedIds client-side so
+  // joining hides the event instantly and leaving shows it again
+  // without waiting for a reload.
   const initialEvents: HubEvent[] = Array.isArray(rawDiscover) ? rawDiscover : [];
 
   return (

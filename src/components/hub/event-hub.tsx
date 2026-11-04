@@ -126,11 +126,17 @@ function EventHubInner({
   const searchParams = useSearchParams();
   const [joinedIds, setJoinedIds] = useState<Set<string>>(() => new Set(myEvents.map((item) => item.eventId)));
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
 
   const [code, setCode] = useState("");
   const codeAttempted = useRef<string | null>(null);
 
   const baseEvents = initialEvents;
+  const discoverable = useMemo(
+    () => baseEvents.filter((event) => !joinedIds.has(event.id)),
+    [baseEvents, joinedIds],
+  );
 
   const joinedEvents = useMemo(
     () => myEvents.filter((item) => joinedIds.has(item.eventId)),
@@ -167,6 +173,30 @@ function EventHubInner({
     setExpandedId(null);
   }
 
+  async function leave(eventId: string) {
+    if (leavingId) return;
+    setLeavingId(eventId);
+    setLeaveError(null);
+    try {
+      const response = await fetch("/api/participation", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "leave", eventId }),
+      });
+      if (!response.ok) throw new Error("leave");
+      setJoinedIds((current) => {
+        const next = new Set(current);
+        next.delete(eventId);
+        return next;
+      });
+      setExpandedId((current) => (current === eventId ? null : current));
+    } catch {
+      setLeaveError("Could not leave the event. Try again.");
+    } finally {
+      setLeavingId(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-12">
       <div className="flex flex-col gap-3">
@@ -180,6 +210,11 @@ function EventHubInner({
 
       <section className="flex flex-col gap-3 border-t border-border pt-6" aria-label="My events">
         <h2 className={meta}>My events</h2>
+        {leaveError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {leaveError}
+          </p>
+        ) : null}
         {currentMine.length === 0 ? (
           <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
             You have not joined an event yet. Find one below.
@@ -192,15 +227,27 @@ function EventHubInner({
                   event={toCardEvent(item.event, item.memberCount)}
                   joined
                   action={
-                    <Link
-                      href={`/events/${item.eventId}`}
-                      className={cn(
-                        "inline-flex h-11 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-background transition-transform duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none min-[720px]:h-9 min-[720px]:w-auto",
-                        focusRing,
-                      )}
-                    >
-                      Open
-                    </Link>
+                    <div className="flex flex-col gap-2 min-[720px]:flex-row">
+                      <Link
+                        href={`/events/${item.eventId}`}
+                        className={cn(
+                          "inline-flex h-11 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-background transition-transform duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none min-[720px]:h-9 min-[720px]:w-auto",
+                          focusRing,
+                        )}
+                      >
+                        Open
+                      </Link>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto"
+                        disabled={leavingId === item.eventId}
+                        onClick={() => void leave(item.eventId)}
+                        aria-label={leavingId === item.eventId ? "Leaving event" : `Leave ${item.event.name}`}
+                      >
+                        {leavingId === item.eventId ? "Leaving…" : "Leave"}
+                      </Button>
+                    </div>
                   }
                 />
               </li>
@@ -224,11 +271,12 @@ function EventHubInner({
       <section className="flex flex-col gap-3 border-t border-border pt-6" aria-label="Discover events">
         <h2 className={meta}>Discover</h2>
         <EventPicker
-          events={baseEvents.map((event) => toCardEvent(event))}
+          events={discoverable.map((event) => toCardEvent(event))}
           onPick={toggleJoin}
           canCreateEvent={canCreateEvent}
           selectedId={expandedId}
           pickLabel="Join"
+          excludedIds={joinedIds}
           renderExpanded={(cardEvent) => {
             const full = baseEvents.find((item) => item.id === cardEvent.id);
             if (!full || joinedIds.has(full.id)) return null;
