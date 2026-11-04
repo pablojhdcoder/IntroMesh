@@ -180,6 +180,15 @@
     caret-color: var(--foreground);
     font-size: 1rem;
   }
+  /* Hide the native Edge/IE password reveal + clear buttons: the app
+     provides its own show/hide toggle. */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+  input[type="password"]::-webkit-credentials-auto-fill-button {
+    display: none !important;
+  }
   input:focus-visible,
   textarea:focus-visible {
     outline: 2px solid var(--ring);
