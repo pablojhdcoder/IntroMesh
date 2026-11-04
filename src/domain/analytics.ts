@@ -5,8 +5,6 @@ export const ANALYTICS_TYPES = [
   "connection_accepted",
   "share_link",
   "share_qr",
-  "share_nfc",
-  "share_wallet",
   "share_vcard",
 ] as const;
 
@@ -27,7 +25,7 @@ export type AggregateReport = {
   requests: number;
   accepted: number;
   conversion: number | null;
-  shares: { link: number; qr: number; nfc: number; wallet: number; vcard: number };
+  shares: { link: number; qr: number; vcard: number };
   topics: { topic: string; count: number }[];
   suppressedTopics: number;
   timeline: { hour: string; count: number }[];
@@ -65,8 +63,6 @@ export function aggregateActivity(input: {
     shares: {
       link: count("share_link"),
       qr: count("share_qr"),
-      nfc: count("share_nfc"),
-      wallet: count("share_wallet"),
       vcard: count("share_vcard"),
     },
     topics: listed

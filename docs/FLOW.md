@@ -175,9 +175,9 @@ Meta does not choose who appears. Embeddings only build the list on the write pa
 
 ## 6. Learn — share and intelligence
 
-**Front.** After accept: Copy link, QR, Write/Read NFC (if `NDEFReader` + secure context). Public page `/p/[slug]`. Intelligence: counts and topics.
+**Front.** After accept: Copy link, QR, Save contact (.vcf). Public page `/p/[slug]`. Intelligence: counts and topics.
 
-**Beneath — share.** `POST /api/share` `{ method }` → `learnActions.share` (`share_link` | `share_qr` | `share_nfc`). QR image: `GET /api/profiles/[slug]/qr` (SVG, inverted in light). NFC is browser-only; the server does not detect phones.
+**Beneath — share.** `POST /api/share` `{ method }` → `learnActions.share` (`share_link` | `share_qr` | `share_vcard`). QR image: `GET /api/profiles/[slug]/qr` (SVG, inverted in light).
 
 **Beneath — public card.** `profileBySlug`. Only authorized public fields. Demo labeled. Connection still needs accept.
 
@@ -214,7 +214,7 @@ Without `MODEL_API_KEY`, Meta-shaped UI is a badge or one line. No simulated mod
 | Field | `GET /api/discovery` | `discover` |
 | Person detail | `POST /api/affinity` | `explain` |
 | Intro | `POST /api/connections` | `connect` |
-| Link / QR / NFC | `POST /api/share` | `learn` |
+| Link / QR / vCard | `POST /api/share` | `learn` |
 | `/intelligence` | server page | `learn` |
 | `/events` | server page | Event hub: My Events vs Discover (`EVENT_HUB.md`) |
 | `/events/[eventId]` | server page | Active event; the Signal Field scoped to this event |

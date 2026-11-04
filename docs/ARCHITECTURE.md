@@ -29,14 +29,14 @@ Client components import prepared types and data. Route Handlers and Server Acti
 - Explanation: structured Meta text only for recommendations that already passed the filter.
 - Introduction: personalized draft, sent only if both sides accept.
 - Connection: mutual agreement.
-- Link, QR, and NFC as transport for the same public identifier.
+- Link, QR, and vCard as transport for the same public identifier.
 - Organizer analytics: aggregates, no private profiles.
 
 ## Visibility, not proximity
 
 Who is visible is membership: every `joined` participation at an event sees every other. There is no online/offline tracking and no expiring session.
 
-There is no automatic phone-to-phone detection. Web NFC exists in Chrome for Android and not in Safari or most desktop browsers. NFC is progressive enhancement. QR and link cover the same flow when NFC is unavailable.
+There is no automatic phone-to-phone detection. Sharing travels by link, QR, and vCard on every device.
 
 Precise continuous location is not collected.
 

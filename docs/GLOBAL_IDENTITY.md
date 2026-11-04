@@ -35,7 +35,7 @@ Muse Spark (`muse-spark-1.3`) normalizes the original description into the gener
 | `public` | `private` |
 | --- | --- |
 | `/u/[username]` returns the SharedCard fields only | `/u/[username]` returns no card |
-| Link, QR, and NFC may carry that URL | The owner can still use IntroMesh and join events |
+| Link, QR, and vCard may carry that URL | The owner can still use IntroMesh and join events |
 
 SharedCard fields only (`src/domain/profile.ts`): `id`, `slug`, `displayName`, `role`, `interests`, `skills`, `projects`, `goal`, `demo`, `presentation`, plus the optional avatar if set.
 

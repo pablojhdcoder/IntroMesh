@@ -3,7 +3,7 @@ import { fail, json, service, viewerId } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({ method: z.enum(["link", "qr", "nfc", "wallet", "vcard"]) });
+const bodySchema = z.object({ method: z.enum(["link", "qr", "vcard"]) });
 
 export async function POST(request: Request) {
   const id = await viewerId();

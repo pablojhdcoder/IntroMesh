@@ -62,7 +62,6 @@ export default async function IntelligencePage() {
           <dl className="flex flex-col divide-y divide-border text-sm">
             <Row label="Links" value={String(report.shares.link)} />
             <Row label="QR" value={String(report.shares.qr)} />
-            <Row label="NFC" value={String(report.shares.nfc)} />
           </dl>
         </section>
 

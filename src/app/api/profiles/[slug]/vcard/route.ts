@@ -1,5 +1,5 @@
 import { json, service, viewerId } from "@/lib/http";
-import { buildVCard, vcardFileName } from "@/lib/wallet/vcard";
+import { buildVCard, vcardFileName } from "@/lib/vcard";
 
 export const dynamic = "force-dynamic";
 

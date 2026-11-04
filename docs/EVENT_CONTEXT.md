@@ -10,7 +10,7 @@ Global identity and event context stay separate.
 
 Leaving visibility — the existing Invisible control — sets consent to false and hides the person at that event. It does not turn off their identity or recommendations at other events.
 
-Registration is visibility. QR, link, and NFC do not change. NFC only appears where the browser exposes `NDEFReader` in a secure context.
+Registration is visibility. QR, link, and vCard do not change.
 
 Embeddings and explanations are not public. RLS is on for the new tables and there is no policy for the anonymous role: only the server, with the service role, reads them. `MODEL_API_KEY` does not leave the server.
 
