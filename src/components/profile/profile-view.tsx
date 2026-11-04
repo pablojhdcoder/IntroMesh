@@ -75,10 +75,13 @@ export function ProfileSections({ profile }: { profile: ProfileLike }) {
         )}
         <div className="flex flex-col gap-2">
           <h1 className="font-heading text-[2rem] leading-none tracking-[-0.02em] text-balance min-[720px]:text-[3.25rem]">
-            {profile.username ? `@${profile.username}` : profile.displayName}
+            {profile.displayName}
           </h1>
+          {profile.username ? (
+            <p className={meta}>@{profile.username}</p>
+          ) : null}
           {profile.role ? (
-            <p className={meta}>{profile.role}</p>
+            <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">{profile.role}</p>
           ) : null}
           <div className="flex flex-wrap gap-2">
             {profile.goal ? <span className={chip}>{goalLabel(profile.goal)}</span> : null}

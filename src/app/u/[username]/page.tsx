@@ -33,7 +33,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
       {isOwner ? (
         <p role="status" className="rounded-md bg-surface px-3 py-2 text-sm text-muted-foreground">
-          This is your public profile.{" "}
+          This is your public card — this is what others see when they scan you.{" "}
           <Link href="/profile" className="font-medium text-foreground underline underline-offset-4">
             Edit it in My Profile
           </Link>
@@ -43,17 +43,17 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
       <ProfileSections profile={profile} />
 
-      <div className="w-full border-t border-border pt-8">
-        <ScanConnect slug={profile.slug} profileId={profile.id} />
-      </div>
+      {!isOwner ? (
+        <div className="w-full border-t border-border pt-8">
+          <ScanConnect slug={profile.slug} profileId={profile.id} />
+        </div>
+      ) : null}
 
-      <div className="w-full border-t border-border pt-8">
-        <ShareTools slug={profile.slug} name={profile.displayName} />
-      </div>
-
-      <p className="max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
-        Public link — anyone with this QR can view this card. Authorized identity only. Connection still needs acceptance.
-      </p>
+      {isOwner ? (
+        <div className="w-full border-t border-border pt-8">
+          <ShareTools slug={profile.slug} name={profile.displayName} />
+        </div>
+      ) : null}
     </main>
   );
 }
