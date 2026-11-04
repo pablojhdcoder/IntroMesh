@@ -76,16 +76,18 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
       summary: `Works on ${projects[0]} and lists ${interests.slice(0, 2).join(" and ")}.`,
       opener: `Which part of ${projects[0]} are you showing here?`,
     };
+    const slug = slugify(displayName);
     profiles.push({
       id,
-      slug: `${slugify(displayName)}-${id}`,
+      slug,
+      username: slug,
       displayName,
       role: index % 2 === 0 ? "Researches product" : "Builds prototypes",
-      bio: "",
+      bio: `${index % 2 === 0 ? "Researches product" : "Builds prototypes"} exploring ${interests.slice(0, 2).join(" and ")}. Showing ${projects[0]} at the hackathon.`,
       interests,
       skills,
       projects,
-      links: [],
+      links: [{ label: "Portfolio", url: `https://${slug}.example.com` }],
       offers: skills[0] ? `Can help with ${skills[0]}.` : "",
       seeking: interests[0] ? `Looking for conversations about ${interests[0]}.` : "Looking for a concrete conversation.",
       goal,
@@ -308,16 +310,18 @@ function founderProfile(entry: (typeof FOUNDERS)[number], index: number, now: nu
     summary: `Founder working on ${entry.projects[0]} focused on ${entry.interests.slice(0, 2).join(" and ")}.`,
     opener: `Which part of ${entry.projects[0]} are you scaling here?`,
   };
+  const slug = slugify(entry.displayName);
   return {
     id,
-    slug: `${slugify(entry.displayName)}-${id}`,
+    slug,
+    username: slug,
     displayName: entry.displayName,
     role: entry.role,
-    bio: "",
+    bio: `${entry.role} working on ${entry.projects[0]}.`,
     interests: [...entry.interests],
     skills: [...entry.skills],
     projects: [...entry.projects],
-    links: [],
+    links: [{ label: "Portfolio", url: `https://${slug}.example.com` }],
     offers: entry.offers,
     seeking: entry.seeking,
     goal: entry.goal,

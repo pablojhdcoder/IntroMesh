@@ -24,7 +24,13 @@ async function main() {
   const profileRows = visible
     .map(
       (profile) =>
-        `  (${sqlString(profile.id)}, ${sqlString(profile.slug)}, ${sqlString(profile.displayName)}, ${sqlString(profile.role)}, ${sqlString(profile.bio)}, ${sqlArray(profile.interests)}, ${sqlArray(profile.skills)}, ${sqlArray(profile.projects)}, ${sqlString(profile.offers)}, ${sqlString(profile.seeking)}, ${sqlString(profile.goal)}, true, ${profile.presentation ? sqlJson(profile.presentation) : "null"}, ${sqlString(profile.createdAt)})`,
+        `  (${sqlString(profile.id)}, ${sqlString(profile.slug)}, ${sqlString(profile.username ?? profile.slug)}, ${sqlString(profile.displayName)}, ${sqlString(profile.role)}, ${sqlString(profile.bio)}, ${sqlArray(profile.interests)}, ${sqlArray(profile.skills)}, ${sqlArray(profile.projects)}, ${sqlString(profile.offers)}, ${sqlString(profile.seeking)}, ${sqlString(profile.goal)}, true, ${profile.presentation ? sqlJson(profile.presentation) : "null"}, ${sqlString(profile.createdAt)})`,
+    )
+    .join(",\n");
+
+  const linkRows = visible
+    .flatMap((profile) =>
+      profile.links.map((link) => `  (${sqlString(profile.id)}, ${sqlString(link.label)}, ${sqlString(link.url)})`),
     )
     .join(",\n");
 
@@ -62,11 +68,12 @@ values (${sqlString(DEMO_EVENT_ID)}, 'Meta Hackathon', true)
 on conflict (id) do update set name = excluded.name, demo = excluded.demo;
 
 insert into profiles (
-  id, slug, display_name, role, bio, interests, skills, projects, offers, seeking, goal, demo, presentation, created_at
+  id, slug, username, display_name, role, bio, interests, skills, projects, offers, seeking, goal, demo, presentation, created_at
 ) values
 ${profileRows}
 on conflict (id) do update set
   slug = excluded.slug,
+  username = excluded.username,
   display_name = excluded.display_name,
   role = excluded.role,
   bio = excluded.bio,
@@ -78,6 +85,12 @@ on conflict (id) do update set
   goal = excluded.goal,
   demo = true,
   presentation = excluded.presentation;
+
+delete from profile_links where profile_id in (select id from profiles where demo = true);
+
+insert into profile_links (profile_id, label, url)
+values
+${linkRows};
 
 insert into event_participations (user_id, event_id, intent_text, looking_for, collaboration_interests, revision, input_hash, consent, visibility, status, updated_at, joined_at, role, last_active_at)
 values
