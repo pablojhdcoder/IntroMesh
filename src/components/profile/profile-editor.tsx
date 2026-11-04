@@ -22,7 +22,15 @@ function splitList(value: string): string[] {
     .filter(Boolean);
 }
 
-export function ProfileEditor({ profile }: { profile: ProfileLike & { goal: string } }) {
+export function ProfileEditor({
+  profile,
+  onSaved,
+  onCancel,
+}: {
+  profile: ProfileLike & { goal: string };
+  onSaved?: () => void;
+  onCancel?: () => void;
+}) {
   const router = useRouter();
   const [role, setRole] = useState(profile.role);
   const [interests, setInterests] = useState(profile.interests.join(", "));
@@ -72,6 +80,7 @@ export function ProfileEditor({ profile }: { profile: ProfileLike & { goal: stri
       if (!patch.ok) throw new Error("settings");
       setStatus("saved");
       router.refresh();
+      onSaved?.();
     } catch {
       setStatus("error");
     } finally {
@@ -95,7 +104,7 @@ export function ProfileEditor({ profile }: { profile: ProfileLike & { goal: stri
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="profile-role" className={meta}>Role</label>
-        <input id="profile-role" value={role} onChange={(e) => setRole(e.target.value)} required minLength={2} maxLength={80} className={field} />
+        <input id="profile-role" value={role} onChange={(e) => setRole(e.target.value)} required minLength={2} maxLength={80} autoFocus className={field} />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -145,6 +154,11 @@ export function ProfileEditor({ profile }: { profile: ProfileLike & { goal: stri
         <Button type="submit" disabled={pending} className="h-11 min-[720px]:h-9">
           {pending ? "Saving…" : "Save profile"}
         </Button>
+        {onCancel ? (
+          <Button type="button" variant="outline" disabled={pending} onClick={onCancel} className="h-11 min-[720px]:h-9">
+            Cancel
+          </Button>
+        ) : null}
         {status === "saved" ? (
           <p role="status" className="text-sm text-muted-foreground">Saved.</p>
         ) : null}

@@ -70,18 +70,20 @@ export function ProfileSections({ profile }: { profile: ProfileLike }) {
         <section className="flex flex-col gap-2" aria-label="Links">
           <h3 className={meta}>Links</h3>
           <ul className="flex flex-col gap-1">
-            {profile.links.map((link) => (
-              <li key={`${link.label}-${link.url}`}>
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center text-sm underline underline-offset-4 transition-colors hover:text-foreground min-[720px]:min-h-9"
-                >
-                  {link.label}
-                </a>
-              </li>
-            ))}
+            {profile.links
+              .filter((link) => /^https?:\/\//i.test(link.url))
+              .map((link) => (
+                <li key={`${link.label}-${link.url}`}>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center text-sm underline underline-offset-4 transition-colors hover:text-foreground min-[720px]:min-h-9"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
           </ul>
         </section>
       ) : null}

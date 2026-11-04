@@ -16,11 +16,11 @@ const profile: ProfileLike = {
 };
 
 describe("ProfileHero", () => {
-  it("renders the name as the heading with username and goal", () => {
+  it("renders the @handle as the heading, not the display name", () => {
     const html = renderToStaticMarkup(createElement(ProfileHero, { profile }));
     expect(html).toContain("<h1");
-    expect(html).toContain("Ada Lovelace");
     expect(html).toContain("@ada");
+    expect(html).toContain('<span class="sr-only">Ada Lovelace </span>');
     expect(html).toContain("Find a cofounder");
   });
 

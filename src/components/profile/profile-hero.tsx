@@ -31,6 +31,7 @@ export function ProfileHero({
   stats?: ProfileHeroStats;
   actions?: ReactNode;
 }) {
+  const handle = profile.username ?? profile.slug;
   const statsItems: { label: string; value: number }[] = [];
   if (stats?.connections !== undefined) {
     statsItems.push({ label: stats.connections === 1 ? "Connection" : "Connections", value: stats.connections });
@@ -41,37 +42,35 @@ export function ProfileHero({
 
   return (
     <section
-      className="flex flex-col items-start gap-5 rounded-[20px] border border-border bg-surface p-5 shadow-[var(--shadow-raise)] min-[720px]:flex-row min-[720px]:gap-6 min-[720px]:p-6"
+      className="flex h-full flex-col gap-5 rounded-[20px] border border-border bg-surface p-5 shadow-[var(--shadow-raise)] min-[720px]:p-6"
       aria-label="Profile summary"
     >
-      {profile.avatarUrl ? (
-        <Image
-          src={profile.avatarUrl}
-          alt={`Profile photo of ${profile.displayName}`}
-          width={112}
-          height={112}
-          unoptimized
-          className="size-24 shrink-0 rounded-full border border-border object-cover min-[720px]:size-28"
-        />
-      ) : (
-        <div
-          aria-hidden="true"
-          className="flex size-24 shrink-0 items-center justify-center rounded-full bg-signal font-heading text-4xl text-[#14160c] min-[720px]:size-28"
-        >
-          {initialsOf(profile.displayName)}
-        </div>
-      )}
+      <div className="flex items-start gap-4">
+        {profile.avatarUrl ? (
+          <Image
+            src={profile.avatarUrl}
+            alt={`Profile photo of ${profile.displayName}`}
+            width={112}
+            height={112}
+            unoptimized
+            className="size-24 shrink-0 rounded-full border border-border object-cover min-[720px]:size-28"
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex size-24 shrink-0 items-center justify-center rounded-full bg-signal font-heading text-4xl text-[#14160c] min-[720px]:size-28"
+          >
+            {initialsOf(profile.displayName)}
+          </div>
+        )}
+        {actions ? <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">{actions}</div> : null}
+      </div>
 
       <div className="flex min-w-0 flex-col items-start gap-3">
         <div className="flex flex-col gap-2">
-          <h1 className="font-heading text-[2.5rem] leading-none tracking-[-0.02em] text-balance min-[720px]:text-[3.25rem]">
-            {profile.displayName}
+          <h1 className="font-heading text-[2.5rem] leading-none tracking-[-0.02em] break-all text-balance min-[720px]:text-[3.25rem]">
+            <span className="sr-only">{profile.displayName} </span>@{handle}
           </h1>
-          {profile.username ? (
-            <p className="font-mono text-sm font-medium tracking-[0.08em] text-signal-strong">
-              @{profile.username}
-            </p>
-          ) : null}
           {profile.role ? (
             <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">{profile.role}</p>
           ) : null}
@@ -93,8 +92,6 @@ export function ProfileHero({
             ))}
           </dl>
         ) : null}
-
-        {actions ? <div className="flex flex-wrap items-center gap-2 pt-1">{actions}</div> : null}
       </div>
     </section>
   );
