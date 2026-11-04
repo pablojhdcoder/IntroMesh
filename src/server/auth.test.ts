@@ -13,7 +13,7 @@ function fakeStore(database: Database): Store {
 }
 
 function emptyDb(): Database {
-  return hydrateDatabase({ events: [], profiles: [], analytics: [], participations: [] });
+  return hydrateDatabase({ events: [], profiles: [], participations: [] });
 }
 
 describe("auth actions", () => {
@@ -41,7 +41,6 @@ describe("auth actions", () => {
     const passwordHash = await hashPassword("Abcdef1!gh");
     const db = hydrateDatabase({
       events: [],
-      analytics: [],
       participations: [],
       profiles: [
         {
@@ -96,7 +95,6 @@ describe("auth actions", () => {
   it("claims a legacy profile without touching the slug", async () => {
     const db = hydrateDatabase({
       events: [],
-      analytics: [],
       participations: [],
       profiles: [
         {
@@ -130,7 +128,6 @@ describe("auth actions", () => {
   it("refuses demo claims", async () => {
     const db = hydrateDatabase({
       events: [],
-      analytics: [],
       participations: [],
       profiles: [
         {

@@ -4,8 +4,7 @@ import { getStore } from "@/lib/store";
 
 /**
  * Seeds Supabase with the demo community: the Meta Hackathon event plus the
- * 40 visible demo profiles (28 field + 12 founders) with joined participations
- * and seed analytics.
+ * 40 visible demo profiles (28 field + 12 founders) with joined participations.
  *
  * Writes through the app's own Supabase store — .data/store.json is not used
  * anywhere. Idempotent: existing ids are skipped, so re-running is safe.
@@ -15,7 +14,7 @@ import { getStore } from "@/lib/store";
  */
 async function main(): Promise<void> {
   const store = getStore();
-  const { profiles, participations, analytics } = buildDemoCommunity(
+  const { profiles, participations } = buildDemoCommunity(
     180,
     Date.parse("2026-11-04T09:00:00.000Z"),
   );
@@ -23,7 +22,7 @@ async function main(): Promise<void> {
   const visible = profiles.filter((profile) => visibleIds.has(profile.id));
 
   const seeded = await store.update((database) => {
-    const counts = { events: 0, profiles: 0, participations: 0, analytics: 0 };
+    const counts = { events: 0, profiles: 0, participations: 0 };
 
     if (!database.events.some((event) => event.id === DEMO_EVENT_ID)) {
       database.events.push({
@@ -76,14 +75,6 @@ async function main(): Promise<void> {
       database.participations.push(record);
       participationKeys.add(key);
       counts.participations += 1;
-    }
-
-    const analyticsIds = new Set(database.analytics.map((record) => record.id));
-    for (const record of analytics) {
-      if (analyticsIds.has(record.id)) continue;
-      database.analytics.push(record);
-      analyticsIds.add(record.id);
-      counts.analytics += 1;
     }
 
     return counts;

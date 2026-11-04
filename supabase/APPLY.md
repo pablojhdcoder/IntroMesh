@@ -12,6 +12,7 @@ In the Supabase dashboard open **SQL → New query**. Run these files **in order
 8. `supabase/migrations/0008_presence_single_status.sql`
 9. `supabase/migrations/0009_membership_visibility.sql`
 10. `supabase/migrations/0010_auth_accounts.sql` — accounts (@username + password hash), profiles.username
+11. `supabase/migrations/0011_drop_analytics.sql` — drops analytics_events (no code reads it)
 
 Or from a shell with the [Supabase CLI](https://supabase.com/docs/guides/cli) linked to the project:
 

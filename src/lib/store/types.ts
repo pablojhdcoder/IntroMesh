@@ -1,6 +1,5 @@
 import { DEMO_EVENT_ID } from "@/domain/catalog";
 import { buildDemoCommunity } from "@/domain/demo-community";
-import type { AnalyticsRecord } from "@/domain/analytics";
 import type { CachedExplanation } from "@/domain/cache/explanations";
 import type { EmbeddingRecord } from "@/domain/embedding/jobs";
 import { emptyMetrics, type EngineMetrics } from "@/domain/engine-metrics";
@@ -106,7 +105,6 @@ export type Database = {
   events: EventRecord[];
   profiles: StoredProfile[];
   connections: ConnectionRecord[];
-  analytics: AnalyticsRecord[];
   affinity: AffinityCacheRecord[];
   accounts: AccountRecord[];
   identities: GlobalIdentityRecord[];
@@ -157,7 +155,6 @@ export function hydrateDatabase(input: Partial<Database> | null | undefined): Da
     events,
     profiles: input?.profiles ?? seeded?.profiles ?? [],
     connections: input?.connections ?? [],
-    analytics: input?.analytics ?? seeded?.analytics ?? [],
     affinity: input?.affinity ?? [],
     accounts: input?.accounts ?? [],
     identities: input?.identities ?? [],

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { openProfileId, sealProfileId } from "@/lib/session";
 import { toSharedCard, type StoredProfile } from "./profile";
-import { aggregateActivity } from "./analytics";
 import { assertGrounded, type GroundedExplanation } from "./ground";
 import { selectCandidates } from "./matching/select-candidates";
 
@@ -35,31 +34,6 @@ describe("grounding", () => {
     };
     expect(assertGrounded(explanation, { goals: [], interests: ["models"], skills: [], complement: [] })).toBeNull();
     expect(explanation.source).toBe("model");
-  });
-});
-
-describe("analytics", () => {
-  it("hides topics under five cases and computes conversion", () => {
-    const events = [
-      ...Array.from({ length: 4 }, (_, index) => ({
-        id: `a${index}`,
-        eventId: "e",
-        type: "recommendation_shown" as const,
-        at: "2026-11-04T10:00:00.000Z",
-        topic: "models",
-      })),
-      {
-        id: "ok",
-        eventId: "e",
-        type: "connection_accepted" as const,
-        at: "2026-11-04T11:00:00.000Z",
-        topic: null,
-      },
-    ];
-    const report = aggregateActivity({ events, visible: 3 });
-    expect(report.topics).toEqual([]);
-    expect(report.suppressedTopics).toBe(1);
-    expect(report.conversion).toBe(0.25);
   });
 });
 

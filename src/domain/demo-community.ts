@@ -1,7 +1,6 @@
 import { DEMO_EVENT_ID, GOALS, INTERESTS, PROJECTS, SKILLS, type GoalId } from "./catalog";
 import type { Presentation, StoredProfile } from "./profile";
 import type { ParticipationRecord } from "@/lib/store/types";
-import type { AnalyticsRecord } from "./analytics";
 
 const NAMES = [
   "Ada Vega",
@@ -118,54 +117,7 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
     lastActiveAt: null,
   }));
 
-  const analytics: AnalyticsRecord[] = [];
-  const base = Date.parse("2026-11-04T09:00:00.000Z");
-  visible.forEach((profile, index) => {
-    const topic = profile.interests[0] ?? null;
-    analytics.push({
-      id: `seed-rec-${profile.id}`,
-      eventId: DEMO_EVENT_ID,
-      type: "recommendation_shown",
-      at: new Date(base + index * 60_000).toISOString(),
-      topic,
-    });
-    if (index % 2 === 0) {
-      analytics.push({
-        id: `seed-view-${profile.id}`,
-        eventId: DEMO_EVENT_ID,
-        type: "profile_viewed",
-        at: new Date(base + index * 90_000).toISOString(),
-        topic,
-      });
-    }
-    if (index % 4 === 0) {
-      analytics.push({
-        id: `seed-req-${profile.id}`,
-        eventId: DEMO_EVENT_ID,
-        type: "intro_requested",
-        at: new Date(base + index * 120_000).toISOString(),
-        topic,
-      });
-    }
-    if (index % 8 === 0) {
-      analytics.push({
-        id: `seed-ok-${profile.id}`,
-        eventId: DEMO_EVENT_ID,
-        type: "connection_accepted",
-        at: new Date(base + index * 150_000).toISOString(),
-        topic,
-      });
-      analytics.push({
-        id: `seed-qr-${profile.id}`,
-        eventId: DEMO_EVENT_ID,
-        type: "share_qr",
-        at: new Date(base + index * 160_000).toISOString(),
-        topic: null,
-      });
-    }
-  });
-
-  return { profiles: [...profiles, ...founders], participations, analytics };
+  return { profiles: [...profiles, ...founders], participations };
 }
 
 const FOUNDERS: Array<{

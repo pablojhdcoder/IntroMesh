@@ -17,7 +17,7 @@ function sqlJson(value: unknown): string {
 }
 
 async function main() {
-  const { profiles, participations, analytics } = buildDemoCommunity(180, Date.parse("2026-11-04T09:00:00.000Z"));
+  const { profiles, participations } = buildDemoCommunity(180, Date.parse("2026-11-04T09:00:00.000Z"));
   const visibleIds = new Set(participations.map((record) => record.userId));
   const visible = profiles.filter((profile) => visibleIds.has(profile.id));
 
@@ -38,13 +38,6 @@ async function main() {
     .map(
       (record) =>
         `  (${sqlString(record.userId)}, ${sqlString(record.eventId)}, '', '{}'::text[], '{}'::text[], 0, ${sqlString(record.inputHash)}, true, 'discoverable', 'joined', now(), now(), 'attendee', null)`,
-    )
-    .join(",\n");
-
-  const analyticsRows = analytics
-    .map(
-      (record) =>
-        `  (${sqlString(record.id)}, ${sqlString(record.eventId)}, ${sqlString(record.type)}, ${record.topic ? sqlString(record.topic) : "null"}, ${sqlString(record.at)})`,
     )
     .join(",\n");
 
@@ -101,17 +94,12 @@ on conflict (user_id, event_id) do update set
   visibility = 'discoverable',
   updated_at = excluded.updated_at,
   joined_at = excluded.joined_at;
-
-insert into analytics_events (id, event_id, type, topic, at)
-values
-${analyticsRows}
-on conflict (id) do nothing;
 `;
 
   const target = path.join(process.cwd(), "supabase", "migrations", "0002_demo_seed.sql");
   await mkdir(path.dirname(target), { recursive: true });
   await writeFile(target, sql, "utf8");
-  process.stdout.write(`${target}\n${visible.length} perfiles, ${participations.length} participaciones, ${analytics.length} analíticas\n`);
+  process.stdout.write(`${target}\n${visible.length} perfiles, ${participations.length} participaciones\n`);
 }
 
 void main();

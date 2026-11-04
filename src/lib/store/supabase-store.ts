@@ -1,6 +1,5 @@
 import "server-only";
 import { emptyMetrics, type EngineMetrics } from "@/domain/engine-metrics";
-import type { AnalyticsRecord } from "@/domain/analytics";
 import type { CachedExplanation } from "@/domain/cache/explanations";
 import type { EmbeddingRecord } from "@/domain/embedding/jobs";
 import type { GroundedExplanation } from "@/domain/ground";
@@ -80,7 +79,6 @@ const PROFILE_COLUMNS =
 const ACCOUNT_COLUMNS = "user_id,username,password_hash,created_at,updated_at,last_login_at";
 const LINK_COLUMNS = "profile_id,label,url";
 const CONNECTION_COLUMNS = "id,event_id,from_id,to_id,status,intro,intro_source,created_at,accepted_at";
-const ANALYTICS_COLUMNS = "id,event_id,type,topic,at";
 const IDENTITY_COLUMNS =
   "user_id,display_name,original_description,input_hash,generated,confirmed,revision,status,source,updated_at";
 const PARTICIPATION_COLUMNS =
@@ -178,16 +176,6 @@ function mapConnectionRow(row: Record<string, unknown>): ConnectionRecord {
     introSource: (row.intro_source as ConnectionRecord["introSource"]) ?? null,
     createdAt: String(row.created_at),
     acceptedAt: row.accepted_at ? String(row.accepted_at) : null,
-  };
-}
-
-function mapAnalyticsRow(row: Record<string, unknown>): AnalyticsRecord {
-  return {
-    id: String(row.id),
-    eventId: String(row.event_id),
-    type: row.type as AnalyticsRecord["type"],
-    topic: row.topic ? String(row.topic) : null,
-    at: String(row.at),
   };
 }
 
@@ -354,7 +342,6 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     links,
     accounts,
     connections,
-    analytics,
     identities,
     participations,
     globalEmbeddings,
@@ -368,7 +355,6 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     admin.from("profile_links").select(LINK_COLUMNS),
     admin.from("accounts").select(ACCOUNT_COLUMNS),
     admin.from("connections").select(CONNECTION_COLUMNS),
-    admin.from("analytics_events").select(ANALYTICS_COLUMNS),
     admin.from("global_identities").select(IDENTITY_COLUMNS),
     admin.from("event_participations").select(PARTICIPATION_COLUMNS),
     admin.from("profile_embeddings").select(GLOBAL_EMBEDDING_COLUMNS),
@@ -394,7 +380,6 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     profiles.error,
     links.error,
     connections.error,
-    analytics.error,
     identities.error,
     participations.error,
     globalEmbeddings.error,
@@ -427,7 +412,6 @@ async function loadSnapshot(admin: Admin): Promise<Database> {
     ),
     accounts: accountsRows.map((row) => mapAccountRow(row)),
     connections: (connections.data ?? []).map((row) => mapConnectionRow(row as unknown as Record<string, unknown>)),
-    analytics: (analytics.data ?? []).map((row) => mapAnalyticsRow(row as unknown as Record<string, unknown>)),
     identities: (identities.data ?? []).map((row) => mapIdentityRow(row as unknown as Record<string, unknown>)),
     participations: (participations.data ?? []).map((row) =>
       mapParticipationRow(row as unknown as Record<string, unknown>),
@@ -490,7 +474,6 @@ type PersistedCollection =
   | "profiles"
   | "accounts"
   | "connections"
-  | "analytics"
   | "identities"
   | "participations"
   | "embeddings"
@@ -504,7 +487,6 @@ function snapshotSignatures(database: Database): Record<PersistedCollection, str
     profiles: JSON.stringify(database.profiles),
     accounts: JSON.stringify(database.accounts),
     connections: JSON.stringify(database.connections),
-    analytics: JSON.stringify(database.analytics),
     identities: JSON.stringify(database.identities),
     participations: JSON.stringify(database.participations),
     embeddings: JSON.stringify(database.embeddings),
@@ -629,21 +611,6 @@ async function persistSnapshot(admin: Admin, database: Database, dirty?: Set<Per
           intro_source: item.introSource,
           created_at: item.createdAt,
           accepted_at: item.acceptedAt,
-        })),
-        "id",
-      ),
-    );
-
-    schedule("analytics", () =>
-      replaceTable(
-        admin,
-        "analytics_events",
-        database.analytics.map((item) => ({
-          id: item.id,
-          event_id: item.eventId,
-          type: item.type,
-          topic: item.topic,
-          at: item.at,
         })),
         "id",
       ),
@@ -836,7 +803,7 @@ function emptyRows() {
 /** Scoped read-only loaders for hot read paths. They return a full Database shape
  * (unused collections stay empty via hydrateDatabase) so action logic is unchanged,
  * but skip the heavy tables entirely: no embedding vectors, no explanation
- * structured payloads, no analytics history, no full-table scans.
+ * structured payloads, no full-table scans.
  * Update() paths keep the full snapshot: partial snapshots must never be persisted.
  */
 async function readSessionSnapshot(profileId: string | null): Promise<Database> {
@@ -998,7 +965,7 @@ async function readDiscoverySnapshot(profileId: string, eventId: string): Promis
 /**
  * Affinity read path: both profiles, the persisted viewer/candidate row,
  * both identities and participations, and prior explanations for the triple.
- * No vectors, no analytics.
+ * No vectors.
  */
 async function readAffinitySnapshot(profileId: string, otherId: string, eventId: string): Promise<Database> {
   const admin = getAdmin();

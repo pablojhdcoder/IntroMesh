@@ -56,7 +56,6 @@ export function connectActions(store: Store) {
             (item.status === "pending" || item.status === "accepted"),
         );
         if (existing) return existing;
-        const other = database.profiles.find((item) => item.id === otherId);
         const resolvedEventId =
           eventId ??
           database.participations.find((item) => item.userId === profileId && item.status === "joined")?.eventId ??
@@ -73,13 +72,6 @@ export function connectActions(store: Store) {
           acceptedAt: null,
         };
         database.connections.push(record);
-        database.analytics.push({
-          id: `req-${record.id}`,
-          eventId: resolvedEventId,
-          type: "intro_requested" as const,
-          at: record.createdAt,
-          topic: other?.interests[0] ?? null,
-        });
         return record;
       });
     },
@@ -93,16 +85,6 @@ export function connectActions(store: Store) {
         const acceptedAt = action === "accept" ? new Date().toISOString() : null;
         connection.status = action === "accept" ? "accepted" : "declined";
         connection.acceptedAt = acceptedAt;
-        if (acceptedAt) {
-          const target = database.profiles.find((item) => item.id === connection.toId);
-          database.analytics.push({
-            id: `ok-${connection.id}`,
-            eventId: connection.eventId,
-            type: "connection_accepted",
-            at: acceptedAt,
-            topic: target?.interests[0] ?? null,
-          });
-        }
         return { connection };
       });
     },

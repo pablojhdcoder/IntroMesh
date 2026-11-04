@@ -28,7 +28,6 @@ const expectedIds = [
   ...Array.from({ length: 28 }, (_, index) => `demo-${String(index + 1).padStart(3, "0")}`),
   ...Array.from({ length: 12 }, (_, index) => `demo-f${String(index + 1).padStart(2, "0")}`),
 ];
-const expectedAnalytics = 80;
 
 function envPresent(key: string): boolean {
   return Boolean(process.env[key]?.trim());
@@ -54,11 +53,10 @@ async function main(): Promise<void> {
   const role = service ? "service" : "anon";
   console.log("query role", role);
 
-  const [events, profiles, presence, analytics, affinity] = await Promise.all([
+  const [events, profiles, presence, affinity] = await Promise.all([
     client.from("events").select("id, name, demo").eq("id", "meta-hackathon-2026"),
     client.from("profiles").select("id, display_name, demo, goal, slug").in("id", expectedIds),
     client.from("presence").select("profile_id, event_id, status, source, expires_at").eq("event_id", "meta-hackathon-2026"),
-    client.from("analytics_events").select("id, type").eq("event_id", "meta-hackathon-2026"),
     client.from("affinity_explanations").select("cache_key", { count: "exact", head: true }),
   ]);
 
@@ -66,7 +64,6 @@ async function main(): Promise<void> {
     events.error && `events: ${events.error.message}`,
     profiles.error && `profiles: ${profiles.error.message}`,
     presence.error && `presence: ${presence.error.message}`,
-    analytics.error && `analytics: ${analytics.error.message}`,
     affinity.error && `affinity_explanations: ${affinity.error.message}`,
   ].filter(Boolean);
 
@@ -77,7 +74,6 @@ async function main(): Promise<void> {
 
   const profileRows = profiles.data ?? [];
   const presenceRows = presence.data ?? [];
-  const analyticsRows = analytics.data ?? [];
   const foundIds = new Set(profileRows.map((row) => row.id));
   const missingProfiles = expectedIds.filter((id) => !foundIds.has(id));
   const notDemo = profileRows.filter((row) => row.demo !== true).map((row) => row.id);
@@ -85,7 +81,6 @@ async function main(): Promise<void> {
   const presenceWrongSource = presenceDemo.filter((row) => row.source !== "demo");
   const now = Date.now();
   const presenceExpired = presenceDemo.filter((row) => Date.parse(row.expires_at) <= now);
-  const analyticsSeed = analyticsRows.filter((row) => String(row.id).startsWith("seed-"));
 
   const checks = {
     event: events.data?.[0]?.id === "meta-hackathon-2026" && events.data[0].demo === true,
@@ -94,14 +89,12 @@ async function main(): Promise<void> {
     presence: presenceDemo.length === 28,
     presenceSource: presenceWrongSource.length === 0,
     presenceLive: presenceExpired.length === 0,
-    analytics: analyticsSeed.length === expectedAnalytics,
     affinityTable: !affinity.error,
   };
 
   console.log("event", events.data?.[0] ?? null);
   console.log("profiles", profileRows.length, "missing", missingProfiles.length, "notDemo", notDemo.length);
   console.log("presence", presenceDemo.length, "wrongSource", presenceWrongSource.length, "expired", presenceExpired.length);
-  console.log("analytics seed", analyticsSeed.length, "total", analyticsRows.length);
   console.log("affinity count", affinity.count ?? 0);
   console.log("checks", JSON.stringify(checks));
 

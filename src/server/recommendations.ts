@@ -172,17 +172,6 @@ export function refreshViewerRecommendations(
     .filter((item) => !(item.eventId === eventId && item.viewerId === viewerId))
     .concat(ranked.records);
   database.metrics.recommendationsCalculated += ranked.records.length;
-  for (const item of ranked.records) {
-    const id = `gen:${item.eventId}:${item.viewerId}:${item.candidateId}`;
-    if (database.analytics.some((event) => event.id === id)) continue;
-    database.analytics.push({
-      id,
-      eventId,
-      type: "recommendation_shown",
-      at: new Date(now).toISOString(),
-      topic: null,
-    });
-  }
   return true;
 }
 

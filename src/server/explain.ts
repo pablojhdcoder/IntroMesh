@@ -196,16 +196,6 @@ export function explainActions(store: Store) {
             database.metrics.latencyMs += Date.now() - started;
             if (box.input) database.metrics.inputTokens += box.input;
             if (box.output) database.metrics.outputTokens += box.output;
-            const marker = `view:${viewer.id}:${other.id}:${eventId}`;
-            if (!database.analytics.some((item) => item.id === marker)) {
-              database.analytics.push({
-                id: marker,
-                eventId,
-                type: "profile_viewed",
-                at: new Date().toISOString(),
-                topic: allowed.interests[0] ?? null,
-              });
-            }
           });
           return { explanation, cached: false };
         } catch (error) {
