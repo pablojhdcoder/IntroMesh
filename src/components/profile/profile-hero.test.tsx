@@ -13,6 +13,13 @@ const profile: ProfileLike = {
   skills: ["rust"],
   projects: [],
   goal: "cofounder",
+  presentation: {
+    headline: "Ada · Robotics",
+    summary: "Builds flying machines.",
+    opener: "What flies here?",
+  },
+  offers: "Can help with rust.",
+  seeking: "Looking for pilots.",
 };
 
 describe("ProfileHero", () => {
@@ -31,13 +38,24 @@ describe("ProfileHero", () => {
     expect(html).not.toContain("Profile photo of");
   });
 
-  it("renders stats when provided", () => {
+  it("renders the detailed variant with about, interests and a pinned stats bar", () => {
     const html = renderToStaticMarkup(
-      createElement(ProfileHero, { profile, stats: { connections: 3, events: 2 } }),
+      createElement(ProfileHero, { profile, stats: { connections: 3 }, variant: "detailed" }),
     );
+    expect(html).toContain("Ada · Robotics");
+    expect(html).toContain("Builds flying machines.");
+    expect(html).toContain("Interests");
+    expect(html).toContain("Skills");
+    expect(html).toContain("Offers");
+    expect(html).toContain("Seeking");
     expect(html).toContain("Connections");
-    expect(html).toContain("Events");
-    expect(html).toContain(">3<");
-    expect(html).toContain(">2<");
+    expect(html).toContain("border-t");
+  });
+
+  it("renders the summary variant without the details sections", () => {
+    const html = renderToStaticMarkup(createElement(ProfileHero, { profile, stats: { connections: 3 } }));
+    expect(html).toContain("@ada");
+    expect(html).toContain("Connections");
+    expect(html).not.toContain("Interests");
   });
 });

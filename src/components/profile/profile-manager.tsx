@@ -1,16 +1,50 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { useReducedMotion } from "motion/react";
-import { ArrowLeft, Maximize2, Pencil, QrCode } from "lucide-react";
+import { ArrowLeft, Check, Link2, Maximize2, Pencil, QrCode, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Crossfade } from "@/components/ui/crossfade";
 import { ProfileHero } from "@/components/profile/profile-hero";
 import { ProfileEditor } from "@/components/profile/profile-editor";
-import { ProfileSections, type ProfileLike } from "@/components/profile/profile-view";
-import { PresentCardOverlay, ProfileCardActions, ShowCardFace } from "@/components/profile/show-card";
+import type { ProfileLike } from "@/components/profile/profile-view";
+import { PresentCardOverlay, ShowCardFace } from "@/components/profile/show-card";
+import { useCopyLink, CopyAnnouncer } from "@/components/share/use-copy-link";
 import { cn } from "cn";
+
+function BackFaceActions({
+  profile,
+  onExpand,
+  expandRef,
+}: {
+  profile: ProfileLike;
+  onExpand: () => void;
+  expandRef: RefObject<HTMLButtonElement | null>;
+}) {
+  const { copyLink, copied, failed } = useCopyLink(profile.slug);
+  return (
+    <div className="flex w-full max-w-sm flex-col gap-2">
+      <div className="flex gap-2">
+        <Button
+          ref={expandRef}
+          type="button"
+          variant="outline"
+          className="h-11 flex-1 min-[720px]:h-9"
+          onClick={onExpand}
+        >
+          <Maximize2 aria-hidden="true" />
+          Expand card
+        </Button>
+        <Button type="button" className="h-11 flex-1 min-[720px]:h-9" onClick={() => void copyLink()}>
+          {copied ? <Check aria-hidden="true" /> : failed ? <X aria-hidden="true" /> : <Link2 aria-hidden="true" />}
+          {copied ? "Copied" : failed ? "Couldn't copy" : "Copy link"}
+        </Button>
+      </div>
+      <CopyAnnouncer copied={copied} failed={failed} />
+    </div>
+  );
+}
 
 export function ProfileManager({
   profile,
@@ -50,8 +84,13 @@ export function ProfileManager({
 
   function closeEditor() {
     setEditing(false);
-    editRef.current?.focus();
   }
+
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (!editing && wasEditing.current) editRef.current?.focus();
+    wasEditing.current = editing;
+  }, [editing]);
 
   const frontActions = (
     <>
@@ -82,80 +121,79 @@ export function ProfileManager({
   );
 
   return (
-    <div className="flex flex-col gap-12">
-      <div className="[perspective:1200px]" inert={expanded} aria-hidden={expanded}>
-        <div
-          className={cn(
-            "relative grid transition-transform duration-[280ms] ease-[var(--ease-in-out)] [transform-style:preserve-3d]",
-          )}
-          style={reduce ? undefined : { transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
-        >
-          <div
-            className={cn(
-              "transition-opacity duration-[160ms] [grid-area:1/1] [backface-visibility:hidden]",
-              reduce && flipped && "invisible opacity-0",
-            )}
-            aria-hidden={flipped}
-            inert={flipped}
-          >
-            <ProfileHero profile={profile} stats={{ connections: connectionsCount }} actions={frontActions} />
-          </div>
-
-          <div
-            id="profile-card-back"
-            className={cn(
-              "flex [grid-area:1/1] flex-col items-center justify-center gap-4 transition-opacity duration-[160ms] [backface-visibility:hidden]",
-              !reduce && "[transform:rotateY(180deg)]",
-              reduce && !flipped && "invisible opacity-0",
-            )}
-            aria-hidden={!flipped}
-            inert={!flipped}
-          >
-            <h2 className="sr-only">Your connection card</h2>
-            {isPrivate ? (
-              <div className="w-full max-w-sm rounded-[20px] border border-border bg-surface p-5 shadow-[var(--shadow-raise)]" role="note">
-                <p className="text-[0.9375rem] leading-relaxed">
-                  Your card is hidden while your profile is private. The QR code is disabled — make your profile
-                  public in Edit profile to show your card again.
-                </p>
-              </div>
-            ) : (
-              <>
-                <ShowCardFace profile={profile} />
-                <div className="flex w-full max-w-sm flex-col gap-2">
-                  <Button ref={expandRef} type="button" variant="outline" className="h-11 min-[720px]:h-9" onClick={() => setExpanded(true)}>
-                    <Maximize2 aria-hidden="true" />
-                    Expand card
-                  </Button>
-                  <ProfileCardActions profile={profile} />
-                </div>
-              </>
-            )}
-            <Button ref={backRef} type="button" variant="ghost" className="h-11 min-[720px]:h-9" onClick={flipBack}>
-              <ArrowLeft aria-hidden="true" />
-              Back to profile
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div id="profile-details-region" inert={expanded} aria-hidden={expanded}>
-      <Crossfade id={editing ? "edit" : "details"} className="flex flex-col gap-8">
+    <div className="flex flex-col">
+      <Crossfade id={editing ? "edit" : "card"} className="flex flex-col">
         {editing ? (
-          <ProfileEditor profile={profile} onSaved={closeEditor} onCancel={closeEditor} />
+          <section
+            className="rounded-[20px] border border-border bg-surface p-5 shadow-[var(--shadow-raise)] min-[720px]:p-6"
+            aria-label="Edit profile"
+          >
+            <ProfileEditor profile={profile} onSaved={closeEditor} onCancel={closeEditor} />
+          </section>
         ) : (
-          <>
-            <ProfileSections profile={profile} />
-            <p className="border-t border-border pt-6 text-sm text-muted-foreground">
-              {connectionsCount} accepted {connectionsCount === 1 ? "connection" : "connections"} ·{" "}
-              <Link href="/connections" className="underline underline-offset-4">
-                View connections
-              </Link>
-            </p>
-          </>
+          <div className="[perspective:1200px]" inert={expanded} aria-hidden={expanded}>
+            <div
+              className={cn(
+                "relative grid transition-transform duration-[280ms] ease-[var(--ease-in-out)] [transform-style:preserve-3d]",
+              )}
+              style={reduce ? undefined : { transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
+            >
+              <div
+                className={cn(
+                  "transition-opacity duration-[160ms] [grid-area:1/1] [backface-visibility:hidden]",
+                  reduce && flipped && "invisible opacity-0",
+                )}
+                aria-hidden={flipped}
+                inert={flipped}
+              >
+                <ProfileHero
+                  profile={profile}
+                  stats={{ connections: connectionsCount }}
+                  actions={frontActions}
+                  variant="detailed"
+                  footer={
+                    <p className="text-sm text-muted-foreground">
+                      <Link href="/connections" className="underline underline-offset-4">
+                        View connections
+                      </Link>
+                    </p>
+                  }
+                />
+              </div>
+
+              <div
+                id="profile-card-back"
+                className={cn(
+                  "flex [grid-area:1/1] flex-col items-center justify-center gap-4 transition-opacity duration-[160ms] [backface-visibility:hidden]",
+                  !reduce && "[transform:rotateY(180deg)]",
+                  reduce && !flipped && "invisible opacity-0",
+                )}
+                aria-hidden={!flipped}
+                inert={!flipped}
+              >
+                <h2 className="sr-only">Your connection card</h2>
+                {isPrivate ? (
+                  <div className="w-full max-w-sm rounded-[20px] border border-border bg-surface p-5 shadow-[var(--shadow-raise)]" role="note">
+                    <p className="text-[0.9375rem] leading-relaxed">
+                      Your card is hidden while your profile is private. The QR code is disabled — make your profile
+                      public in Edit profile to show your card again.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <ShowCardFace profile={profile} />
+                    <BackFaceActions profile={profile} onExpand={() => setExpanded(true)} expandRef={expandRef} />
+                  </>
+                )}
+                <Button ref={backRef} type="button" variant="ghost" className="h-11 min-[720px]:h-9" onClick={flipBack}>
+                  <ArrowLeft aria-hidden="true" />
+                  Back to profile
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </Crossfade>
-      </div>
 
       {expanded && !isPrivate ? (
         <PresentCardOverlay profile={profile} onClose={closeExpanded} />
