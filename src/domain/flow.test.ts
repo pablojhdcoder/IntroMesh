@@ -21,6 +21,33 @@ describe("grounding", () => {
     );
   });
 
+  it("allows prose naming a candidate's own declared fact, while citations stay shared-only", () => {
+    const explanation: GroundedExplanation = {
+      source: "model",
+      summary: "Their frontend work could pair with what you are exploring.",
+      opener: "Ask how they approach frontend prototyping.",
+      citedGoals: [],
+      citedInterests: [],
+      citedSkills: [],
+      complement: [],
+      confidence: "low",
+    };
+    expect(
+      assertGrounded(
+        explanation,
+        { goals: [], interests: [], skills: [], complement: [] },
+        ["frontend", "prototyping"],
+      ),
+    ).toBeNull();
+    expect(
+      assertGrounded(
+        { ...explanation, citedSkills: ["frontend"] },
+        { goals: [], interests: [], skills: [], complement: [] },
+        ["frontend", "prototyping"],
+      ),
+    ).toBe("cited-skill");
+  });
+
   it("model explanation only cites shared evidence, never fabricated demo text", () => {
     const explanation: GroundedExplanation = {
       source: "model",

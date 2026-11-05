@@ -17,7 +17,13 @@ export async function POST(request: Request) {
     const result = await service().affinity(id, body.profileId, body.regenerate, body.eventId);
     if ("error" in result) {
       const status =
-        result.error === "match" ? 422 : result.error === "presence" ? 403 : result.error === "meta" ? 503 : 404;
+        result.error === "match"
+          ? 422
+          : result.error === "presence"
+            ? 403
+            : result.error === "profile"
+              ? 404
+              : 503;
       return json(result, status);
     }
     return json(result);

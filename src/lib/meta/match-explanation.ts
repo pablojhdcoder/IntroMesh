@@ -20,7 +20,7 @@ shared_signals must be copied from shared_evidence.
 
 complementary_signals must be copied from complement_evidence.`;
 
-export const PROMPT_VERSION = "match-explain-v1";
+export const PROMPT_VERSION = "match-explain-v2";
 
 const wireSchema = z.object({
   match_reason: z.string(),

@@ -75,7 +75,9 @@ export function ScanConnect({ slug, profileId }: { slug: string; profileId: stri
             ? "Both of you need presence on at the same event."
             : body.error === "match"
               ? "Not enough shared signals yet."
-              : "Explanation unavailable — Meta API not configured. Try again.",
+              : body.error === "config"
+                ? "Explanation unavailable — Meta API not configured."
+                : "Explanation unavailable. Try again.",
         );
         return;
       }

@@ -116,10 +116,10 @@ describe("affinity (membership-gated, real Meta only)", () => {
     expect(result).toEqual({ error: "match" });
   });
 
-  it("returns a meta error without a key instead of fabricating an explanation", async () => {
+  it("returns a config error without a key instead of fabricating an explanation", async () => {
     const db = database({ recommendations: [persistedRow()] });
     const result = await explainActions(fakeStore(db)).affinity("viewer", "other", false, "e1");
-    expect(result).toEqual({ error: "meta" });
+    expect(result).toEqual({ error: "config" });
   });
 
   it("works with zero presence rows when both sides are joined", async () => {
@@ -128,7 +128,7 @@ describe("affinity (membership-gated, real Meta only)", () => {
     const result = await explainActions(fakeStore(db)).affinity("viewer", "other", false, "e1");
     // No key is configured, so a fully gated pair surfaces the meta error —
     // never a presence error when both sides are joined.
-    expect(result).toEqual({ error: "meta" });
+    expect(result).toEqual({ error: "config" });
   });
 
   it("still errors presence when the candidate is not joined", async () => {
@@ -161,7 +161,7 @@ describe("affinity (membership-gated, real Meta only)", () => {
       ],
     });
     const result = await explainActions(fakeStore(db)).affinity("viewer", "other", false, "e1");
-    expect(result).toEqual({ error: "meta" });
+    expect(result).toEqual({ error: "config" });
   });
 
   it("reports unknown profiles", async () => {

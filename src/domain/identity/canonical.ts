@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { StructuredIdentity } from "./schema";
 
-export const PROMPT_VERSION = "match-explain-v1";
+export const PROMPT_VERSION = "match-explain-v2";
 export const RANKING_VERSION = "hybrid-v1";
 
 export function sha256(value: string): string {

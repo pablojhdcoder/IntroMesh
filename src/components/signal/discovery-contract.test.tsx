@@ -140,7 +140,12 @@ describe("normalizeDiscovery (production contract)", () => {
 
 describe("explainErrorCopy", () => {
   it("is honest when Meta cannot explain: no invented text", () => {
-    expect(explainErrorCopy("meta")).toBe("Explanation unavailable — Meta API not configured. Try again.");
+    expect(explainErrorCopy("meta")).toBe("Explanation unavailable. Try again.");
+    expect(explainErrorCopy("unavailable")).toBe("Explanation unavailable. Try again.");
+  });
+
+  it("only blames configuration when the server reports it", () => {
+    expect(explainErrorCopy("config")).toBe("Explanation unavailable — Meta API not configured.");
   });
 
   it("keeps match and presence copy", () => {

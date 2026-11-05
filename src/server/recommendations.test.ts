@@ -106,6 +106,48 @@ describe("evidence labels", () => {
     return db;
   }
 
+  it("derives labels from token overlap between free-text and catalog profiles", () => {
+    const db = database();
+    const viewer = db.profiles.find((item) => item.id === "viewer");
+    const ana = db.profiles.find((item) => item.id === "ana");
+    if (viewer) {
+      viewer.interests = ["field research", "long walks"];
+      viewer.skills = ["writing"];
+      viewer.seeking = "designer who loves field research";
+      viewer.goal = "hackathon";
+    }
+    if (ana) {
+      ana.interests = ["research"];
+      ana.skills = ["research"];
+      ana.goal = "hackathon";
+    }
+    expect(refreshViewerRecommendations(db, "viewer", "e1", NOW)).toBe(true);
+    const row = db.recommendations.find((item) => item.candidateId === "ana");
+    expect(row).toBeDefined();
+    expect(row?.sharedInterestLabels).toContain("research");
+    expect(row?.complementLabels).toContain("research");
+  });
+
+  it("does not persist a scored candidate with no citable evidence and no identity similarity", () => {
+    const db = database();
+    const viewer = db.profiles.find((item) => item.id === "viewer");
+    const ana = db.profiles.find((item) => item.id === "ana");
+    if (viewer) {
+      viewer.interests = ["astrophysics"];
+      viewer.skills = ["writing"];
+      viewer.seeking = "astrophysics mentoring";
+      viewer.goal = "hackathon";
+    }
+    if (ana) {
+      ana.interests = ["cooking"];
+      ana.skills = ["cooking"];
+      ana.offers = "astrophysics mentoring";
+      ana.goal = "cofounder";
+    }
+    refreshViewerRecommendations(db, "viewer", "e1", NOW);
+    expect(db.recommendations.some((item) => item.candidateId === "ana")).toBe(false);
+  });
+
   it("populates shared and complement labels from the scored pair", () => {
     const db = labeled();
     expect(refreshViewerRecommendations(db, "viewer", "e1", NOW)).toBe(true);

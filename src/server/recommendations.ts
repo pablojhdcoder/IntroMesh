@@ -10,6 +10,7 @@ import {
   retrieveBySimilarity,
   scorePair,
   semanticCompatibility,
+  tokensOf,
   type HybridProfile,
 } from "@/domain/matching/hybrid";
 import type { Database, EventRecord, GlobalIdentityRecord, ParticipationRecord, RecommendationRecord } from "@/lib/store";
@@ -208,11 +209,33 @@ export function evidenceLabels(
 } {
   const sharedInterestLabels = overlapLabels(viewer.interests, candidate.interests);
   const sharedSkillLabels = overlapLabels(viewer.skills, candidate.skills);
+  // Token-level overlap: a free-text profile ("field research") and a catalog
+  // profile ("research") do share evidence even though the full strings
+  // differ. The shared token itself is the label — truthful for both sides.
+  for (const token of tokensOf(viewer.interests)) {
+    if (tokensOf(candidate.interests).has(token) && !sharedInterestLabels.some((item) => item.toLowerCase() === token)) {
+      sharedInterestLabels.push(token);
+    }
+  }
+  for (const token of tokensOf(viewer.skills)) {
+    if (tokensOf(candidate.skills).has(token) && !sharedSkillLabels.some((item) => item.toLowerCase() === token)) {
+      sharedSkillLabels.push(token);
+    }
+  }
   const sharedGoalLabels = viewerGoal && viewerGoal === candidateGoal ? [goalLabel(viewerGoal)] : [];
   const sharedSkillKeys = new Set(sharedSkillLabels.map((item) => item.toLowerCase()));
-  const complementLabels = overlapLabels(viewer.lookingFor, candidate.skills).filter(
-    (item) => !sharedSkillKeys.has(item.toLowerCase()),
-  );
+  const wantedTokens = tokensOf(viewer.lookingFor);
+  const complementLabels = overlapLabels(viewer.lookingFor, candidate.skills)
+    .concat(
+      candidate.skills.filter(
+        (skill) => [...tokensOf([skill])].some((token) => wantedTokens.has(token)),
+      ),
+    )
+    .filter(
+      (item, index, all) =>
+        !sharedSkillKeys.has(item.toLowerCase()) &&
+        all.findIndex((other) => other.toLowerCase() === item.toLowerCase()) === index,
+    );
   return { sharedGoalLabels, sharedInterestLabels, sharedSkillLabels, complementLabels };
 }
 
@@ -294,6 +317,17 @@ function rankViewerCandidates(
   const records = retrieved
     .map((entry) => scoreCandidateRecord(index, event, viewer, entry.item, now))
     .filter((item) => item.finalScore >= MIN_FINAL_SCORE)
+    // A highlighted person must be explainable: without any citable label
+    // and without identity similarity there is no grounded evidence, so the
+    // candidate stays in the directory instead of being recommended.
+    .filter(
+      (item) =>
+        item.identitySimilarity !== null ||
+        item.sharedGoalLabels.length > 0 ||
+        item.sharedInterestLabels.length > 0 ||
+        item.sharedSkillLabels.length > 0 ||
+        item.complementLabels.length > 0,
+    )
     .sort((a, b) => b.finalScore - a.finalScore || a.candidateId.localeCompare(b.candidateId))
     .slice(0, RECOMMENDATION_LIMIT);
   return { records };

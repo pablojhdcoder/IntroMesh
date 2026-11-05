@@ -34,13 +34,20 @@ export function isSubset(cited: readonly string[], allowed: readonly string[]): 
 export function assertGrounded(
   explanation: GroundedExplanation,
   allowed: { goals: string[]; interests: string[]; skills: string[]; complement: string[] },
+  proseVocabulary?: readonly string[],
 ): string | null {
   if (!isSubset(explanation.citedGoals, allowed.goals)) return "cited-goal";
   if (!isSubset(explanation.citedInterests, allowed.interests)) return "cited-interest";
   if (!isSubset(explanation.citedSkills, allowed.skills)) return "cited-skill";
   if (!isSubset(explanation.complement, allowed.complement)) return "cited-complement";
   const prose = `${explanation.summary} ${explanation.opener}`;
-  const allowedTerms = [...allowed.interests, ...allowed.skills, ...allowed.complement];
+  // Citations stay restricted to persisted shared evidence. Prose may also
+  // name facts either profile declared about itself (e.g. the candidate's
+  // own skill in an opener): that is not an invented overlap. Callers pass
+  // that factual vocabulary explicitly; without it only citations count.
+  const allowedTerms = proseVocabulary
+    ? [...allowed.interests, ...allowed.skills, ...allowed.complement, ...proseVocabulary]
+    : [...allowed.interests, ...allowed.skills, ...allowed.complement];
   const extra = unsupportedTerms(prose, allowedTerms);
   if (extra.length > 0) return "unsupported-term";
   return null;
