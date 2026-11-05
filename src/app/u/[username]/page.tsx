@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProfileHero } from "@/components/profile/profile-hero";
 import { ProfileSections, type ProfileLike } from "@/components/profile/profile-view";
-import { ScanConnect } from "@/components/share/scan-connect";
 import { ShareTools } from "@/components/share/share-tools";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { service, viewerId } from "@/lib/http";
@@ -45,12 +44,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       <ProfileHero profile={profile} />
 
       <ProfileSections profile={profile} />
-
-      {!isOwner ? (
-        <div className="w-full border-t border-border pt-8">
-          <ScanConnect slug={profile.slug} profileId={profile.id} />
-        </div>
-      ) : null}
 
       {isOwner && profile.profileVisibility === "private" ? (
         <p role="status" className="w-full rounded-md bg-surface px-3 py-2 text-sm text-muted-foreground">
