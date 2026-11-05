@@ -22,12 +22,14 @@ function initialsOf(name: string): string {
   );
 }
 
-export function ShowCardFace({ profile }: { profile: ProfileLike }) {
+export function ShowCardFace({ profile, large }: { profile: ProfileLike; large?: boolean }) {
   const handle = profile.username ?? profile.slug;
   return (
     <article
       aria-label={`Connection card for ${profile.displayName}`}
-      className="flex w-full max-w-sm flex-col gap-5 rounded-[20px] bg-foreground p-6 text-background shadow-[var(--shadow-raise)] dark:border dark:border-border dark:bg-surface-raised dark:text-foreground"
+      className={`flex w-full flex-col gap-5 rounded-[20px] bg-foreground text-background shadow-[var(--shadow-raise)] dark:border dark:border-border dark:bg-surface-raised dark:text-foreground ${
+        large ? "max-w-md p-6 sm:gap-6 sm:p-8" : "max-w-sm p-6"
+      }`}
     >
       <div className="flex items-center justify-between gap-4">
         <p className={`${metaOnCard} text-background/70 dark:text-muted-foreground`}>IntroMesh</p>
@@ -43,28 +45,32 @@ export function ShowCardFace({ profile }: { profile: ProfileLike }) {
           <Image
             src={profile.avatarUrl}
             alt={`Profile photo of ${profile.displayName}`}
-            width={64}
-            height={64}
+            width={large ? 80 : 64}
+            height={large ? 80 : 64}
             unoptimized
-            className="size-16 shrink-0 rounded-full border border-background/25 object-cover dark:border-border"
+            className={`shrink-0 rounded-full border border-background/25 object-cover dark:border-border ${
+              large ? "size-16 sm:size-20" : "size-16"
+            }`}
           />
         ) : (
           <div
             aria-hidden="true"
-            className="flex size-16 shrink-0 items-center justify-center rounded-full bg-signal font-heading text-2xl text-[#14160c]"
+            className={`flex shrink-0 items-center justify-center rounded-full bg-signal font-heading text-[#14160c] ${
+              large ? "size-16 text-2xl sm:size-20 sm:text-3xl" : "size-16 text-2xl"
+            }`}
           >
             {initialsOf(profile.displayName)}
           </div>
         )}
         <div className="flex min-w-0 flex-col gap-1.5">
           <p className="sr-only">{profile.displayName}</p>
-          <p className="font-heading text-3xl leading-none tracking-[-0.02em] break-all text-balance">@{handle}</p>
+          <p className={`leading-none font-heading tracking-[-0.02em] break-all text-balance ${large ? "text-3xl sm:text-4xl" : "text-3xl"}`}>@{handle}</p>
           {profile.role ? <p className="text-sm leading-relaxed text-background/70 dark:text-muted-foreground">{profile.role}</p> : null}
         </div>
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <ProfileQr slug={profile.slug} name={profile.displayName} size={176} />
+        <ProfileQr slug={profile.slug} name={profile.displayName} size={large ? 208 : 176} />
         <p className={`${metaOnCard} text-background/70 dark:text-muted-foreground`}>Scan to connect</p>
       </div>
 
@@ -157,8 +163,8 @@ export function PresentCardOverlay({
         >
           <X aria-hidden="true" />
         </Button>
-        <ShowCardFace profile={profile} />
-        <div className="w-full max-w-sm">
+        <ShowCardFace profile={profile} large />
+        <div className="w-full max-w-md">
           <ProfileCardActions profile={profile} />
         </div>
       </motion.div>

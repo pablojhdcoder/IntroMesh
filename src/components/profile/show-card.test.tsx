@@ -26,6 +26,13 @@ describe("ShowCardFace", () => {
     expect(html).not.toContain("drones");
     expect(html).not.toContain("Interests");
   });
+
+  it("renders a larger card face for the expanded overlay", () => {
+    const html = renderToStaticMarkup(createElement(ShowCardFace, { profile, large: true }));
+    expect(html).toContain("max-w-md");
+    expect(html).toContain('width="208"');
+    expect(html).toContain("@ada");
+  });
 });
 
 describe("ProfileManager", () => {
