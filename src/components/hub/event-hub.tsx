@@ -18,7 +18,6 @@ export type HubEvent = {
   code: string;
   status: string;
   attendees?: number;
-  coverUrl?: string | null;
 };
 
 export type MyEventItem = {
@@ -47,7 +46,6 @@ function toCardEvent(event: HubEvent, memberCount?: number): EventCardEvent {
     status: event.status,
     demo: event.demo,
     attendees: typeof memberCount === "number" ? memberCount : event.attendees,
-    coverUrl: event.coverUrl ?? null,
   };
 }
 
@@ -166,7 +164,6 @@ function EventHubInner({
       code: "",
       status: event.status,
       attendees: event.attendees,
-      coverUrl: event.coverUrl ?? null,
     };
     setExpandedId((current) => (current === full.id ? null : full.id));
   }

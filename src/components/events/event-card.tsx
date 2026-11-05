@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { cn } from "cn";
 
@@ -13,7 +12,6 @@ export type EventCardEvent = {
   status: string;
   demo?: boolean;
   attendees?: number;
-  coverUrl?: string | null;
 };
 
 export type EventCardProps = {
@@ -55,17 +53,6 @@ export function EventCard({ event, joined, action }: EventCardProps) {
         "flex w-full flex-col gap-3 overflow-hidden rounded-[20px] border border-border bg-surface shadow-[var(--shadow-raise)] transition-[border-color,background-color,box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:-translate-y-px hover:border-foreground/30 motion-reduce:transition-none motion-reduce:hover:translate-y-0",
       )}
     >
-      {event.coverUrl ? (
-        <div className="relative h-28 w-full overflow-hidden bg-surface-raised">
-          <Image
-            src={event.coverUrl}
-            alt={`${event.name} cover`}
-            width={800}
-            height={160}
-            className="h-full w-full object-cover"
-          />
-        </div>
-      ) : null}
       <div className="flex w-full flex-col gap-3 px-4 py-4">
       <div className="flex w-full items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
