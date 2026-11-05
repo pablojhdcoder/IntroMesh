@@ -230,11 +230,11 @@ function EventHubInner({
                   event={toCardEvent(item.event, item.memberCount)}
                   joined
                   action={
-                    <div className="flex flex-col gap-2 min-[720px]:flex-row">
+                    <div className="flex flex-row items-center gap-2">
                       <Link
                         href={`/events/${item.eventId}`}
                         className={cn(
-                          "inline-flex h-11 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-background transition-transform duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none min-[720px]:h-9 min-[720px]:w-auto",
+                          "inline-flex h-11 flex-1 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-background transition-transform duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none min-[720px]:h-9",
                           focusRing,
                         )}
                       >
@@ -243,7 +243,7 @@ function EventHubInner({
                       <Button
                         type="button"
                         variant="ghost"
-                        className="h-11 w-full min-[720px]:h-9 min-[720px]:w-auto"
+                        className="h-11 w-auto shrink-0 min-[720px]:h-9"
                         disabled={leavingId === item.eventId}
                         onClick={() => void leave(item.eventId)}
                         aria-label={leavingId === item.eventId ? "Leaving event" : `Leave ${item.event.name}`}

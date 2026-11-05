@@ -11,8 +11,9 @@ export type RoomState = "loading" | "error" | "empty" | "success";
 export type ViewerEmbeddingStatus = "ready" | "pending";
 
 /**
- * Non-recommended attendee: profile card fields, never a score, reason,
- * or connect action. Rendered in the "Everyone going" directory.
+ * Non-recommended attendee: profile card fields, never a score or reason.
+ * Connect is allowed with your own words (no model opener, no evidence).
+ * Rendered in the "Everyone going" directory.
  */
 export type DirectoryPerson = {
   id: string;
@@ -138,11 +139,15 @@ export function normalizeDiscovery(body: unknown): DiscoverySnapshot {
   };
 }
 
-/** Honest affinity error copy: never invents an explanation. */
-export function explainErrorCopy(kind: "match" | "presence" | "meta"): string {
+export type ExplainErrorKind = "match" | "presence" | "meta" | "config" | "unavailable";
+
+/** Honest affinity error copy: never invents an explanation, and only
+ * blames configuration when the server actually reported it. */
+export function explainErrorCopy(kind: ExplainErrorKind): string {
   if (kind === "match") return "Not enough evidence.";
   if (kind === "presence") return "Join the event to see people.";
-  return "Explanation unavailable — Meta API not configured. Try again.";
+  if (kind === "config") return "Explanation unavailable — Meta API not configured.";
+  return "Explanation unavailable. Try again.";
 }
 
 /**

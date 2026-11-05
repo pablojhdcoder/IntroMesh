@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventCard, type EventCardEvent } from "@/components/events/event-card";
 import { Crossfade } from "@/components/ui/crossfade";
 import { cn } from "cn";
 
 export type { EventCardEvent };
+
+const PAGE_SIZE = 5;
 
 export type EventPickerProps = {
   events: EventCardEvent[];
@@ -26,6 +28,16 @@ const focusRing =
 const fieldInput =
   "h-11 rounded-[12px] border border-border bg-surface px-3.5 font-sans text-[1rem] text-foreground transition-colors hover:border-foreground/25 motion-reduce:transition-none";
 const meta = "font-mono text-[0.7rem] font-medium tracking-[0.08em] text-muted-foreground uppercase";
+
+/** Soonest first; events without a date go last, keeping their relative order. */
+function byDateAsc(a: EventCardEvent, b: EventCardEvent): number {
+  const ta = a.startsAt ? Date.parse(a.startsAt) : Number.NaN;
+  const tb = b.startsAt ? Date.parse(b.startsAt) : Number.NaN;
+  if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+  if (Number.isNaN(ta)) return 1;
+  if (Number.isNaN(tb)) return -1;
+  return ta - tb;
+}
 
 export function extractInviteCode(raw: string): string {
   const trimmed = raw.trim();
@@ -72,7 +84,30 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
 
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const visible = (query.trim() ? (searched ?? []) : events).filter((event) => !excluded.has(event.id));
+  const visible = (query.trim() ? (searched ?? []) : events)
+    .filter((event) => !excluded.has(event.id))
+    .sort(byDateAsc);
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+
+  // Reset to the first page whenever the underlying list changes (query,
+  // results, or exclusions). Adjusted during render, not in an effect.
+  const listSignature = `${query.trim()}|${events.length}|${excluded.size}|${searched?.length ?? -1}`;
+  const [page, setPage] = useState(0);
+  const [pageSignature, setPageSignature] = useState(listSignature);
+  if (pageSignature !== listSignature) {
+    setPageSignature(listSignature);
+    setPage(0);
+  }
+  const safePage = Math.min(page, totalPages - 1);
+  const pageItems = visible.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+
+  const listTopRef = useRef<HTMLUListElement>(null);
+
+  function goToPage(next: number) {
+    setPage(next);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    listTopRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
 
   function handleQueryChange(value: string) {
     setQuery(value);
@@ -177,8 +212,8 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
       {!searching && visible.length === 0 ? (
         <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">No events match. Try another search.</p>
       ) : (
-        <ul className="flex flex-col gap-3" aria-label="Events">
-          {visible.map((event) => {
+        <ul ref={listTopRef} className="flex scroll-mt-4 flex-col gap-3" aria-label="Events">
+          {pageItems.map((event) => {
             const isSelected = selectedId === event.id;
             const expanded = isSelected && renderExpanded ? renderExpanded(event) : null;
             return (
@@ -211,6 +246,34 @@ export function EventPicker({ events, onPick, canCreateEvent, selectedId, pickLa
           })}
         </ul>
       )}
+
+      {totalPages > 1 ? (
+        <nav aria-label="Discover pages" className="flex items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 min-[720px]:h-9"
+            disabled={safePage === 0}
+            onClick={() => goToPage(safePage - 1)}
+          >
+            <ChevronLeft aria-hidden="true" />
+            Previous
+          </Button>
+          <p className={meta} aria-live="polite">
+            Page {safePage + 1} of {totalPages}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 min-[720px]:h-9"
+            disabled={safePage >= totalPages - 1}
+            onClick={() => goToPage(safePage + 1)}
+          >
+            Next
+            <ChevronRight aria-hidden="true" />
+          </Button>
+        </nav>
+      ) : null}
 
       <div className="flex flex-col gap-3 border-t border-border pt-6">
         <label htmlFor="event-picker-code" className={meta}>

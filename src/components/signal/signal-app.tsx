@@ -12,10 +12,11 @@ import { AuthFlow } from "@/components/onboarding/auth-flow";
 import { OnboardingFlow, type OnboardingDraft } from "@/components/onboarding/onboarding-flow";
 import { FIELD_SELF_ID, SignalField, type FieldPerson } from "@/components/signal/signal-field";
 import { ShareTools } from "@/components/share/share-tools";
+import { ConnectionActions } from "@/components/connections/connection-actions";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { SignalIntro } from "@/components/signal/signal-intro";
 import { SignalRail, type RailStatus } from "@/components/signal/signal-rail";
-import { ArrowUpRight, Check, Copy, Info, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, Copy, Info } from "lucide-react";
 import {
   explainErrorCopy,
   fetchJsonDeduped,
@@ -23,6 +24,7 @@ import {
   normalizeDiscovery,
   setCachedRoom,
   type DirectoryPerson,
+  type ExplainErrorKind,
   type ViewerEmbeddingStatus,
 } from "@/components/signal/use-room";
 
@@ -59,6 +61,8 @@ type Session = {
 const meta = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
 const actionSize = "h-11 w-full min-[720px]:h-9 min-[720px]:w-auto";
 const focusRing = "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none";
+const backControl =
+  "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground min-[720px]:h-9";
 
 /** The @ is the visible identity: username wins, legacy names stay as-is. */
 function nameOf(person: { username?: string | null; displayName: string }): string {
@@ -145,7 +149,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   const [directoryId, setDirectoryId] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [explainError, setExplainError] = useState<string | null>(null);
-  const [explainErrorKind, setExplainErrorKind] = useState<"match" | "presence" | "meta" | null>(null);
+  const [explainErrorKind, setExplainErrorKind] = useState<ExplainErrorKind | null>(null);
   const [explainPending, setExplainPending] = useState(false);
   const [openerDraft, setOpenerDraft] = useState("");
   const [copiedIntro, setCopiedIntro] = useState(false);
@@ -154,6 +158,9 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   const [openerKey, setOpenerKey] = useState<string | null>(null);
   const [requestPending, setRequestPending] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [directoryDraft, setDirectoryDraft] = useState("");
+  const [directoryPending, setDirectoryPending] = useState(false);
+  const [directoryRequestError, setDirectoryRequestError] = useState<string | null>(null);
   const nextOpenerKey = explanation ? `${selectedId ?? ""}:${explanation.summary}:${explanation.opener}` : null;
   useEffect(() => {
     if (nextOpenerKey !== openerKey) {
@@ -244,11 +251,13 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   const load = useCallback(async () => {
     const sessionResponse = await fetch("/api/session");
     const nextSession = (await sessionResponse.json()) as Session;
-    setSession(nextSession);
     if (entry && nextSession.profile && nextSession.identityConfirmed) {
+      // Redirect before painting: setting session first would flash the room
+      // for a frame (profile + event already present) before /events lands.
       router.replace("/events");
       return;
     }
+    setSession(nextSession);
     if (!nextSession.profile) return;
     if (eventIdProp) {
       await loadRoom(eventIdProp);
@@ -336,7 +345,13 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
       setExplainPending(false);
       if (!response.ok) {
         setExplanation(null);
-        const kind = body.error === "match" ? "match" : body.error === "presence" ? "presence" : "meta";
+        const kind: ExplainErrorKind =
+          body.error === "match" ||
+          body.error === "presence" ||
+          body.error === "config" ||
+          body.error === "unavailable"
+            ? body.error
+            : "meta";
         setExplainErrorKind(kind);
         setExplainError(explainErrorCopy(kind));
         return;
@@ -355,8 +370,9 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   }
 
   function openDirectoryPerson(id: string | null) {
-    // Directory rows open the public card only: no score, no reason,
-    // no explanation fetch, no connect action.
+    // Directory rows open the public card: no score, no reason, no
+    // explanation fetch. Connect uses your own words (see
+    // requestDirectoryIntro), never a model opener.
     if (id) {
       setRailCollapsed(false);
       setSheetExpanded(true);
@@ -368,6 +384,8 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
     setExplainErrorKind(null);
     setExplainPending(false);
     setDirectoryId(id);
+    setDirectoryDraft("");
+    setDirectoryRequestError(null);
   }
 
   async function requestIntro() {
@@ -390,6 +408,32 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
       setRequestError("Could not send request. Try again.");
     } finally {
       setRequestPending(false);
+    }
+  }
+
+  async function requestDirectoryIntro() {
+    // Everyone going can receive a request too: the server only requires
+    // both sides to be joined, not a recommendation. No score, no evidence,
+    // no model opener — the intro is always the user's own words.
+    if (!directoryId || directoryPending) return;
+    const trimmed = directoryDraft.trim();
+    if (!trimmed) return;
+    setDirectoryPending(true);
+    setDirectoryRequestError(null);
+    try {
+      const response = await fetch("/api/connections", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ profileId: directoryId, intro: trimmed, introSource: "user", eventId: activeEventId }),
+      });
+      if (!response.ok) throw new Error("request");
+      setDirectoryRequestError(null);
+      setDirectoryDraft("");
+      await load();
+    } catch {
+      setDirectoryRequestError("Could not send request. Try again.");
+    } finally {
+      setDirectoryPending(false);
     }
   }
 
@@ -435,6 +479,8 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
   const detail = selected && selected.recommendation ? { person: selected, recommendation: selected.recommendation } : null;
   const directoryPerson = !detail ? (directory.find((person) => person.id === directoryId) ?? null) : null;
   const relation = connections.find((item) => item.other.id === selectedId && item.status !== "declined");
+  const directoryRelation = connections.find((item) => item.other.id === directoryId && item.status !== "declined");
+  const directoryRequestDisabled = directoryDraft.trim().length === 0 || directoryPending;
   const recommendations = people.filter((person) => person.recommendation);
   const embeddingPending = viewerEmbeddingStatus === "pending";
   const emptyRoom = !roomLoading && !loadError && !embeddingPending && recommendations.length === 0 && directory.length === 0;
@@ -489,14 +535,23 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
     <div className="relative h-svh w-full overflow-hidden bg-background text-foreground">
       <div className="absolute top-3 left-3 z-20 flex w-[min(25rem,calc(100%-1.5rem))] flex-col gap-3 min-[720px]:top-4 min-[720px]:left-4">
       <header className="flex flex-col gap-3 rounded-[20px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/events"
+            aria-label="Back to events"
+            title="Back to events"
+            className={cn(backControl, focusRing, "-ml-3")}
+          >
+            <ArrowLeft aria-hidden="true" className="size-4" />
+            Back to events
+          </Link>
+          <ThemeSwitch />
+        </div>
         <div className="flex flex-col gap-2">
-          <div className="flex items-start justify-between gap-3">
-            <h1 className="flex items-center gap-2.5 font-heading text-[2rem] leading-none tracking-[-0.02em]">
-              <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-[var(--signal-vivid)] dark:bg-signal" />
-              IntroMesh
-            </h1>
-            <ThemeSwitch />
-          </div>
+          <h1 className="flex items-center gap-2.5 font-heading text-[2rem] leading-none tracking-[-0.02em]">
+            <span aria-hidden="true" className="size-2 shrink-0 rounded-full border border-border bg-[var(--signal-vivid)] dark:bg-signal" />
+            IntroMesh
+          </h1>
           <p className="flex max-w-[36ch] flex-wrap items-center gap-2">
             <span className={meta}>{activeEvent?.name}</span>
             {activeEvent?.demo ? (
@@ -505,15 +560,8 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
               </span>
             ) : null}
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/events"
-              className={cn("inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground min-[720px]:min-h-9", focusRing)}
-            >
-              Back to events
-            </Link>
-            {session.memberships && session.memberships.filter((item) => item.status === "joined").length > 0 ? (
-              <>
+          {session.memberships && session.memberships.filter((item) => item.status === "joined").length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
                 <label htmlFor="event-switcher" className="sr-only">
                   Switch event
                 </label>
@@ -539,9 +587,8 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                       </option>
                     ))}
                 </select>
-              </>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
         <div className="flex flex-col gap-2 border-t border-border pt-3">
           <div className="flex flex-wrap items-center gap-1">
@@ -585,6 +632,10 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
 
       </div>
 
+      {/* The field always fills the whole page, so "You" sits exactly at
+          page center. The rail is a pure overlay on top: opening or
+          closing it never resizes the canvas, never touches the camera,
+          and can never shift the center. */}
       <div className="absolute inset-0">
         <SignalField
           people={people}
@@ -594,8 +645,6 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
           embeddingPending={embeddingPending}
           onSelect={(id) => void openPerson(id === selectedId ? null : id)}
           onHover={setHoveredId}
-          railCollapsed={railCollapsed}
-          sheetExpanded={sheetExpanded}
         />
       </div>
 
@@ -717,7 +766,7 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                   <div role="alert" className="flex flex-col gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                     <p>{explainError}</p>
                     {explainErrorKind === "match" ? <p className="text-destructive/80">Pick a highlighted person.</p> : null}
-                    {explainErrorKind === "meta" ? (
+                    {explainErrorKind === "meta" || explainErrorKind === "unavailable" ? (
                       <p>
                         <button
                           type="button"
@@ -781,16 +830,19 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                     </span>
                   </p>
                 ) : null}
+                {relation?.status === "pending" && session.profile && relation.toId === session.profile.id ? (
+                  <ConnectionActions
+                    connectionId={relation.id}
+                    otherName={detail.person.displayName}
+                    onResolved={() => void load()}
+                  />
+                ) : null}
                 <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
                   {!relation ? (
                     <Button type="button" className={actionSize} disabled={requestDisabled} onClick={() => void requestIntro()}>
                       Request connection
                     </Button>
                   ) : null}
-                  <Button type="button" variant="ghost" className={actionSize} onClick={() => void openPerson(detail.person.id, true)}>
-                    <RefreshCw aria-hidden="true" className="size-4" />
-                    Regenerate
-                  </Button>
                 </div>
                 {requestError ? (
                   <p role="alert" className="text-sm text-destructive">
@@ -878,21 +930,74 @@ export function SignalApp({ eventId: eventIdProp, entry }: { eventId?: string; e
                   ) : null}
                 </dl>
               ) : null}
-              <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
-                <Link
-                  href={`/u/${directoryPerson.slug}`}
-                  className={cn(
-                    "inline-flex h-11 items-center gap-1.5 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-transform duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 min-[720px]:h-9",
-                    focusRing,
-                  )}
-                >
-                  View public card
-                  <ArrowUpRight aria-hidden="true" className="size-4" />
-                </Link>
-                <Button type="button" variant="ghost" className={actionSize} onClick={() => openDirectoryPerson(null)}>
-                  Back to signals
-                </Button>
-              </div>
+              {directoryRelation?.status === "pending" ? (
+                <p>
+                  <span className="inline-flex rounded-full border border-border px-2 py-0.5 font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase">
+                    Request pending
+                  </span>
+                </p>
+              ) : null}
+              {directoryRelation?.status === "pending" && session.profile && directoryRelation.toId === session.profile.id ? (
+                <ConnectionActions
+                  connectionId={directoryRelation.id}
+                  otherName={directoryPerson.displayName}
+                  onResolved={() => void load()}
+                />
+              ) : null}
+              {directoryRelation?.status === "accepted" && session.profile ? (
+                <div className="flex flex-col gap-3 rounded-[12px] border border-border bg-surface p-4 shadow-[var(--shadow-raise)]">
+                  <h3 className="font-heading text-xl leading-none tracking-[-0.02em]">Meet now</h3>
+                  <p className="max-w-[52ch] text-sm text-muted-foreground">
+                    Connection accepted. Share your card so they can find you in the room.
+                  </p>
+                  <ShareTools slug={session.profile.slug} name={nameOf(session.profile)} />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="directory-intro" className="font-mono text-[0.7rem] tracking-[0.08em] text-muted-foreground uppercase">
+                      Your first hello
+                    </label>
+                    <textarea
+                      id="directory-intro"
+                      value={directoryDraft}
+                      onChange={(event) => setDirectoryDraft(event.target.value)}
+                      maxLength={280}
+                      rows={3}
+                      placeholder={`Hi ${directoryPerson.displayName.split(" ")[0] ?? "there"}, I saw you're going and would love to say hello…`}
+                      className={cn(
+                        "w-full rounded-[8px] border border-border bg-surface px-3 py-2 text-[0.9375rem] leading-normal text-foreground",
+                        focusRing,
+                      )}
+                    />
+                    <p className="font-mono text-[0.65rem] tracking-[0.08em] text-muted-foreground uppercase">
+                      {directoryDraft.length}/280 · No AI opener here — not a close match, so write it yourself
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 min-[720px]:flex-row min-[720px]:items-center">
+                    {!directoryRelation ? (
+                      <Button type="button" className={actionSize} disabled={directoryRequestDisabled} onClick={() => void requestDirectoryIntro()}>
+                        Request connection
+                      </Button>
+                    ) : null}
+                    <Link
+                      href={`/u/${directoryPerson.slug}`}
+                      className={cn(
+                        "inline-flex h-11 items-center gap-1.5 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-transform duration-200 ease-[var(--ease-out)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 min-[720px]:h-9",
+                        focusRing,
+                      )}
+                    >
+                      View public card
+                      <ArrowUpRight aria-hidden="true" className="size-4" />
+                    </Link>
+                  </div>
+                  {directoryRequestError ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      {directoryRequestError}
+                    </p>
+                  ) : null}
+                </div>
+              )}
             </article>
           ) : null}
               </div>

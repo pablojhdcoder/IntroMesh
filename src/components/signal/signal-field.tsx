@@ -51,8 +51,6 @@ export function SignalField({
   hoveredId = null,
   onSelect,
   onHover,
-  railCollapsed = false,
-  sheetExpanded = false,
   loading = false,
   embeddingPending = false,
 }: {
@@ -61,9 +59,6 @@ export function SignalField({
   hoveredId?: string | null;
   onSelect: (id: string | null) => void;
   onHover?: (id: string | null) => void;
-  /** Overlay geometry so the overview frames the free rectangle, not the panel. */
-  railCollapsed?: boolean;
-  sheetExpanded?: boolean;
   loading?: boolean;
   /** Embeddings not ready: skeleton, never fake nodes. */
   embeddingPending?: boolean;
@@ -94,8 +89,6 @@ export function SignalField({
         hoveredId={hoveredId}
         onSelect={onSelect}
         onHover={onHover}
-        railCollapsed={railCollapsed}
-        sheetExpanded={sheetExpanded}
         reducedMotion={reducedMotion}
         ready={ready}
       />

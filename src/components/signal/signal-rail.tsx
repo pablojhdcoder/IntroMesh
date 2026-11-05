@@ -17,6 +17,8 @@ type RailPerson = FieldPerson | DirectoryPerson;
 const meta = "font-mono text-xs tracking-[0.08em] text-muted-foreground uppercase";
 const focusRing =
   "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none";
+const backControl =
+  "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground min-[720px]:h-9";
 const easeOut = [0.23, 1, 0.32, 1] as const;
 
 function SkeletonRows() {
@@ -214,10 +216,15 @@ export function SignalRail({
                 className="flex min-h-0 flex-1 flex-col"
               >
                 <div className="shrink-0 px-4 pb-2">
-                  <Button type="button" variant="ghost" className={cn("h-11 min-[720px]:h-9", focusRing)} onClick={onBack}>
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    aria-label="Back to signals"
+                    className={cn(backControl, focusRing, "-ml-3")}
+                  >
                     <ArrowLeft aria-hidden="true" className="size-4" />
                     Back to signals
-                  </Button>
+                  </button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">{detail}</div>
               </motion.div>

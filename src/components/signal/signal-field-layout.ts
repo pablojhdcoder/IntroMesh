@@ -121,6 +121,46 @@ export const GALAXY_COLD_RADIUS = 6;
 /** Distancia de reposo del enlace raíz→persona en la simulación de fuerzas. */
 export const GALAXY_LINK_DISTANCE = 120;
 
+export type GalaxyPalette = {
+  root: number;
+  hot: number;
+  cold: number;
+  label: string;
+  linkHot: string;
+  linkCold: string;
+  particle: string;
+};
+
+/**
+ * Paleta del campo 3D por tema. La clara es la original y no se toca.
+ * La oscura usa un verde saturado compartido por la raíz y las
+ * recomendadas, con el resto en gris cálido: con colores pálidos y cristal
+ * muy transmisivo, sobre el fondo casi negro las esferas se queman a un
+ * verde blanquecino donde ni círculos ni etiquetas se distinguen.
+ */
+export const GALAXY_PALETTE: Record<"light" | "dark", GalaxyPalette> = {
+  light: {
+    root: 0x16a34a,
+    hot: 0x22c55e,
+    cold: 0x8a877c,
+    label: "#16180f",
+    linkHot: "rgba(22, 163, 74, 0.85)",
+    linkCold: "rgba(96, 90, 72, 0.26)",
+    particle: "#16a34a",
+  },
+  dark: {
+    // "You" shares the other nodes' green: it reads as the biggest node of
+    // the same family (r=18 plus its label), not a different-colored alien.
+    root: 0x2fd35f,
+    hot: 0x2fd35f,
+    cold: 0x9c978c,
+    label: "#f4f1ea",
+    linkHot: "rgba(88, 204, 106, 0.75)",
+    linkCold: "rgba(244, 241, 234, 0.28)",
+    particle: "#4ade80",
+  },
+};
+
 /** Holgura mínima entre superficies de esferas vecinas. */
 const GALAXY_GAP = 18;
 /** Órbita mínima: raíz + recomendada + holgura, con margen para la etiqueta. */
@@ -195,30 +235,31 @@ export function galaxyLayout(people: readonly FieldPoint[]): GalaxyPosition[] {
   return positions;
 }
 
-/** Ancho del rail flotante (380) + márgenes (16+16) que el grafo debe liberar. */
-export const GALAXY_RAIL_INSET = 412;
-/** Franja del rail colapsado (56) + márgenes. */
-export const GALAXY_RAIL_COLLAPSED_INSET = 88;
-/** Alto reservado en móvil con el bottom sheet en peek / expandido. */
-export const GALAXY_SHEET_PEEK_INSET = 196;
-export const GALAXY_SHEET_OPEN_RATIO = 0.6;
+export type Vec3 = { x: number; y: number; z: number };
 
 /**
- * Espacio que la UI superpuesta roba al grafo a pantalla completa. El
- * encuadre y el centro visual se calculan sobre el rectángulo libre, así
- * ningún nodo queda bajo el rail (desktop) ni bajo el sheet (móvil).
+ * Destino de cámara al enfocar un nodo conservando la dirección de vista
+ * actual: la cámara se acerca al nodo desde el lado que el usuario ya
+ * estaba mirando (cámara − objetivo normalizado), sin volver jamás al
+ * ángulo inicial del grafo. Con dirección degenerada (la cámara está
+ * sobre el objetivo) usa el ángulo canónico de la escena.
  */
-export function galaxyFrameInset(
-  size: { width: number; height: number },
-  ui: { railCollapsed: boolean; sheetExpanded: boolean },
-): { right: number; bottom: number } {
-  const width = Number.isFinite(size.width) && size.width > 0 ? size.width : 0;
-  const height = Number.isFinite(size.height) && size.height > 0 ? size.height : 0;
-  if (width >= MOBILE_BREAKPOINT) {
-    return { right: Math.min(ui.railCollapsed ? GALAXY_RAIL_COLLAPSED_INSET : GALAXY_RAIL_INSET, Math.max(0, width - 120)), bottom: 0 };
-  }
-  const bottom = ui.sheetExpanded ? height * GALAXY_SHEET_OPEN_RATIO : GALAXY_SHEET_PEEK_INSET;
-  return { right: 0, bottom: Math.min(bottom, Math.max(0, height - 160)) };
+export function focusDestination(node: Vec3, camera: Vec3, look: Vec3, distance: number): Vec3 {
+  const safeDistance = Number.isFinite(distance) && distance > 0 ? distance : 0;
+  const view = { x: camera.x - look.x, y: camera.y - look.y, z: camera.z - look.z };
+  const length = Math.hypot(view.x, view.y, view.z);
+  const dir =
+    length < 1e-6
+      ? (() => {
+          const canonical = Math.hypot(0.35, 0.22, 1);
+          return { x: 0.35 / canonical, y: 0.22 / canonical, z: 1 / canonical };
+        })()
+      : { x: view.x / length, y: view.y / length, z: view.z / length };
+  return {
+    x: Math.round((node.x + dir.x * safeDistance) * 1000) / 1000,
+    y: Math.round((node.y + dir.y * safeDistance) * 1000) / 1000,
+    z: Math.round((node.z + dir.z * safeDistance) * 1000) / 1000,
+  };
 }
 
 /**

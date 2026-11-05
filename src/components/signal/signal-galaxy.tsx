@@ -9,7 +9,6 @@ import {
   Group,
   Mesh,
   MeshPhysicalMaterial,
-  type PerspectiveCamera,
   PMREMGenerator,
   SphereGeometry,
   SRGBColorSpace,
@@ -20,11 +19,12 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import SpriteText from "three-spritetext";
 import { FIELD_SELF_ID, type FieldPerson } from "@/components/signal/signal-field";
 import {
+  focusDestination,
   GALAXY_COLD_RADIUS,
   GALAXY_HOT_RADIUS,
   GALAXY_LINK_DISTANCE,
   GALAXY_ROOT_RADIUS,
-  galaxyFrameInset,
+  GALAXY_PALETTE,
   galaxyLayout,
   galaxyOverviewDistance,
 } from "@/components/signal/signal-field-layout";
@@ -65,37 +65,6 @@ function readCamera(graph: { cameraPosition: (...args: never[]) => unknown }): C
   return (graph.cameraPosition as unknown as () => CameraPose)();
 }
 
-type Palette = {
-  root: number;
-  hot: number;
-  cold: number;
-  label: string;
-  linkHot: string;
-  linkCold: string;
-  particle: string;
-};
-
-const PALETTE: Record<"light" | "dark", Palette> = {
-  light: {
-    root: 0x16a34a,
-    hot: 0x22c55e,
-    cold: 0x8a877c,
-    label: "#16180f",
-    linkHot: "rgba(22, 163, 74, 0.85)",
-    linkCold: "rgba(96, 90, 72, 0.26)",
-    particle: "#16a34a",
-  },
-  dark: {
-    root: 0xd6ff4a,
-    hot: 0x9ede2a,
-    cold: 0x8f8c94,
-    label: "rgba(244, 241, 234, 0.95)",
-    linkHot: "rgba(158, 222, 42, 0.62)",
-    linkCold: "rgba(244, 241, 234, 0.18)",
-    particle: "#f4f1ea",
-  },
-};
-
 const spheres = new Map<number, SphereGeometry>();
 
 function sphere(radius: number): SphereGeometry {
@@ -106,17 +75,21 @@ function sphere(radius: number): SphereGeometry {
   return geometry;
 }
 
-function glass(color: number, selected: boolean, kind: Kind): MeshPhysicalMaterial {
+function glass(color: number, selected: boolean, kind: Kind, dark = false): MeshPhysicalMaterial {
   const hot = kind === "root" || kind === "hot" || selected;
+  // Dark theme only: far less transmission and emissive, higher opacity.
+  // On the near-black canvas the light-theme glass lets the background
+  // through and blows the lime out to a pale wash where spheres and
+  // labels stop reading; saturated, mostly-opaque glass keeps the color.
   return new MeshPhysicalMaterial({
     color: new Color(color),
     emissive: new Color(color),
-    emissiveIntensity: selected ? 1.5 : kind === "root" ? 0.9 : hot ? 0.45 : 0.12,
+    emissiveIntensity: selected ? (dark ? 1.1 : 1.5) : kind === "root" ? (dark ? 0.55 : 0.9) : hot ? (dark ? 0.35 : 0.45) : 0.12,
     transparent: true,
-    opacity: kind === "cold" && !selected ? 0.55 : 0.86,
+    opacity: dark ? (kind === "cold" && !selected ? 0.78 : 0.95) : kind === "cold" && !selected ? 0.55 : 0.86,
     roughness: selected ? 0.05 : 0.12,
     metalness: 0.08,
-    transmission: kind === "root" ? 0.72 : 0.82,
+    transmission: dark ? (kind === "root" ? 0.35 : 0.45) : kind === "root" ? 0.72 : 0.82,
     thickness: kind === "root" ? 2.4 : 1.1,
     clearcoat: 1,
     clearcoatRoughness: 0.18,
@@ -129,8 +102,6 @@ export function SignalGalaxy({
   hoveredId = null,
   onSelect,
   onHover,
-  railCollapsed = false,
-  sheetExpanded = false,
   reducedMotion,
   ready,
 }: {
@@ -139,8 +110,6 @@ export function SignalGalaxy({
   hoveredId?: string | null;
   onSelect: (id: string | null) => void;
   onHover?: (id: string | null) => void;
-  railCollapsed?: boolean;
-  sheetExpanded?: boolean;
   reducedMotion: boolean;
   /** False while the roster is still initial/loading: mount nothing until data is final. */
   ready: boolean;
@@ -154,6 +123,7 @@ export function SignalGalaxy({
   const focusTimer = useRef<number | null>(null);
   const overviewFrame = useRef<number | null>(null);
   const overviewPose = useRef<{ x: number; y: number; z: number } | null>(null);
+  const overviewDistance = useRef<number | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
@@ -180,7 +150,7 @@ export function SignalGalaxy({
     return () => observer.disconnect();
   }, []);
 
-  const palette = PALETTE[theme];
+  const palette = GALAXY_PALETTE[theme];
 
   const rosterKey = people.map((person) => `${person.id}:${person.recommendation ? 1 : 0}`).join("|");
 
@@ -277,7 +247,7 @@ export function SignalGalaxy({
       const group = new Group();
       if (hovered && !selected) group.scale.setScalar(1.12);
       const color = node.kind === "root" ? palette.root : node.kind === "hot" ? palette.hot : palette.cold;
-      const mesh = new Mesh(sphere(node.val), glass(color, highlighted, node.kind));
+      const mesh = new Mesh(sphere(node.val), glass(color, highlighted, node.kind, theme === "dark"));
       group.add(mesh);
 
       if (node.name && (node.kind !== "cold" || highlighted)) {
@@ -288,6 +258,13 @@ export function SignalGalaxy({
         label.textHeight = Math.max(3.6, node.val * 0.48);
         label.position.y = node.kind === "root" ? node.val + label.textHeight : -(node.val + label.textHeight * 0.85 + 1.5);
         label.material.depthTest = false;
+        if (theme === "dark") {
+          // Dark backing so the pale label text survives bright glass and
+          // particle threads passing behind it.
+          label.backgroundColor = "rgba(7, 8, 12, 0.62)";
+          label.padding = [1.6, 0.8];
+          label.borderRadius = 1.2;
+        }
         group.add(label);
       }
       if (objectCache.current.size > 120) objectCache.current.clear();
@@ -296,24 +273,6 @@ export function SignalGalaxy({
     },
     [hoveredId, palette, selectedId, theme],
   );
-
-  // The overlay (rail on desktop, sheet on mobile) steals one edge of the
-  // fullscreen field: render through a view offset so the scene centers in
-  // the free rectangle and no node hides under the panel.
-  const inset = galaxyFrameInset(size, { railCollapsed, sheetExpanded });
-  const frameWidth = Math.max(1, size.width - inset.right);
-  const frameHeight = Math.max(1, size.height - inset.bottom);
-  const frameKey = `${size.width >= 720 ? "d" : "m"}:${railCollapsed ? 1 : 0}:${sheetExpanded ? 1 : 0}`;
-  useEffect(() => {
-    const graph = graphRef.current;
-    if (!graph || !ready || size.width === 0 || size.height === 0) return;
-    const camera = graph.camera() as PerspectiveCamera;
-    if (inset.right > 0 || inset.bottom > 0) {
-      camera.setViewOffset(size.width, size.height, 0, 0, frameWidth, frameHeight);
-    } else {
-      camera.clearViewOffset();
-    }
-  }, [frameHeight, frameWidth, inset.bottom, inset.right, ready, size.height, size.width]);
 
   // Styling + forces only: re-applies on theme/motion/data change but never
   // moves the camera, so theme toggles and roster refreshes don't jump.
@@ -327,8 +286,8 @@ export function SignalGalaxy({
     const link = graph.d3Force("link") as { distance?: (value: number) => void } | undefined;
     link?.distance?.(GALAXY_LINK_DISTANCE);
     const renderer = graph.renderer() as WebGLRenderer;
-    renderer.toneMappingExposure = theme === "dark" ? 1.2 : 1.05;
-    if (keyLight.current) keyLight.current.intensity = theme === "dark" ? 2.35 : 1.6;
+    renderer.toneMappingExposure = theme === "dark" ? 1.0 : 1.05;
+    if (keyLight.current) keyLight.current.intensity = theme === "dark" ? 1.9 : 1.6;
     if (!dressed.current) {
       dressed.current = true;
       renderer.outputColorSpace = SRGBColorSpace;
@@ -340,7 +299,7 @@ export function SignalGalaxy({
       const pmrem = new PMREMGenerator(renderer);
       graph.scene().environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
       pmrem.dispose();
-      const key = new DirectionalLight(0xfff6e8, theme === "dark" ? 2.35 : 1.6);
+      const key = new DirectionalLight(0xfff6e8, theme === "dark" ? 1.9 : 1.6);
       key.position.set(40, 60, 80);
       keyLight.current = key;
       graph.scene().add(key);
@@ -361,9 +320,8 @@ export function SignalGalaxy({
   useEffect(() => {
     if (!ready || size.width === 0 || size.height === 0) return;
     if (graphData.nodes.length === 0) return;
-    const fitSig = `${rosterSig}|${frameKey}`;
-    if (fittedSig.current === fitSig) return;
-    fittedSig.current = fitSig;
+    if (fittedSig.current === rosterSig) return;
+    fittedSig.current = rosterSig;
     const graph = graphRef.current;
     if (!graph) return;
     const frame = window.setTimeout(() => {
@@ -372,8 +330,9 @@ export function SignalGalaxy({
       // physics settles everyone on the link orbit, so the extent is the
       // larger of the seed spread and that orbit — known before the first
       // frame, so root-only and two-node rosters frame exactly like any
-      // other even while nodes are still moving.
-      // Aspect is the free rectangle left by the overlay, not the canvas.
+      // other even while nodes are still moving. The container already is
+      // the free rectangle (the app insets it around the rail), so the
+      // aspect is simply the canvas aspect.
       const seedExtent =
         Math.max(
           ...graphData.nodes.map(
@@ -384,7 +343,8 @@ export function SignalGalaxy({
         graphData.nodes.length > 1
           ? Math.max(seedExtent, GALAXY_LINK_DISTANCE + GALAXY_HOT_RADIUS + 16)
           : seedExtent;
-      const distance = galaxyOverviewDistance(extent, frameWidth / frameHeight);
+      const distance = galaxyOverviewDistance(extent, size.width / size.height);
+      overviewDistance.current = distance;
       const direction = Math.hypot(0.3, 0.22, 1);
       const pose = {
         x: (0.3 / direction) * distance,
@@ -395,13 +355,65 @@ export function SignalGalaxy({
       graph.cameraPosition(pose, { x: 0, y: 0, z: 0 }, reducedMotion ? 0 : 800);
     }, 150);
     return () => window.clearTimeout(frame);
-  }, [frameHeight, frameKey, frameWidth, graphData, ready, reducedMotion, rosterSig, size.height, size.width]);
+  }, [graphData, ready, reducedMotion, rosterSig, size.height, size.width]);
 
   const stopOverview = useCallback(() => {
     if (overviewFrame.current === null) return;
     window.cancelAnimationFrame(overviewFrame.current);
     overviewFrame.current = null;
   }, []);
+
+  // Shared camera flight: interpolates position AND look-at from the pose
+  // the user actually left the graph in — never from a canonical start.
+  // `getTarget` is re-read every frame so a node still drifting under the
+  // force physics stays centered on arrival. A new flight (or a user drag,
+  // via the controls 'start' listener) cancels the previous one mid-air.
+  const animateCamera = useCallback(
+    (getTarget: () => { pose: CameraPose; look: CameraPose }, duration: number, onDone?: () => void) => {
+      const graph = graphRef.current;
+      if (!graph) return;
+      stopOverview();
+      const controls = graph.controls() as OrbitControls;
+      controls.autoRotate = false;
+      if (duration <= 0) {
+        const target = getTarget();
+        graph.cameraPosition(target.pose, target.look, 0);
+        controls.target.set(target.look.x, target.look.y, target.look.z);
+        onDone?.();
+        return;
+      }
+      const from = readCamera(graph);
+      const fromLook = controls.target.clone();
+      const start = performance.now();
+      const step = (now: number) => {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - (1 - t) * (1 - t);
+        const target = getTarget();
+        graph.cameraPosition(
+          {
+            x: from.x + (target.pose.x - from.x) * eased,
+            y: from.y + (target.pose.y - from.y) * eased,
+            z: from.z + (target.pose.z - from.z) * eased,
+          },
+          {
+            x: fromLook.x + (target.look.x - fromLook.x) * eased,
+            y: fromLook.y + (target.look.y - fromLook.y) * eased,
+            z: fromLook.z + (target.look.z - fromLook.z) * eased,
+          },
+          0,
+        );
+        if (t < 1) {
+          overviewFrame.current = window.requestAnimationFrame(step);
+          return;
+        }
+        overviewFrame.current = null;
+        controls.target.set(target.look.x, target.look.y, target.look.z);
+        onDone?.();
+      };
+      overviewFrame.current = window.requestAnimationFrame(step);
+    },
+    [stopOverview],
+  );
 
   const showOverview = useCallback(() => {
     const graph = graphRef.current;
@@ -410,48 +422,32 @@ export function SignalGalaxy({
     stopOverview();
     if (!graph) return;
     const controls = graph.controls() as OrbitControls;
-    controls.autoRotate = false;
+    // Exit along the user's current viewing ray: pull straight back to the
+    // overview distance looking at the origin, keeping the azimuth and
+    // elevation they left — never swinging back to the initial pose.
+    const distance = overviewDistance.current;
+    if (distance !== null) {
+      const dest = focusDestination({ x: 0, y: 0, z: 0 }, readCamera(graph), controls.target.clone(), distance);
+      animateCamera(() => ({ pose: dest, look: { x: 0, y: 0, z: 0 } }), reducedMotion ? 0 : 700, () => {
+        controls.autoRotate = !reducedMotion;
+      });
+      return;
+    }
     const pose = overviewPose.current;
-    if (!pose || reducedMotion) {
+    if (!pose) {
       const duration = reducedMotion ? 0 : 700;
-      if (pose) graph.cameraPosition(pose, { x: 0, y: 0, z: 0 }, duration);
-      else graph.zoomToFit(duration, 8);
+      controls.autoRotate = false;
+      graph.zoomToFit(duration, 8);
       focusTimer.current = window.setTimeout(() => {
         controls.target.set(0, 0, 0);
         controls.autoRotate = !reducedMotion;
       }, duration + 40);
       return;
     }
-    const from = readCamera(graph);
-    const fromLook = controls.target.clone();
-    const duration = 700;
-    const start = performance.now();
-    const step = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - (1 - t) * (1 - t);
-      graph.cameraPosition(
-        {
-          x: from.x + (pose.x - from.x) * eased,
-          y: from.y + (pose.y - from.y) * eased,
-          z: from.z + (pose.z - from.z) * eased,
-        },
-        {
-          x: fromLook.x * (1 - eased),
-          y: fromLook.y * (1 - eased),
-          z: fromLook.z * (1 - eased),
-        },
-        0,
-      );
-      if (t < 1) {
-        overviewFrame.current = window.requestAnimationFrame(step);
-        return;
-      }
-      overviewFrame.current = null;
-      controls.target.set(0, 0, 0);
+    animateCamera(() => ({ pose, look: { x: 0, y: 0, z: 0 } }), reducedMotion ? 0 : 700, () => {
       controls.autoRotate = !reducedMotion;
-    };
-    overviewFrame.current = window.requestAnimationFrame(step);
-  }, [reducedMotion, stopOverview]);
+    });
+  }, [animateCamera, reducedMotion, stopOverview]);
 
   const focusNode = useCallback(
     (node: { id?: string; x?: number; y?: number; z?: number; val?: number }) => {
@@ -459,26 +455,44 @@ export function SignalGalaxy({
       if (!graph || !node.id || node.x === undefined) return;
       focusedId.current = node.id;
       if (focusTimer.current !== null) window.clearTimeout(focusTimer.current);
-      stopOverview();
-      const look = { x: node.x, y: node.y ?? 0, z: node.z ?? 0 };
       const controls = graph.controls() as OrbitControls;
-      controls.autoRotate = false;
-      controls.target.set(look.x, look.y, look.z);
       // Far enough that the sphere and its label fit: the root (r=18) at the
       // old fixed 72 filled the frame exactly like the collapsed overview.
       const distance = Math.max(64, (node.val ?? GALAXY_HOT_RADIUS) * 6.5);
-      graph.cameraPosition(
-        { x: look.x + distance * 0.35, y: look.y + distance * 0.22, z: look.z + distance },
-        look,
+      // Approach from the side the user is already looking from: the view
+      // direction at click time is frozen, the node position is read live
+      // every frame so physics drift cannot decenter the arrival.
+      const from = readCamera(graph);
+      const fromLook = controls.target.clone();
+      const startNode = { x: node.x, y: node.y ?? 0, z: node.z ?? 0 };
+      const dest = focusDestination(startNode, from, fromLook, distance);
+      const dir = { x: dest.x - startNode.x, y: dest.y - startNode.y, z: dest.z - startNode.z };
+      animateCamera(
+        () => {
+          const look = { x: node.x ?? startNode.x, y: node.y ?? startNode.y, z: node.z ?? startNode.z };
+          return { pose: { x: look.x + dir.x, y: look.y + dir.y, z: look.z + dir.z }, look };
+        },
         reducedMotion ? 0 : 700,
+        () => {
+          controls.autoRotate = !reducedMotion;
+        },
       );
-      focusTimer.current = window.setTimeout(() => {
-        controls.target.set(look.x, look.y, look.z);
-        controls.autoRotate = !reducedMotion;
-      }, reducedMotion ? 0 : 720);
     },
-    [reducedMotion, stopOverview],
+    [animateCamera, reducedMotion],
   );
+
+  // Dragging the graph mid-flight cancels the flight: the camera never
+  // fights the user for control.
+  const interruptBound = useRef(false);
+  useEffect(() => {
+    const graph = graphRef.current;
+    if (!graph || !ready || interruptBound.current) return;
+    interruptBound.current = true;
+    const controls = graph.controls() as OrbitControls & {
+      addEventListener: (type: string, listener: () => void) => void;
+    };
+    controls.addEventListener("start", stopOverview);
+  }, [ready, size.height, size.width, stopOverview]);
 
   // Selection from the rail drives the camera too: focus the chosen node,
   // and return to the overview when the selection clears. Graph clicks set

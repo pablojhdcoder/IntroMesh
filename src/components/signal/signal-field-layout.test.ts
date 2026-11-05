@@ -9,7 +9,8 @@ import {
   GALAXY_HOT_RADIUS,
   GALAXY_LINK_DISTANCE,
   GALAXY_ROOT_RADIUS,
-  galaxyFrameInset,
+  focusDestination,
+  GALAXY_PALETTE,
   galaxyLayout,
   galaxyOverviewDistance,
   hashUnit,
@@ -186,27 +187,67 @@ describe("galaxyOverviewDistance", () => {
   });
 });
 
-describe("galaxyFrameInset", () => {
-  it("en desktop reserva el ancho del rail y libera todo al colapsarlo", () => {
-    expect(galaxyFrameInset({ width: 1440, height: 900 }, { railCollapsed: false, sheetExpanded: false })).toEqual({
-      right: 412,
-      bottom: 0,
+describe("focusDestination", () => {
+  const node = { x: 100, y: 20, z: -10 };
+
+  it("conserva la dirección de vista actual: acerca desde el lado que mirabas", () => {
+    // Cámara al norte del origen mirando al origen: debe llegar al norte del nodo.
+    const dest = focusDestination(node, { x: 0, y: 40, z: 200 }, { x: 0, y: 0, z: 0 }, 70);
+    const dir = { x: dest.x - node.x, y: dest.y - node.y, z: dest.z - node.z };
+    expect(Math.hypot(dir.x, dir.y, dir.z)).toBeCloseTo(70, 3);
+    // Misma dirección que cámara→objetivo (0,40,200) normalizada.
+    const view = Math.hypot(0, 40, 200);
+    expect(dir.x).toBeCloseTo(0, 5);
+    expect(dir.y / 70).toBeCloseTo(40 / view, 3);
+    expect(dir.z / 70).toBeCloseTo(200 / view, 3);
+  });
+
+  it("desde un azimut girado 180° llega por el lado opuesto, sin volver al inicial", () => {
+    const dest = focusDestination(node, { x: 0, y: 0, z: -200 }, { x: 0, y: 0, z: 0 }, 70);
+    expect(dest.z).toBeLessThan(node.z);
+    expect(dest.x).toBeCloseTo(node.x, 5);
+  });
+
+  it("con dirección degenerada usa el ángulo canónico", () => {
+    const dest = focusDestination(node, { x: 5, y: 5, z: 5 }, { x: 5, y: 5, z: 5 }, 70);
+    const dist = Math.hypot(dest.x - node.x, dest.y - node.y, dest.z - node.z);
+    expect(dist).toBeCloseTo(70, 3);
+    expect(dest.z).toBeGreaterThan(node.z);
+  });
+
+  it("al salir al overview conserva el azimut: retrocede recto desde tu lado", () => {
+    // Usuario mirando desde detrás (−z): la salida al origen va por −z, no al ángulo canónico (+z).
+    const dest = focusDestination({ x: 0, y: 0, z: 0 }, { x: 10, y: 5, z: -180 }, { x: 90, y: 20, z: -40 }, 260);
+    expect(dest.z).toBeLessThan(0);
+    expect(Math.hypot(dest.x, dest.y, dest.z)).toBeCloseTo(260, 3);
+  });
+
+  it("con distancia inválida devuelve el nodo, sin NaN", () => {
+    const dest = focusDestination(node, { x: 0, y: 0, z: 10 }, { x: 0, y: 0, z: 0 }, Number.NaN);
+    expect(Number.isFinite(dest.x + dest.y + dest.z)).toBe(true);
+  });
+});
+
+describe("GALAXY_PALETTE", () => {
+  it("la paleta clara queda intacta", () => {
+    expect(GALAXY_PALETTE.light).toEqual({
+      root: 0x16a34a,
+      hot: 0x22c55e,
+      cold: 0x8a877c,
+      label: "#16180f",
+      linkHot: "rgba(22, 163, 74, 0.85)",
+      linkCold: "rgba(96, 90, 72, 0.26)",
+      particle: "#16a34a",
     });
-    expect(galaxyFrameInset({ width: 1440, height: 900 }, { railCollapsed: true, sheetExpanded: false }).right).toBeLessThan(100);
   });
 
-  it("en móvil reserva el alto del bottom sheet según su estado", () => {
-    const peek = galaxyFrameInset({ width: 390, height: 844 }, { railCollapsed: false, sheetExpanded: false });
-    const open = galaxyFrameInset({ width: 390, height: 844 }, { railCollapsed: false, sheetExpanded: true });
-    expect(peek.right).toBe(0);
-    expect(open.bottom).toBeGreaterThan(peek.bottom);
-    expect(open.bottom).toBeLessThan(844);
-  });
-
-  it("nunca deja un área visible negativa", () => {
-    const inset = galaxyFrameInset({ width: 320, height: 480 }, { railCollapsed: false, sheetExpanded: true });
-    expect(320 - inset.right).toBeGreaterThan(0);
-    expect(480 - inset.bottom).toBeGreaterThan(0);
+  it("en oscuro la raíz comparte el verde de las recomendadas y se distingue del resto", () => {
+    const dark = GALAXY_PALETTE.dark;
+    // "You" es el nodo grande de la misma familia verde, no un color aparte.
+    expect(dark.root).toBe(dark.hot);
+    expect(dark.root).toBe(0x2fd35f);
+    expect(dark.cold).not.toBe(dark.root);
+    expect(dark.label).toBe("#f4f1ea");
   });
 });
 
