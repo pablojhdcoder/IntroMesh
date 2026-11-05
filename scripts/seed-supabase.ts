@@ -1,5 +1,5 @@
 import { DEMO_EVENT_ID } from "@/domain/catalog";
-import { buildDemoCommunity } from "@/domain/demo-community";
+import { buildDemoCommunity, extraEventParticipations } from "@/domain/demo-community";
 import { getStore } from "@/lib/store";
 import { EXTRA_EVENTS } from "@/lib/store/types";
 
@@ -99,7 +99,14 @@ async function main(): Promise<void> {
     const participationKeys = new Set(
       database.participations.map((record) => `${record.userId}::${record.eventId}`),
     );
-    for (const record of participations) {
+    for (const record of [
+      ...participations,
+      ...extraEventParticipations(
+        EXTRA_EVENTS.map((event) => event.id),
+        8,
+        Date.parse("2026-11-04T09:00:00.000Z"),
+      ),
+    ]) {
       const key = `${record.userId}::${record.eventId}`;
       if (participationKeys.has(key)) continue;
       database.participations.push(record);

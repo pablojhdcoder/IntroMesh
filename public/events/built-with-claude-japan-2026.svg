@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="320" viewBox="0 0 800 320" role="img" aria-label="Built with Claude Japan 2026 cover">
+  <rect width="800" height="320" fill="#1f1a16"/>
+  <rect x="0" y="0" width="800" height="8" fill="#d97757"/>
+  <g transform="translate(90,105)">
+    <polygon points="50,0 95,27 95,83 50,110 5,83 5,27" fill="none" stroke="#d97757" stroke-width="12"/>
+    <polygon points="50,32 72,45 72,71 50,84 28,71 28,45" fill="#d97757"/>
+  </g>
+  <text x="220" y="150" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="700" fill="#ffffff">Built with Claude</text>
+  <text x="220" y="192" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#d97757">Japan 2026 · Remote · Nov 2–10</text>
+  <text x="220" y="224" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#9a958c">Claude Code · $50k API credits</text>
+</svg>

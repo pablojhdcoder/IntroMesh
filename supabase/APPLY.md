@@ -15,6 +15,8 @@ In the Supabase dashboard open **SQL → New query**. Run these files **in order
 11. `supabase/migrations/0011_drop_analytics.sql` — drops analytics_events (no code reads it)
 12. `supabase/migrations/0012_event_covers.sql` — events.cover_url (local public/events/*.svg)
 13. `supabase/migrations/0013_extra_events.sql` — Meta cover + 5 real rooms (demo=false, upcoming)
+14. `supabase/migrations/0014_cerebral_valley_events.sql` — 5 Cerebral Valley hackathons, Nov 2026 (demo=false)
+15. `supabase/migrations/0015_event_demo_participations.sql` — 8 demo joined members per extra room (run `npx tsx scripts/emit-event-demos.ts` to regenerate)
 
 Or from a shell with the [Supabase CLI](https://supabase.com/docs/guides/cli) linked to the project:
 

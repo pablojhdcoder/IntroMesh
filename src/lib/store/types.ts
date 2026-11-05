@@ -1,5 +1,5 @@
 import { DEMO_EVENT_ID } from "@/domain/catalog";
-import { buildDemoCommunity } from "@/domain/demo-community";
+import { buildDemoCommunity, extraEventParticipations } from "@/domain/demo-community";
 import type { CachedExplanation } from "@/domain/cache/explanations";
 import type { EmbeddingRecord } from "@/domain/embedding/jobs";
 import { emptyMetrics, type EngineMetrics } from "@/domain/engine-metrics";
@@ -213,12 +213,76 @@ export const EXTRA_EVENTS: EventRecord[] = [
     createdBy: null,
     coverUrl: "/events/wfeo-hackathon-2027.svg",
   }),
+  asEvent({
+    id: "built-with-claude-japan-2026",
+    name: "Built with Claude: Japan 2026",
+    demo: false,
+    description: "Anthropic's first nationwide online hackathon in Japan: 250 builders ship tools with Claude Code. Up to $50,000 in API credits.",
+    category: "hackathon",
+    startsAt: "2026-11-02T03:00:00.000Z",
+    code: "CLAUDE-JP-2026",
+    status: "live",
+    createdBy: null,
+    coverUrl: "/events/built-with-claude-japan-2026.svg",
+  }),
+  asEvent({
+    id: "vultr-agent-rush-2026",
+    name: "Vultr: Agent Rush Hackathon",
+    demo: false,
+    description: "Hybrid hackathon across three continents: online build with in-person finals on November 8.",
+    category: "hackathon",
+    startsAt: "2026-11-03T16:00:00.000Z",
+    code: "VULTR-RUSH-2026",
+    status: "live",
+    createdBy: null,
+    coverUrl: "/events/vultr-agent-rush-2026.svg",
+  }),
+  asEvent({
+    id: "aie-code-2026",
+    name: "AIE Code Summit 2026 Hackathon",
+    demo: false,
+    description: "One-day hackathon in San Francisco: build coding agents that improve autonomously. $11,000 in prizes, judges from Meta and Google DeepMind.",
+    category: "hackathon",
+    startsAt: "2026-11-07T17:00:00.000Z",
+    code: "AIE-CODE-2026",
+    status: "upcoming",
+    createdBy: null,
+    coverUrl: "/events/aie-code-2026.svg",
+  }),
+  asEvent({
+    id: "mongodb-toronto-2026",
+    name: "Agents in Context Toronto: MongoDB Hackathon",
+    demo: false,
+    description: "One-day MongoDB hackathon in Toronto: durable agentic AI on Atlas and Vector Search. Up to $21,000 CAD plus LangSmith credits.",
+    category: "hackathon",
+    startsAt: "2026-11-14T14:00:00.000Z",
+    code: "MONGO-TORONTO-2026",
+    status: "upcoming",
+    createdBy: null,
+    coverUrl: "/events/mongodb-toronto-2026.svg",
+  }),
+  asEvent({
+    id: "gemini-4-nyc-2026",
+    name: "Gemini 4 NYC Hackathon",
+    demo: false,
+    description: "Push Gemini 4 in reasoning, visual coding and robotics in New York with Google DeepMind. $20,000 in prizes.",
+    category: "hackathon",
+    startsAt: "2026-11-21T14:00:00.000Z",
+    code: "GEMINI4-NYC-2026",
+    status: "upcoming",
+    createdBy: null,
+    coverUrl: "/events/gemini-4-nyc-2026.svg",
+  }),
 ];
 
 export function hydrateDatabase(input: Partial<Database> | null | undefined): Database {
   const seeded = input?.profiles ? null : buildDemoCommunity();
   const baseEvents = input?.events ?? [demoEvent(), ...EXTRA_EVENTS];
   const events = baseEvents.map((event) => asEvent(event));
+  const baseParticipations = input?.participations ?? [
+    ...(seeded?.participations ?? []),
+    ...extraEventParticipations(EXTRA_EVENTS.map((event) => event.id)),
+  ];
   return {
     events,
     profiles: input?.profiles ?? seeded?.profiles ?? [],
@@ -226,7 +290,7 @@ export function hydrateDatabase(input: Partial<Database> | null | undefined): Da
     affinity: input?.affinity ?? [],
     accounts: input?.accounts ?? [],
     identities: input?.identities ?? [],
-    participations: (input?.participations ?? seeded?.participations ?? []).map((item) => ({
+    participations: baseParticipations.map((item) => ({
       ...item,
       lookingFor: item.lookingFor ?? [],
       collaborationInterests: item.collaborationInterests ?? [],

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="320" viewBox="0 0 800 320" role="img" aria-label="Agents in Context Toronto MongoDB Hackathon cover">
+  <rect width="800" height="320" fill="#0c2b21"/>
+  <g transform="translate(80,100)">
+    <ellipse cx="55" cy="60" rx="45" ry="60" fill="none" stroke="#00ed64" stroke-width="12"/>
+    <ellipse cx="55" cy="38" rx="45" ry="16" fill="none" stroke="#00ed64" stroke-width="12"/>
+    <line x1="10" y1="38" x2="10" y2="82" stroke="#00ed64" stroke-width="12"/>
+    <line x1="100" y1="38" x2="100" y2="82" stroke="#00ed64" stroke-width="12"/>
+  </g>
+  <text x="200" y="150" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" fill="#ffffff">Agents in Context</text>
+  <text x="200" y="192" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#00ed64">MongoDB · Toronto · Nov 14</text>
+  <text x="200" y="224" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#9a958c">$21k CAD · Atlas + Vector Search</text>
+</svg>

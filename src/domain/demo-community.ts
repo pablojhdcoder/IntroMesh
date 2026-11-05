@@ -120,6 +120,46 @@ export function buildDemoCommunity(count = 180, now = Date.now()) {
   return { profiles: [...profiles, ...founders], participations };
 }
 
+/** Demo fixtures per extra event: 8 joined members each, rotating roster. */
+export const DEMO_PER_EXTRA_EVENT = 8;
+
+export function visibleDemoProfiles(now = Date.now()): StoredProfile[] {
+  const { profiles, participations } = buildDemoCommunity(180, now);
+  const visibleIds = new Set(participations.map((record) => record.userId));
+  return profiles.filter((profile) => visibleIds.has(profile.id));
+}
+
+export function extraEventParticipations(
+  eventIds: readonly string[],
+  perEvent = DEMO_PER_EXTRA_EVENT,
+  now = Date.now(),
+): ParticipationRecord[] {
+  const visible = visibleDemoProfiles(now);
+  if (visible.length === 0 || perEvent <= 0) return [];
+  const stamp = new Date(now).toISOString();
+  return eventIds.flatMap((eventId, eventIndex) =>
+    Array.from({ length: perEvent }, (_, slot) => {
+      const profile = visible[(eventIndex * perEvent + slot) % visible.length]!;
+      return {
+        userId: profile.id,
+        eventId,
+        intentText: "",
+        lookingFor: [],
+        collaborationInterests: [],
+        revision: 0,
+        inputHash: `demo:${profile.id}`,
+        consent: true,
+        visibility: "discoverable",
+        status: "joined",
+        updatedAt: stamp,
+        joinedAt: stamp,
+        role: "attendee",
+        lastActiveAt: null,
+      } satisfies ParticipationRecord;
+    }),
+  );
+}
+
 const FOUNDERS: Array<{
   displayName: string;
   role: string;
