@@ -23,6 +23,10 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "IntroMesh",
   description: "In-person networking. Discover, understand, and connect.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
