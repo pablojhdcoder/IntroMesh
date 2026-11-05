@@ -19,7 +19,18 @@ function cleanHandle(value?: string | null): string | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
-export function AppNav({ active, slug, handle }: { active?: AppNavActive; slug?: string; handle?: string | null }) {
+export function AppNav({
+  active,
+  slug,
+  handle,
+  pendingCount,
+}: {
+  active?: AppNavActive;
+  slug?: string;
+  handle?: string | null;
+  /** Incoming connection requests waiting for this viewer. */
+  pendingCount?: number;
+}) {
   void slug;
   const profileHandle = cleanHandle(handle) ?? cleanHandle(slug);
   const profileLabel = profileHandle ? `@${profileHandle}` : "My Profile";
@@ -50,6 +61,14 @@ export function AppNav({ active, slug, handle }: { active?: AppNavActive; slug?:
                   )}
                 >
                   {link.label}
+                  {link.id === "connections" && pendingCount ? (
+                    <span
+                      aria-label={`${pendingCount} pending ${pendingCount === 1 ? "request" : "requests"}`}
+                      className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-signal px-1 font-mono text-[0.65rem] font-medium text-[#14160c] tabular-nums"
+                    >
+                      {pendingCount}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

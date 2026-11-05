@@ -27,7 +27,16 @@ export function connectActions(store: Store) {
           const otherId = item.fromId === profileId ? item.toId : item.fromId;
           const other = byId.get(otherId);
           if (!other) return [];
-          return [{ ...item, eventName: eventNameById.get(item.eventId) ?? null, other: toSharedCard(other) }];
+          const direction = item.toId === profileId ? ("incoming" as const) : ("outgoing" as const);
+          return [
+            {
+              ...item,
+              eventName: eventNameById.get(item.eventId) ?? null,
+              other: toSharedCard(other),
+              direction,
+              canResolve: direction === "incoming" && item.status === "pending",
+            },
+          ];
         });
     },
 
@@ -40,6 +49,7 @@ export function connectActions(store: Store) {
     ) {
       return store.update((database) => {
         if (introSource !== "model" && introSource !== "user") return { error: "forbidden" as const };
+        if (profileId === otherId) return { error: "forbidden" as const };
         if (eventId !== undefined) {
           const joined = database.participations.some(
             (item) => item.userId === profileId && item.eventId === eventId && item.status === "joined",
@@ -82,6 +92,9 @@ export function connectActions(store: Store) {
         if (!connection) return { error: "missing" as const };
         // Only the real recipient accepts or declines. No demo bypass.
         if (connection.toId !== profileId) return { error: "forbidden" as const };
+        // Only a pending request can be resolved; re-resolving must not
+        // overwrite the original outcome or acceptedAt.
+        if (connection.status !== "pending") return { error: "state" as const };
         const acceptedAt = action === "accept" ? new Date().toISOString() : null;
         connection.status = action === "accept" ? "accepted" : "declined";
         connection.acceptedAt = acceptedAt;

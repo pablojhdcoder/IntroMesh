@@ -85,6 +85,15 @@ describe("connectActions.connections", () => {
     const scoped = await connectActions(store).connections("u1", "e1");
     expect(scoped.map((item) => item.id)).toEqual(["c1"]);
   });
+
+  it("marks direction and who can resolve", async () => {
+    const store = fakeStore(baseDatabase());
+    const mine = await connectActions(store).connections("u1");
+    expect(mine.find((item) => item.id === "c1")).toMatchObject({ direction: "outgoing", canResolve: false });
+    expect(mine.find((item) => item.id === "c2")).toMatchObject({ direction: "incoming", canResolve: true });
+    const theirs = await connectActions(store).connections("u2");
+    expect(theirs.find((item) => item.id === "c1")).toMatchObject({ direction: "incoming", canResolve: false });
+  });
 });
 
 describe("connectActions.requestConnection", () => {
@@ -120,6 +129,14 @@ describe("connectActions.requestConnection", () => {
     expect(database.connections).toHaveLength(3);
   });
 
+  it("rejects a request to yourself", async () => {
+    const database = baseDatabase();
+    const store = fakeStore(database);
+    const result = await connectActions(store).requestConnection("u1", "u1", "hello", "user", "e1");
+    expect(result).toEqual({ error: "forbidden" });
+    expect(database.connections).toHaveLength(2);
+  });
+
   it("allows re-requesting a declined pair", async () => {
     const database = baseDatabase();
     database.connections.push({
@@ -129,5 +146,38 @@ describe("connectActions.requestConnection", () => {
     const result = await connectActions(store).requestConnection("u1", "u4", "again", "user", "e1");
     expect(result).toMatchObject({ status: "pending", fromId: "u1", toId: "u4" });
     expect(database.connections.filter((item) => item.status === "pending" && item.toId === "u4")).toHaveLength(1);
+  });
+});
+
+describe("connectActions.resolveConnection", () => {
+  it("lets the recipient accept a pending request", async () => {
+    const database = baseDatabase();
+    const store = fakeStore(database);
+    const result = await connectActions(store).resolveConnection("u1", "c2", "accept");
+    expect(result).toMatchObject({ connection: { id: "c2", status: "accepted" } });
+    expect(database.connections.find((item) => item.id === "c2")?.acceptedAt).not.toBeNull();
+  });
+
+  it("refuses to resolve for the sender", async () => {
+    const database = baseDatabase();
+    const store = fakeStore(database);
+    const result = await connectActions(store).resolveConnection("u3", "c2", "accept");
+    expect(result).toEqual({ error: "forbidden" });
+    expect(database.connections.find((item) => item.id === "c2")?.status).toBe("pending");
+  });
+
+  it("refuses to resolve an already-resolved connection twice", async () => {
+    const database = baseDatabase();
+    const store = fakeStore(database);
+    await connectActions(store).resolveConnection("u1", "c2", "accept");
+    const again = await connectActions(store).resolveConnection("u1", "c2", "decline");
+    expect(again).toEqual({ error: "state" });
+    expect(database.connections.find((item) => item.id === "c2")?.status).toBe("accepted");
+  });
+
+  it("returns missing for an unknown connection", async () => {
+    const store = fakeStore(baseDatabase());
+    const result = await connectActions(store).resolveConnection("u1", "nope", "accept");
+    expect(result).toEqual({ error: "missing" });
   });
 });

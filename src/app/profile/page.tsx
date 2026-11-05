@@ -36,10 +36,13 @@ export default async function ProfilePage() {
 
   const connections = id ? await service().connections(id) : [];
   const acceptedCount = connections.filter((item) => item.status === "accepted").length;
+  const incomingCount = connections.filter(
+    (item) => item.status === "pending" && (item as { direction?: string }).direction === "incoming",
+  ).length;
 
   return (
     <main className="flex min-h-full flex-col">
-      <AppNav active="profile" handle={profile.username ?? profile.slug} />
+      <AppNav active="profile" handle={profile.username ?? profile.slug} pendingCount={incomingCount} />
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-12 px-4 py-6 sm:px-8 min-[720px]:py-12">
         <ProfileManager profile={profile} connectionsCount={acceptedCount} />
       </div>

@@ -46,7 +46,8 @@ export async function POST(request: Request) {
     if ("connectionId" in body) {
       const parsed = resolveSchema.parse(body);
       const result = await service().resolveConnection(id, parsed.connectionId, parsed.action);
-      if ("error" in result) return json(result, result.error === "forbidden" ? 403 : 404);
+      if ("error" in result)
+        return json(result, result.error === "forbidden" ? 403 : result.error === "state" ? 409 : 404);
       return json(result);
     }
     const parsed = createSchema.parse(body);
